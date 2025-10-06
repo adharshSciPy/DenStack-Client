@@ -5,13 +5,15 @@ import { AppointmentsOverview } from "./components/appointments-overview";
 import { FinancialDashboard } from "./components/financial-dashboard";
 import { InventoryTracker } from "./components/inventory-tracker";
 import { MarketplaceTab } from "./components/marketplace-tab";
-
+import { useClinicTheme } from "./hooks/UseClinicTheme";
 // Placeholder components for other tabs
 function StaffPayroll() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl">Staff & Payroll Management</h2>
-      <p className="text-muted-foreground">Manage staff schedules, payroll, and HR tasks</p>
+      <p className="text-muted-foreground">
+        Manage staff schedules, payroll, and HR tasks
+      </p>
       <div className="p-8 text-center bg-muted/30 rounded-lg">
         <p>Staff & Payroll management module coming soon...</p>
       </div>
@@ -23,7 +25,9 @@ function LabOrders() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl">Lab Order Monitoring</h2>
-      <p className="text-muted-foreground">Track and approve laboratory orders</p>
+      <p className="text-muted-foreground">
+        Track and approve laboratory orders
+      </p>
       <div className="p-8 text-center bg-muted/30 rounded-lg">
         <p>Lab orders monitoring module coming soon...</p>
       </div>
@@ -35,7 +39,9 @@ function Reports() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl">Reports & Exports</h2>
-      <p className="text-muted-foreground">Generate and export clinic reports</p>
+      <p className="text-muted-foreground">
+        Generate and export clinic reports
+      </p>
       <div className="p-8 text-center bg-muted/30 rounded-lg">
         <p>Reports & exports module coming soon...</p>
       </div>
@@ -47,7 +53,9 @@ function Notifications() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl">Notifications & Alerts</h2>
-      <p className="text-muted-foreground">Manage clinic notifications and alerts</p>
+      <p className="text-muted-foreground">
+        Manage clinic notifications and alerts
+      </p>
       <div className="p-8 text-center bg-muted/30 rounded-lg">
         <p>Notifications management module coming soon...</p>
       </div>
@@ -59,7 +67,9 @@ function Settings() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl">Settings & Feature Toggles</h2>
-      <p className="text-muted-foreground">Configure clinic settings and enable/disable modules</p>
+      <p className="text-muted-foreground">
+        Configure clinic settings and enable/disable modules
+      </p>
       <div className="p-8 text-center bg-muted/30 rounded-lg">
         <p>Settings & feature toggles module coming soon...</p>
       </div>
@@ -68,6 +78,8 @@ function Settings() {
 }
 
 export default function App() {
+  const clinicId = "68e3857235eb050257e7d662";
+  useClinicTheme(clinicId);
   const [activeTab, setActiveTab] = useState("overview");
 
   const renderContent = () => {
@@ -99,15 +111,10 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-background">
-      <DashboardSidebar 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-      />
-      
+      <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+
       <main className="flex-1 overflow-auto">
-        <div className="p-6 max-w-7xl mx-auto">
-          {renderContent()}
-        </div>
+        <div className="p-6 max-w-7xl mx-auto">{renderContent()}</div>
       </main>
     </div>
   );

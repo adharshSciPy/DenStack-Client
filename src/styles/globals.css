@@ -32,7 +32,7 @@
   --chart-5: #F9FAF9;
   --radius: 0.625rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #6B7280;
+  --sidebar-foreground: #dee2ea;
   --sidebar-primary: #1E4D2B;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #D1FAE5;
@@ -134,6 +134,20 @@
  * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
  */
 @layer base {
+  :root {
+    --primary: #1E4D2B;
+    --primary-end: #3FA796;
+    --primary-gradient: linear-gradient(135deg, var(--primary), var(--primary-end));
+
+    --sidebar-gradient: var(--primary-gradient);
+  }
+
+  .dark {
+    --primary: #2b6b3f;
+    --primary-end: #58c8a1;
+    --primary-gradient: linear-gradient(135deg, var(--primary), var(--primary-end));
+  }
+
   :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
     h1 {
       font-size: var(--text-2xl);

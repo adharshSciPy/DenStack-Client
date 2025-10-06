@@ -12,7 +12,7 @@ import {
   Activity,
   Home,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -35,11 +35,18 @@ interface DashboardSidebarProps {
   onTabChange: (tabId: string) => void;
 }
 
-export function DashboardSidebar({ activeTab, onTabChange }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  activeTab,
+  onTabChange,
+}: DashboardSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className={`bg-white border-r border-border h-full flex flex-col transition-all duration-300 ${collapsed ? "w-16" : "w-64"}`}>
+    <div
+      className={`bg-white border-r border-border h-full flex flex-col transition-all duration-300 ${
+        collapsed ? "w-16" : "w-64"
+      }`}
+    >
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         {!collapsed && (
@@ -72,23 +79,34 @@ export function DashboardSidebar({ activeTab, onTabChange }: DashboardSidebarPro
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
-          
+
           return (
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-[#D1FAE5] hover:text-primary ${
-                isActive 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground"
-              }`}
+              style={{
+                background: isActive
+                  ? "var(--primary-gradient)"
+                  : "transparent",
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:text-primary)`}
+              onMouseEnter={(e) => {
+                if (!isActive)
+                  e.currentTarget.style.background = "var(--sidebar-foreground)";          
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) e.currentTarget.style.background = "transparent";
+              }}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
               {!collapsed && (
                 <>
                   <span className="text-sm">{item.label}</span>
                   {item.badge && !isActive && (
-                    <Badge variant="secondary" className="ml-auto bg-secondary text-secondary-foreground">
+                    <Badge
+                      variant="secondary"
+                      className="ml-auto bg-secondary text-secondary-foreground"
+                    >
                       {item.badge}
                     </Badge>
                   )}
