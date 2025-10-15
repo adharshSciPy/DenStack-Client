@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { use, useState } from "react";
 import { DashboardSidebar } from "./components/dashboard-sidebar";
 import { OverviewDashboard } from "./components/overview-dashboard";
 import { AppointmentsOverview } from "./components/appointments-overview";
@@ -6,6 +6,9 @@ import { FinancialDashboard } from "./components/financial-dashboard";
 import { InventoryTracker } from "./components/inventory-tracker";
 import { MarketplaceTab } from "./components/marketplace-tab";
 import { useClinicTheme } from "./hooks/UseClinicTheme";
+import LoginPage from "./components/LoginPage/LoginPage";
+import LabOrdersPage from "./components/Laborders-dashboard";
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
 // Placeholder components for other tabs
 function StaffPayroll() {
   return (
@@ -76,11 +79,10 @@ function Settings() {
     </div>
   );
 }
-
-export default function App() {
-  const clinicId = "68e3857235eb050257e7d662";
-  useClinicTheme(clinicId);
+function DashboardLayout() {
+  const { clinicId } = useParams();
   const [activeTab, setActiveTab] = useState("overview");
+  useClinicTheme(clinicId);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -95,7 +97,7 @@ export default function App() {
       case "inventory":
         return <InventoryTracker />;
       case "lab":
-        return <LabOrders />;
+        return <LabOrdersPage />;
       case "reports":
         return <Reports />;
       case "notifications":
@@ -112,10 +114,20 @@ export default function App() {
   return (
     <div className="flex h-screen bg-background">
       <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-
       <main className="flex-1 overflow-auto">
         <div className="p-6 max-w-7xl mx-auto">{renderContent()}</div>
       </main>
     </div>
+  );
+}
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/dashboard/:clinicId" element={<DashboardLayout />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </Router>
   );
 }

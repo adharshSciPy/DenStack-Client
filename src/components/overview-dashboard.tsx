@@ -4,6 +4,10 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import baseUrl from "../baseUrl";
+import { useParams } from "react-router-dom";
 
 const quickStats = {
   todayAppointments: 24,
@@ -58,13 +62,66 @@ const recentActivities = [
   }
 ];
 
+
+interface StaffCategory {
+  accountants: any[];
+  nurses: any[];
+  pharmacists: any[];
+  receptionists: any[];
+  technicians: any[];
+}
+
+interface Subscription {
+  package: string;
+  type: string;
+  price: number;
+  startDate: string;
+  endDate: string;
+  status?: string;
+}
+
+interface Clinic {
+  id: string;
+  name: string;
+  staffs: StaffCategory;
+  totalStaffCount: number;
+}
+
+interface DashboardData {
+  success: boolean;
+  clinic: Clinic;
+  subscription: Subscription;
+  activeDoctors: any[];
+  patients: any[];
+  todaysAppointments: any[];
+}
+
 export function OverviewDashboard() {
+
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+
+
+  const { clinicId } = useParams();
+  useEffect(() => {
+    const getData = async () => {
+      try {
+        const res= await axios.get(`${baseUrl}api/v1/auth/clinic/dashboard/${clinicId}`);
+        setDashboardData(res.data);
+      } catch (error) {
+        console.log(error);
+        
+      }
+    }
+    getData();
+  }, [clinicId]);
+  console.log(dashboardData);
+  
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl">Welcome back, Dr. Wilson!</h2>
+          <h2 className="text-2xl">Welcome back,{dashboardData?.clinic.name}</h2>
           <p className="text-muted-foreground">Here's what's happening at your clinic today</p>
         </div>
         <div className="flex gap-2">
@@ -85,7 +142,7 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Today's Appointments</p>
-                <p className="text-3xl text-primary">{quickStats.todayAppointments}</p>
+                <p className="text-3xl text-primary">{dashboardData?.todaysAppointments.length}</p>
                 <div className="flex items-center gap-1 mt-1">
                   <TrendingUp className="w-3 h-3 text-green-600" />
                   <span className="text-xs text-green-600">+8 from yesterday</span>
@@ -117,7 +174,7 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active Staff</p>
-                <p className="text-3xl text-secondary">{quickStats.activeStaff}</p>
+                <p className="text-3xl text-secondary">{dashboardData?.clinic.totalStaffCount}</p>
                 <p className="text-xs text-muted-foreground mt-1">On duty today</p>
               </div>
               <Users className="w-8 h-8 text-secondary/60" />
