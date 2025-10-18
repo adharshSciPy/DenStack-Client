@@ -2,6 +2,11 @@ import { Calendar, Clock, User, Phone, CheckCircle, AlertCircle } from "lucide-r
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import axios from "axios";
+import { useEffect, useState } from "react";
+import patientServiceBaseUrl from "../patientServiceBaseUrl";
+import { useParams } from "react-router-dom";
+import { log } from "console";
 
 const todayStats = {
   total: 24,
@@ -44,8 +49,40 @@ const upcomingAppointments = [
     status: "pending"
   }
 ];
+interface Appointment {
+  _id: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  status: string;
+  opNumber: string;
+  patientId: {
+    _id: string;
+    name: string;
+    phone: number;
+    email: string;
+    age: number;
+  };
+}
+
 
 export function AppointmentsOverview() {
+ const [appointments, setAppointments] = useState<Appointment[]>([]);
+const { clinicId } = useParams();
+console.log("Clinic ID:", clinicId);
+
+const fetchAppointmnets = async () => {
+try {
+  const response=await axios.get(`${patientServiceBaseUrl}/api/v1/patient-service/appointment/clinic-appointments/${clinicId}`);
+  console.log("Appointments data:", response.data.data);
+  setAppointments(response.data.data);
+
+} catch (error) {
+  console.error("Error fetching appointments:", error);
+}
+}
+useEffect(()=>{
+  fetchAppointmnets();
+},[])
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -119,47 +156,66 @@ export function AppointmentsOverview() {
             Next Appointments
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {upcomingAppointments.map((appointment) => (
-            <div 
-              key={appointment.id} 
-              className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-[#D1FAE5]/50 transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <p className="text-sm text-primary">{appointment.time}</p>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <p className="font-medium">{appointment.patient}</p>
-                    <Badge 
-                      variant={appointment.status === "confirmed" ? "default" : "secondary"}
-                      className={appointment.status === "confirmed" ? "bg-primary" : "bg-secondary"}
-                    >
-                      {appointment.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 mt-1">
-                    <span className="text-sm text-muted-foreground">{appointment.type}</span>
-                    <div className="flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{appointment.phone}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  Edit
-                </Button>
-                <Button variant="ghost" size="sm" className="text-muted-foreground">
-                  Call
-                </Button>
-              </div>
-            </div>
-          ))}
-        </CardContent>
+       <CardContent className="space-y-4">
+  {appointments.map((appointment) => (
+    <div
+  key={appointment._id}
+  className="flex justify-between items-start p-4 bg-muted/30 rounded-lg hover:bg-[#D1FAE5]/50 transition-colors w-full"
+>
+  {/* Left Section */}
+  <div className="flex flex-col w-full">
+    {/* Patient Name & Status */}
+    <div className="flex items-center gap-2">
+      <User className="w-4 h-4 text-muted-foreground" />
+      <p className="font-medium">{appointment.patientId?.name}</p>
+      <Badge
+        variant={appointment.status === "confirmed" ? "default" : "secondary"}
+        className={
+          appointment.status === "confirmed"
+            ? "bg-primary text-white"
+            : "bg-yellow-200 text-black"
+        }
+      >
+        {appointment.status}
+      </Badge>
+    </div>
+
+    {/* OP No, Phone, Time, Date */}
+    <div className="flex flex-wrap items-center justify-between mt-2 w-full">
+      <div className="flex items-center gap-4">
+        <span className="text-sm font-bold text-muted-foreground">
+          OP No: {appointment.opNumber}
+        </span>
+
+        <div className="flex items-center gap-1">
+          <Phone className="w-3 h-3 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">
+            {appointment.patientId?.phone}
+          </span>
+        </div>
+      </div>
+
+      <div className="text-right">
+        <p className="text-sm text-primary">{appointment.appointmentTime}</p>
+        <p className="text-xs text-muted-foreground">{appointment.appointmentDate}</p>
+      </div>
+    </div>
+  </div>
+
+  {/* Right Section - Buttons */}
+  <div className="flex items-start gap-2 ml-4">
+    <Button variant="outline" size="sm">
+      Edit
+    </Button>
+    <Button variant="ghost" size="sm" className="text-muted-foreground">
+      Call
+    </Button>
+  </div>
+</div>
+
+  ))}
+</CardContent>
+
       </Card>
     </div>
   );
