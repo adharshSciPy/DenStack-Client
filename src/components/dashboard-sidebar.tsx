@@ -21,7 +21,7 @@ const menuItems = [
   { id: "overview", label: "Overview", icon: Home },
   { id: "appointments", label: "Appointments", icon: Calendar, badge: 12 },
   { id: "financial", label: "Financial", icon: DollarSign },
-  { id: "staff", label: "Staff & Payroll", icon: Users },
+  { id: "staff", label: "Staff", icon: Users },
   { id: "inventory", label: "Inventory", icon: Package, badge: 3 },
   { id: "lab", label: "Lab Orders", icon: FlaskConical, badge: 7 },
   { id: "reports", label: "Reports", icon: FileText },
