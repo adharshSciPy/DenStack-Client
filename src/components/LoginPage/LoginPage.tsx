@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Heart, User, Lock } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
+import {loginSuccess} from "../../redux/slice/authSlice";
+import { useAppDispatch } from "../../redux/hook";
 export default function HospitalLogin() {
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [activeRole, setActiveRole] = useState("admin");
@@ -47,6 +49,9 @@ export default function HospitalLogin() {
 
       if (res.status === 200) {
         const clinicId = res.data.clinic.id; // Adjust based on actual response structure
+        dispatch(loginSuccess({ user: res.data.clinic, token: res.data.accessToken }));
+        console.log(res.data);
+        
         navigate(`/dashboard/${clinicId}`); // Redirect to dashboard with a sample clinicId
       }
     } catch (error) {
