@@ -8,6 +8,7 @@ import { MarketplaceTab } from "./components/marketplace-tab";
 import { useClinicTheme } from "./hooks/UseClinicTheme";
 import LoginPage from "./components/LoginPage/LoginPage";
 import LabOrdersPage from "./components/Laborders-dashboard";
+import DoctorPage from "./components/doctor-dashboard"
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
 import StaffRegistration from "./components/staff-dashboard";
 // Placeholder components for other tabs
@@ -95,6 +96,8 @@ function DashboardLayout() {
         return <MarketplaceTab />;
       case "settings":
         return <Settings />;
+      case "doctoronboard":
+        return <DoctorPage />;
       default:
         return <OverviewDashboard />;
     }
