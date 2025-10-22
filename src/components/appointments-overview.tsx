@@ -5,6 +5,9 @@ import {
   Phone,
   CheckCircle,
   AlertCircle,
+  X,
+  Search,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -14,48 +17,16 @@ import { useEffect, useState } from "react";
 import patientServiceBaseUrl from "../patientServiceBaseUrl";
 import { useParams } from "react-router-dom";
 import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { log } from "console";
 
-const todayStats = {
-  total: 24,
-  completed: 18,
-  pending: 4,
-  cancelled: 2,
-};
-
-const upcomingAppointments = [
-  {
-    id: 1,
-    time: "09:00 AM",
-    patient: "John Smith",
-    type: "Consultation",
-    phone: "+1 (555) 123-4567",
-    status: "confirmed",
-  },
-  {
-    id: 2,
-    time: "09:30 AM",
-    patient: "Maria Garcia",
-    type: "Follow-up",
-    phone: "+1 (555) 234-5678",
-    status: "pending",
-  },
-  {
-    id: 3,
-    time: "10:00 AM",
-    patient: "Robert Johnson",
-    type: "Surgery",
-    phone: "+1 (555) 345-6789",
-    status: "confirmed",
-  },
-  {
-    id: 4,
-    time: "10:30 AM",
-    patient: "Emily Chen",
-    type: "Consultation",
-    phone: "+1 (555) 456-7890",
-    status: "pending",
-  },
-];
 interface Appointment {
   _id: string;
   appointmentDate: string;
@@ -71,11 +42,28 @@ interface Appointment {
     age: number;
   };
 }
+
 interface FullStatus {
   totalAppointments: number;
   completedAppointments: number;
   pendingAppointments: number;
   cancelledAppointments: number;
+}
+
+interface Patient {
+  _id: string;
+  name: string;
+  phone: number;
+  email: string;
+  patientUniqueId: string;
+  age: number;
+}
+
+interface DoctorAvailability {
+  doctorId: string;
+  doctorName: string;
+  availableSlots: string[];
+  department: string;
 }
 
 export function AppointmentsOverview() {
@@ -89,9 +77,28 @@ export function AppointmentsOverview() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  
+  // Step management
+  const [currentStep, setCurrentStep] = useState(1);
+  
+  // Step 1: Patient Search
+  const [patientSearchQuery, setPatientSearchQuery] = useState("");
+  const [patientSearchLoading, setPatientSearchLoading] = useState(false);
+  const [foundPatient, setFoundPatient] = useState<Patient | null>(null);
+  
+  // Step 2: Department Selection
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [doctorAvailability, setDoctorAvailability] = useState<DoctorAvailability[]>([]);
+  
+  // Step 3: Doctor & Time Selection
+  const [selectedDoctor, setSelectedDoctor] = useState("");
+  const [selectedDoctorName, setSelectedDoctorName] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState("");
 
   const { clinicId } = useParams();
-  console.log("Clinic ID:", clinicId);
   const today = new Date();
 
   const options: Intl.DateTimeFormatOptions = {
@@ -103,14 +110,30 @@ export function AppointmentsOverview() {
 
   const todayFormatted = today.toLocaleDateString("en-US", options);
 
-  //to fetch appointments from backend
+  const departments = [
+    "Cardiology",
+    "Neurology",
+    "Orthopedics",
+    "Pediatrics",
+    "Dermatology",
+    "General Medicine",
+    "Dental",
+    "ENT",
+    "Ophthalmology"
+  ];
+
+  // Fetch appointments from backend
   const fetchAppointments = async (query = "", date = "") => {
     try {
       const response = await axios.get(
         `${patientServiceBaseUrl}/api/v1/patient-service/appointment/clinic-appointments/${clinicId}`,
-       { params: { patientId: query || undefined, startDate: date || undefined } }
+        {
+          params: {
+            patientId: query || undefined,
+            startDate: date || undefined,
+          },
+        }
       );
-      console.log("Appointments data:", response.data);
       setAppointments(response.data.data);
       const stats = response.data.stats;
       setFullStatus({
@@ -123,26 +146,489 @@ export function AppointmentsOverview() {
       console.error("Error fetching appointments:", error);
     }
   };
+
   useEffect(() => {
     fetchAppointments();
   }, []);
-    const handleSearch = () => {
+
+  const handleSearch = () => {
     fetchAppointments(searchQuery, selectedDate);
   };
+
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    setSelectedDate("");
+    fetchAppointments();
+  };
+
+  // Step 1: Patient Search
+  const handlePatientSearch = async () => {
+    if (!patientSearchQuery.trim()) {
+      alert("Please enter a Patient ID");
+      return;
+    }
+
+    try {
+      setPatientSearchLoading(true);
+      const res = await axios.get(
+        `${patientServiceBaseUrl}/api/v1/patient-service/patient/single-patient`,
+        { params: { id: patientSearchQuery } }
+      );
+
+      const patient = res.data.data;
+      if (patient?._id) {
+        setFoundPatient(patient);
+        alert(`Patient found: ${patient.name}`);
+      } else {
+        alert("No patient found for this ID");
+        setFoundPatient(null);
+      }
+    } catch (error) {
+      console.error("Error fetching patient:", error);
+      alert("Error fetching patient. Please try again.");
+      setFoundPatient(null);
+    } finally {
+      setPatientSearchLoading(false);
+    }
+  };
+
+  // Step 2: Fetch Doctor Availability
+ // Step 2: Fetch Doctor Availability by Department
+// ✅ Step 2: Fetch Doctor Availability by Department
+const handleDepartmentSelect = async (department: string) => {
+  setSelectedDepartment(department);
+
+  try {
+    setAvailabilityLoading(true);
+
+    const response = await axios.get(
+      `http://localhost:8003/api/v1/clinic-service/department-based/availability`,
+      {
+        params: { clinicId, department },
+      }
+    );
+
+    console.log("Doctor Availability Response:", response.data);
+
+    const doctors = response.data?.doctors || [];
+
+    if (doctors.length > 0) {
+      setDoctorAvailability(
+        doctors.map((doc: any) => ({
+          doctorId: doc.doctorId,
+          doctorName: doc.doctor?.name,
+          email: doc.doctor?.email,
+          phoneNumber: doc.doctor?.phoneNumber,
+          specialization: response.data?.specialization || "",
+          roleInClinic: doc.roleInClinic,
+          status: doc.status,
+          clinicEmail: doc.clinicLogin?.email,
+          availableSlots:
+            doc.availability
+              ?.filter((a: any) => a.isActive)
+              ?.map(
+                (a: any) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`
+              ) || [],
+        }))
+      );
+
+      setCurrentStep(3);
+    } else {
+      alert("No doctors available for this department");
+      setDoctorAvailability([]);
+    }
+  } catch (error) {
+    console.error("Error fetching availability:", error);
+    alert("Error fetching doctor availability. Please try again.");
+    setDoctorAvailability([]);
+  } finally {
+    setAvailabilityLoading(false);
+  }
+};
+
+
+// ✅ Step 3: Select Doctor
+const handleDoctorSelect = (doctorId: string, doctorName: string) => {
+  setSelectedDoctor(doctorId);
+  setSelectedDoctorName(doctorName);
+};
+
+
+
+  // Final Submit
+  const handleSubmit = async () => {
+    if (!foundPatient?._id) {
+      alert("Please search and select a patient first");
+      return;
+    }
+    if (!selectedDepartment) {
+      alert("Please select a department");
+      return;
+    }
+    if (!selectedDoctor) {
+      alert("Please select a doctor");
+      return;
+    }
+    if (!appointmentDate) {
+      alert("Please select an appointment date");
+      return;
+    }
+    if (!selectedTime) {
+      alert("Please select an appointment time");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const payload = {
+        userId: clinicId,
+        userRole: "admin",
+        patientId: foundPatient._id,
+        doctorId: selectedDoctor,
+        department: selectedDepartment,
+        appointmentDate: appointmentDate,
+        appointmentTime: selectedTime,
+      };
+
+      await axios.post(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
+        payload
+      );
+
+      alert("Appointment booked successfully!");
+      handleCloseModal();
+      fetchAppointments();
+    } catch (err) {
+      console.error("Error booking appointment:", err);
+      alert("Failed to book appointment. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setOpen(false);
+    setCurrentStep(1);
+    setFoundPatient(null);
+    setPatientSearchQuery("");
+    setSelectedDepartment("");
+    setSelectedDoctor("");
+    setSelectedDoctorName("");
+    setSelectedTime("");
+    setAppointmentDate("");
+    setDoctorAvailability([]);
+  };
+
+  const canProceedToStep2 = foundPatient !== null;
+  const canProceedToStep3 = canProceedToStep2 && selectedDepartment !== "";
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl">Today's Appointments</h2>
+          <h2 className="text-2xl font-semibold">Today's Appointments</h2>
           <p className="text-muted-foreground">{todayFormatted}</p>
         </div>
 
-        <Button className="bg-primary hover:bg-primary/90">
+        <Button
+          className="bg-primary hover:bg-primary/90"
+          onClick={() => setOpen(true)}
+        >
           <Calendar className="w-4 h-4 mr-2" />
           Schedule New
         </Button>
       </div>
+
+      {/* Full Screen Modal */}
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h2 className="text-2xl font-semibold">Book New Appointment</h2>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-primary' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep >= 1 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+                      1
+                    </div>
+                    <span className="text-sm font-medium">Patient</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                  <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-primary' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep >= 2 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+                      2
+                    </div>
+                    <span className="text-sm font-medium">Department</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                  <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-primary' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep >= 3 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+                      3
+                    </div>
+                    <span className="text-sm font-medium">Doctor & Time</span>
+                  </div>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleCloseModal}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {/* Step 1: Patient Search */}
+              {currentStep === 1 && (
+                <div className="space-y-6">
+                  <div className="border-2 border-primary/20 p-6 rounded-lg bg-primary/5">
+                    <Label className="text-lg font-semibold mb-4 block">
+                      Search Patient by ID
+                    </Label>
+                    <div className="flex gap-3">
+                      <Input
+                        placeholder="Enter Patient Unique ID (e.g., SCI-000003)"
+                        value={patientSearchQuery}
+                        onChange={(e) => setPatientSearchQuery(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            handlePatientSearch();
+                          }
+                        }}
+                        className="flex-1 h-12 text-lg"
+                      />
+                      <Button
+                        onClick={handlePatientSearch}
+                        disabled={patientSearchLoading}
+                        className="min-w-[140px] h-12"
+                        size="lg"
+                      >
+                        <Search className="w-4 h-4 mr-2" />
+                        {patientSearchLoading ? "Searching..." : "Search"}
+                      </Button>
+                    </div>
+
+                    {foundPatient && (
+                      <div className="mt-6 p-6 bg-green-50 border-2 border-green-300 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-3 flex-1">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-6 h-6 text-green-600" />
+                              <p className="font-bold text-xl text-green-800">
+                                Patient Found
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-3 mt-4">
+                              <div>
+                                <p className="text-xs text-gray-600 mb-1">Full Name</p>
+                                <p className="text-base font-semibold">{foundPatient.name}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-600 mb-1">Patient ID</p>
+                                <p className="text-base font-semibold">{foundPatient.patientUniqueId}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-600 mb-1">Age</p>
+                                <p className="text-base font-semibold">{foundPatient.age} years</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-600 mb-1">Phone</p>
+                                <p className="text-base font-semibold">{foundPatient.phone}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <p className="text-xs text-gray-600 mb-1">Email</p>
+                                <p className="text-base font-semibold">{foundPatient.email}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setFoundPatient(null);
+                              setPatientSearchQuery("");
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => setCurrentStep(2)}
+                      disabled={!canProceedToStep2}
+                      size="lg"
+                      className="min-w-[200px]"
+                    >
+                      Next: Select Department
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Department Selection */}
+              {currentStep === 2 && (
+                <div className="space-y-6">
+                  <div className="border-2 border-primary/20 p-6 rounded-lg">
+                    <Label className="text-lg font-semibold mb-4 block">
+                      Select Department
+                    </Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {departments.map((dept) => (
+                        <Button
+                          key={dept}
+                          variant={selectedDepartment === dept ? "default" : "outline"}
+                          className={`h-16 text-base ${
+                            selectedDepartment === dept
+                              ? "bg-primary text-white"
+                              : "hover:bg-primary/10"
+                          }`}
+                          onClick={() => handleDepartmentSelect(dept)}
+                          disabled={availabilityLoading}
+                        >
+                          {dept}
+                        </Button>
+                      ))}
+                    </div>
+                    {availabilityLoading && (
+                      <div className="mt-4 text-center text-primary">
+                        <p>Loading doctor availability...</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentStep(1)}
+                      size="lg"
+                    >
+                      Back
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Doctor & Time Selection */}
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <div className="border-2 border-primary/20 p-6 rounded-lg">
+                    <Label className="text-lg font-semibold mb-4 block">
+                      Select Doctor
+                    </Label>
+                    
+                    {doctorAvailability.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No doctors available for {selectedDepartment}</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4">
+                        {doctorAvailability.map((doctor) => (
+                          <div
+                            key={doctor.doctorId}
+                            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                              selectedDoctor === doctor.doctorId
+                                ? "border-primary bg-primary/5"
+                                : "border-gray-200 hover:border-primary/50"
+                            }`}
+                            onClick={() => handleDoctorSelect(doctor.doctorId, doctor.doctorName)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-semibold text-lg">{doctor.doctorName}</p>
+                                <p className="text-sm text-gray-600">{doctor.department}</p>
+                              </div>
+                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                                selectedDoctor === doctor.doctorId
+                                  ? "border-primary bg-primary"
+                                  : "border-gray-300"
+                              }`}>
+                                {selectedDoctor === doctor.doctorId && (
+                                  <CheckCircle className="w-4 h-4 text-white" />
+                                )}
+                              </div>
+                            </div>
+                            {doctor.availableSlots && doctor.availableSlots.length > 0 && (
+                              <div className="mt-3">
+                                <p className="text-xs text-gray-600 mb-2">Available Slots:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {doctor.availableSlots.map((slot, idx) => (
+                                    <Badge key={idx} variant="secondary" className="text-xs">
+                                      {slot}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedDoctor && (
+                    <div className="border-2 border-primary/20 p-6 rounded-lg">
+                      <Label className="text-lg font-semibold mb-4 block">
+                        Select Date & Time
+                      </Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="mb-2 block">Appointment Date *</Label>
+                          <Input
+                            type="date"
+                            value={appointmentDate}
+                            onChange={(e) => setAppointmentDate(e.target.value)}
+                            min={new Date().toISOString().split("T")[0]}
+                            className="h-12"
+                          />
+                        </div>
+                       <div>
+  <Label className="mb-2 block">Appointment Time *</Label>
+  <Input
+    type="time"
+    value={selectedTime}
+    onChange={(e) => setSelectedTime(e.target.value)}
+    className="h-12"
+  />
+</div>
+
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentStep(2);
+                        setSelectedDoctor("");
+                        setSelectedDoctorName("");
+                        setSelectedTime("");
+                        setAppointmentDate("");
+                      }}
+                      size="lg"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!selectedDoctor || !appointmentDate || !selectedTime || loading}
+                      size="lg"
+                      className="min-w-[200px]"
+                    >
+                      {loading ? "Booking..." : "Confirm Appointment"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -151,7 +637,7 @@ export function AppointmentsOverview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-3xl text-primary">
+                <p className="text-3xl font-bold text-primary">
                   {fullStatus.totalAppointments}
                 </p>
               </div>
@@ -165,7 +651,7 @@ export function AppointmentsOverview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="text-3xl text-green-600">
+                <p className="text-3xl font-bold text-green-600">
                   {fullStatus.completedAppointments}
                 </p>
               </div>
@@ -179,11 +665,11 @@ export function AppointmentsOverview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-3xl text-secondary">
+                <p className="text-3xl font-bold text-orange-600">
                   {fullStatus.pendingAppointments}
                 </p>
               </div>
-              <Clock className="w-8 h-8 text-secondary/60" />
+              <Clock className="w-8 h-8 text-orange-600/60" />
             </div>
           </CardContent>
         </Card>
@@ -193,121 +679,136 @@ export function AppointmentsOverview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Cancelled</p>
-                <p className="text-3xl text-destructive">
+                <p className="text-3xl font-bold text-red-600">
                   {fullStatus.cancelledAppointments}
                 </p>
               </div>
-              <AlertCircle className="w-8 h-8 text-destructive/60" />
+              <AlertCircle className="w-8 h-8 text-red-600/60" />
             </div>
           </CardContent>
         </Card>
       </div>
-      
-     <div className="flex gap-2">
-    
-          <Input
-            placeholder="Enter Patient ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-[200px]"
-          />
-          <Input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-[180px]"
-          />
-           <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90">
-            <Calendar className="w-4 h-4 mr-2" /> Search
-          </Button>
-          </div>
 
-      {/* Upcoming Appointments List */}
+      {/* Search Filters */}
+      <div className="flex gap-3 items-center">
+        <Input
+          placeholder="Enter Patient ID..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              handleSearch();
+            }
+          }}
+          className="w-[250px]"
+        />
+        <Input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="w-[200px]"
+        />
+        <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90">
+          <Calendar className="w-4 h-4 mr-2" /> Search
+        </Button>
+        <Button onClick={handleClearFilters} variant="outline">
+          Clear
+        </Button>
+      </div>
+
+      {/* Appointments List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5" />
-            No Appointments found
+            {appointments.length > 0
+              ? `Appointments (${appointments.length})`
+              : "No Appointments Found"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {appointments.map((appointment) => (
-            <div
-              key={appointment._id}
-              className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
-                appointment.status === "cancelled"
-                  ? "bg-red-100 hover:bg-red-200"
-                  : "bg-muted/30 hover:bg-[#D1FAE5]/50"
-              }`}
-            >
-              {/* Left Section */}
-              <div className="flex flex-col w-full">
-                {/* Patient Name & Status */}
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <p className="font-medium">{appointment.patientId?.name}</p>
+          {appointments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>No appointments scheduled for the selected criteria</p>
+            </div>
+          ) : (
+            appointments.map((appointment) => (
+              <div
+                key={appointment._id}
+                className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
+                  appointment.status === "cancelled"
+                    ? "bg-red-50 hover:bg-red-100 border border-red-200"
+                    : "bg-green-50 hover:bg-green-100 border border-green-200"
+                }`}
+              >
+                <div className="flex flex-col w-full">
+                  <div className="flex items-center gap-3 mb-2">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <p className="font-semibold text-lg">
+                      {appointment.patientId?.name}
+                    </p>
+                    <Badge
+                      variant={
+                        appointment.status === "confirmed"
+                          ? "default"
+                          : appointment.status === "cancelled"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                      className="capitalize"
+                    >
+                      {appointment.status}
+                    </Badge>
+                  </div>
 
-                  {/* ✅ Always show status badge */}
-                  <Badge
-                    variant={
-                      appointment.status === "confirmed"
-                        ? "default"
-                        : appointment.status === "cancelled"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                    className="capitalize"
-                  >
-                    {appointment.status}
-                  </Badge>
-                </div>
-
-                {/* OP No, Phone, Time, Date */}
-                <div className="flex flex-wrap items-center justify-between mt-2 w-full">
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-bold text-muted-foreground">
-                      OP No: {appointment.opNumber}
-                    </span>
-                     <span className="text-sm font-bold text-muted-foreground">
-                      Patient ID: {appointment.patientId.patientUniqueId}
-                    </span>
-
-                    <div className="flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {appointment.patientId?.phone}
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-6">
+                      <span className="text-sm font-medium">
+                        OP No: <span className="font-bold">{appointment.opNumber}</span>
                       </span>
+                      <span className="text-sm font-medium">
+                        Patient ID:{" "}
+                        <span className="font-bold">
+                          {appointment.patientId.patientUniqueId}
+                        </span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">
+                          {appointment.patientId?.phone}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-primary">
+                        {appointment.appointmentTime}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {appointment.appointmentDate}
+                      </p>
                     </div>
                   </div>
+                </div>
 
-                  <div className="text-right">
-                    <p className="text-sm text-primary">
-                      {appointment.appointmentTime}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {appointment.appointmentDate}
-                    </p>
+                {appointment.status !== "cancelled" && (
+                  <div className="flex items-start gap-2 ml-4">
+                    <Button variant="outline" size="sm">
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                    >
+                      Call
+                    </Button>
                   </div>
-                </div>
+                )}
               </div>
-
-              {/* Right Section - Buttons (hidden if cancelled) */}
-              {appointment.status !== "cancelled" && (
-                <div className="flex items-start gap-2 ml-4">
-                  <Button variant="outline" size="sm">
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground"
-                  >
-                    Call
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
