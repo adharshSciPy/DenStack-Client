@@ -13,6 +13,7 @@ import {
   Home,
   ChevronLeft,
   ChevronRight,
+  Stethoscope
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -21,13 +22,15 @@ const menuItems = [
   { id: "overview", label: "Overview", icon: Home },
   { id: "appointments", label: "Appointments", icon: Calendar, badge: 12 },
   { id: "financial", label: "Financial", icon: DollarSign },
-  { id: "staff", label: "Staff & Payroll", icon: Users },
+  { id: "staff", label: "Staff", icon: Users },
   { id: "inventory", label: "Inventory", icon: Package, badge: 3 },
   { id: "lab", label: "Lab Orders", icon: FlaskConical, badge: 7 },
   { id: "reports", label: "Reports", icon: FileText },
   { id: "notifications", label: "Notifications", icon: Bell, badge: 5 },
   { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
+  { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
   { id: "settings", label: "Settings", icon: Settings },
+
 ];
 
 interface DashboardSidebarProps {

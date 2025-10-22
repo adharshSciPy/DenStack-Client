@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import {
-  Search,
   Plus,
   Filter,
   Download,
@@ -12,15 +11,14 @@ import {
   Clock,
   AlertCircle,
   CheckCircle,
-  XCircle,
-  RefreshCw,
   Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import labBaseUrl from "../labBaseUrl";
+// Mock labBaseUrl for demo
 
 interface LabStatus {
   completedOrders: number;
@@ -36,7 +34,7 @@ interface LabOrder {
   doctorId: string;
   patientId: string;
   consultationId?: string;
-  patientName?: string;
+  patientname?: string;
   doctorName?: string;
   orderType?: string;
   toothNumbers?: string[];
@@ -61,19 +59,24 @@ interface LabOrderResponse {
 type OrderStatus = "pending" | "completed" | "in-progress" | "cancelled";
 
 export default function LabOrdersPage() {
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const { clinicId = "demo-clinic" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [selectedStatus, setSelectedStatus] = useState(
+    searchParams.get("status") || "all"
+  );
+  const [searchQuery, setSearchQuery] = useState(
+    searchParams.get("search") || ""
+  );
   const [labOrders, setLabOrders] = useState<LabStatus | null>(null);
   const [labData, setLabData] = useState<LabOrderResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Cursor-based pagination state
-  const [cursors, setCursors] = useState<string[]>([""]); // Stack of cursors for back navigation
+  const [cursors, setCursors] = useState<string[]>([""]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
   const [pageSize] = useState(10);
-
-  const { clinicId } = useParams();
 
   // Fetch stats (only once on mount)
   useEffect(() => {
@@ -116,12 +119,18 @@ export default function LabOrdersPage() {
         if (searchQuery.trim()) {
           params.search = searchQuery.trim();
         }
-
+        console.log("API params:", params);
         const ordersResponse = await axios.get(
           `${labBaseUrl}api/v1/lab-order/lab-orders/${clinicId}`,
           { params }
         );
-
+        console.log("okok",ordersResponse);
+        
+        const baseURL = `${labBaseUrl}api/v1/lab-order/lab-orders/${clinicId}`;
+        const queryString = new URLSearchParams(params).toString();
+        const fullURL = `${baseURL}?${queryString}`;
+        console.log("urrl",fullURL);
+        
         setLabData(ordersResponse.data);
 
         // If there's a next page and we don't have this cursor yet, add it
@@ -132,7 +141,6 @@ export default function LabOrdersPage() {
             if (newCursors[newCursors.length - 1] !== nextCursor) {
               newCursors.push(nextCursor);
             }
-
             return newCursors;
           });
         }
@@ -145,19 +153,45 @@ export default function LabOrdersPage() {
     };
 
     fetchOrders();
-  }, [clinicId, selectedStatus, currentCursorIndex, searchQuery, pageSize]);
+  }, [
+    clinicId,
+    selectedStatus,
+    currentCursorIndex,
+    searchQuery,
+    pageSize,
+    // cursors,
+  ]);
 
   // Reset to first page when filters change
   const handleStatusChange = (status: string) => {
     setSelectedStatus(status);
     setCursors([""]);
     setCurrentCursorIndex(0);
+
+    // Update URL
+    const newParams = new URLSearchParams(searchParams);
+    if (status === "all") {
+      newParams.delete("status");
+    } else {
+      newParams.set("status", status);
+    }
+    setSearchParams(newParams);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+    const value = e.target.value;
+    setSearchQuery(value);
     setCursors([""]);
     setCurrentCursorIndex(0);
+
+    // Update URL
+    const newParams = new URLSearchParams(searchParams);
+    if (value.trim()) {
+      newParams.set("search", value.trim());
+    } else {
+      newParams.delete("search");
+    }
+    setSearchParams(newParams);
   };
 
   const handleNextPage = () => {
@@ -239,8 +273,10 @@ export default function LabOrdersPage() {
       </div>
     );
   }
+
   const totalPages = cursors.length;
   const currentPage = currentCursorIndex + 1;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -299,7 +335,7 @@ export default function LabOrdersPage() {
         <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              {/* <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" /> */}
               <input
                 type="text"
                 placeholder="Search by patient name, order ID, or test..."
@@ -324,7 +360,7 @@ export default function LabOrdersPage() {
 
           {/* Status Tabs */}
           <div className="flex gap-2 mt-4 overflow-auto">
-            {["all", "pending", "in-progress", "completed", "cancelled"].map(
+            {["all", "Pending", "in-progress", "Delivered", "Rejected"].map(
               (status) => (
                 <button
                   key={status}
@@ -332,7 +368,7 @@ export default function LabOrdersPage() {
                   disabled={isLoading}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     selectedStatus === status
-                      ? "bg-blue-600 text-white"
+                      ? "bg-blue-600 text-secondary"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
@@ -387,7 +423,7 @@ export default function LabOrdersPage() {
                         className="px-6 py-4 text-sm font-medium text-gray-800"
                         style={{ padding: "20px 0px" }}
                       >
-                        {order.patientName || "N/A"}
+                        {order.patientname || "N/A"}
                       </td>
                       <td className="hidden md:table-cell px-6 py-4 text-sm text-gray-600">
                         {order.doctorName || "N/A"}

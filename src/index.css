@@ -61,6 +61,7 @@
     --color-orange-600: oklch(.646 .222 41.116);
     --color-orange-800: oklch(.47 .157 37.304);
     --color-yellow-400: oklch(.852 .199 91.936);
+    --color-red-600: oklch(60.59% 0.22522 32.017);
     --color-green-600: oklch(.627 .194 149.214);
     --color-white: #fff;
     --spacing: .25rem;

@@ -1,4 +1,4 @@
-import { use, useState } from "react";
+import {  useState } from "react";
 import { DashboardSidebar } from "./components/dashboard-sidebar";
 import { OverviewDashboard } from "./components/overview-dashboard";
 import { AppointmentsOverview } from "./components/appointments-overview";
@@ -8,7 +8,11 @@ import { MarketplaceTab } from "./components/marketplace-tab";
 import { useClinicTheme } from "./hooks/UseClinicTheme";
 import LoginPage from "./components/LoginPage/LoginPage";
 import LabOrdersPage from "./components/Laborders-dashboard";
+import DoctorPage from "./components/doctor-dashboard"
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
+import StaffRegistration from "./components/staff-dashboard";
+import { Provider } from "react-redux";
+import { store } from "./redux/store";
 // Placeholder components for other tabs
 function StaffPayroll() {
   return (
@@ -24,19 +28,7 @@ function StaffPayroll() {
   );
 }
 
-function LabOrders() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl">Lab Order Monitoring</h2>
-      <p className="text-muted-foreground">
-        Track and approve laboratory orders
-      </p>
-      <div className="p-8 text-center bg-muted/30 rounded-lg">
-        <p>Lab orders monitoring module coming soon...</p>
-      </div>
-    </div>
-  );
-}
+
 
 function Reports() {
   return (
@@ -93,7 +85,7 @@ function DashboardLayout() {
       case "financial":
         return <FinancialDashboard />;
       case "staff":
-        return <StaffPayroll />;
+        return <StaffRegistration />;
       case "inventory":
         return <InventoryTracker />;
       case "lab":
@@ -106,6 +98,8 @@ function DashboardLayout() {
         return <MarketplaceTab />;
       case "settings":
         return <Settings />;
+      case "doctoronboard":
+        return <DoctorPage />;
       default:
         return <OverviewDashboard />;
     }
@@ -122,6 +116,7 @@ function DashboardLayout() {
 }
 export default function App() {
   return (
+    <Provider store={store}>
     <Router>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -129,5 +124,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
+    </Provider>
   );
 }
