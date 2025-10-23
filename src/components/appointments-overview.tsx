@@ -8,6 +8,7 @@ import {
   X,
   Search,
   ChevronRight,
+  Plus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -25,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { log } from "console";
 
 interface Appointment {
   _id: string;
@@ -86,6 +86,21 @@ export function AppointmentsOverview() {
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
   const [patientSearchLoading, setPatientSearchLoading] = useState(false);
   const [foundPatient, setFoundPatient] = useState<Patient | null>(null);
+  
+  // Patient Registration State
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [newPatient, setNewPatient] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    age: "",
+    gender: "",
+    conditions: "",
+    surgeries: "",
+    allergies: "",
+    familyHistory: "",
+  });
   
   // Step 2: Department Selection
   const [selectedDepartment, setSelectedDepartment] = useState("");
@@ -192,68 +207,122 @@ export function AppointmentsOverview() {
     }
   };
 
-  // Step 2: Fetch Doctor Availability
- // Step 2: Fetch Doctor Availability by Department
-// ✅ Step 2: Fetch Doctor Availability by Department
-const handleDepartmentSelect = async (department: string) => {
-  setSelectedDepartment(department);
-
+  // Patient Registration
+ const handlePatientRegistration = async () => {
   try {
-    setAvailabilityLoading(true);
+    if (!newPatient.name || !newPatient.phone || !newPatient.age || !newPatient.gender) {
+      alert("Please fill all required fields");
+      return;
+    }
 
-    const response = await axios.get(
-      `http://localhost:8003/api/v1/clinic-service/department-based/availability`,
-      {
-        params: { clinicId, department },
-      }
+    setRegistrationLoading(true);
+
+    // ✅ Convert comma-separated strings to arrays
+    const medicalHistory = {
+      conditions: newPatient.conditions
+        ? newPatient.conditions.split(",").map((c) => c.trim()).filter(Boolean)
+        : [],
+      surgeries: newPatient.surgeries
+        ? newPatient.surgeries.split(",").map((s) => s.trim()).filter(Boolean)
+        : [],
+      allergies: newPatient.allergies
+        ? newPatient.allergies.split(",").map((a) => a.trim()).filter(Boolean)
+        : [],
+      familyHistory: newPatient.familyHistory
+        ? newPatient.familyHistory.split(",").map((f) => f.trim()).filter(Boolean)
+        : [],
+    };
+
+    const payload = {
+      userRole: "admin", // or receptionist if logged in as one
+      userId: clinicId, // replace with actual logged-in user's ID
+      name: newPatient.name,
+      phone: newPatient.phone,
+      email: newPatient.email,
+      age: Number(newPatient.age),
+      gender: newPatient.gender,
+      medicalHistory,
+    };
+
+    const response = await axios.post(
+      `http://localhost:8002/api/v1/patient-service/patient/register/${clinicId}`,
+      payload
     );
 
-    console.log("Doctor Availability Response:", response.data);
-
-    const doctors = response.data?.doctors || [];
-
-    if (doctors.length > 0) {
-      setDoctorAvailability(
-        doctors.map((doc: any) => ({
-          doctorId: doc.doctorId,
-          doctorName: doc.doctor?.name,
-          email: doc.doctor?.email,
-          phoneNumber: doc.doctor?.phoneNumber,
-          specialization: response.data?.specialization || "",
-          roleInClinic: doc.roleInClinic,
-          status: doc.status,
-          clinicEmail: doc.clinicLogin?.email,
-          availableSlots:
-            doc.availability
-              ?.filter((a: any) => a.isActive)
-              ?.map(
-                (a: any) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`
-              ) || [],
-        }))
-      );
-
-      setCurrentStep(3);
+    if (response.data.success) {
+      // toast.success("Patient registered successfully!");
+      setFoundPatient(response.data.patient); // ✅ Show patient details instead of search
+      setRegistrationOpen(false); // close registration modal
+      setPatientSearchQuery(response.data.patient.patientUniqueId || ""); // optional
     } else {
-      alert("No doctors available for this department");
-      setDoctorAvailability([]);
+      // toast.error(response.data.message || "Failed to register patient");
     }
   } catch (error) {
-    console.error("Error fetching availability:", error);
-    alert("Error fetching doctor availability. Please try again.");
-    setDoctorAvailability([]);
+    console.error("Error registering patient:", error);
+    // toast.error((error as any).response?.data?.message || "Server error while registering patient");
   } finally {
-    setAvailabilityLoading(false);
+    setRegistrationLoading(false);
   }
 };
 
 
-// ✅ Step 3: Select Doctor
-const handleDoctorSelect = (doctorId: string, doctorName: string) => {
-  setSelectedDoctor(doctorId);
-  setSelectedDoctorName(doctorName);
-};
+  // Step 2: Fetch Doctor Availability
+  const handleDepartmentSelect = async (department: string) => {
+    setSelectedDepartment(department);
 
+    try {
+      setAvailabilityLoading(true);
 
+      const response = await axios.get(
+        `http://localhost:8003/api/v1/clinic-service/department-based/availability`,
+        {
+          params: { clinicId, department },
+        }
+      );
+
+      console.log("Doctor Availability Response:", response.data);
+
+      const doctors = response.data?.doctors || [];
+
+      if (doctors.length > 0) {
+        setDoctorAvailability(
+          doctors.map((doc: any) => ({
+            doctorId: doc.doctorId,
+            doctorName: doc.doctor?.name,
+            email: doc.doctor?.email,
+            phoneNumber: doc.doctor?.phoneNumber,
+            specialization: response.data?.specialization || "",
+            roleInClinic: doc.roleInClinic,
+            status: doc.status,
+            clinicEmail: doc.clinicLogin?.email,
+            availableSlots:
+              doc.availability
+                ?.filter((a: any) => a.isActive)
+                ?.map(
+                  (a: any) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`
+                ) || [],
+          }))
+        );
+
+        setCurrentStep(3);
+      } else {
+        alert("No doctors available for this department");
+        setDoctorAvailability([]);
+      }
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+      alert("Error fetching doctor availability. Please try again.");
+      setDoctorAvailability([]);
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
+
+  // Step 3: Select Doctor
+  const handleDoctorSelect = (doctorId: string, doctorName: string) => {
+    setSelectedDoctor(doctorId);
+    setSelectedDoctorName(doctorName);
+  };
 
   // Final Submit
   const handleSubmit = async () => {
@@ -340,6 +409,8 @@ const handleDoctorSelect = (doctorId: string, doctorName: string) => {
         </Button>
       </div>
 
+    
+
       {/* Full Screen Modal */}
       {open && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
@@ -379,95 +450,267 @@ const handleDoctorSelect = (doctorId: string, doctorName: string) => {
             {/* Modal Content */}
             <div className="p-6">
               {/* Step 1: Patient Search */}
-              {currentStep === 1 && (
-                <div className="space-y-6">
-                  <div className="border-2 border-primary/20 p-6 rounded-lg bg-primary/5">
-                    <Label className="text-lg font-semibold mb-4 block">
-                      Search Patient by ID
-                    </Label>
-                    <div className="flex gap-3">
-                      <Input
-                        placeholder="Enter Patient Unique ID (e.g., SCI-000003)"
-                        value={patientSearchQuery}
-                        onChange={(e) => setPatientSearchQuery(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter") {
-                            handlePatientSearch();
-                          }
-                        }}
-                        className="flex-1 h-12 text-lg"
-                      />
-                      <Button
-                        onClick={handlePatientSearch}
-                        disabled={patientSearchLoading}
-                        className="min-w-[140px] h-12"
-                        size="lg"
-                      >
-                        <Search className="w-4 h-4 mr-2" />
-                        {patientSearchLoading ? "Searching..." : "Search"}
-                      </Button>
-                    </div>
+             {currentStep === 1 && (
+  <div className="space-y-6">
+    {/* 🔹 Search / Register Patient Section */}
+    <div className="border-2 border-primary/20 p-6 rounded-lg bg-primary/5 relative">
+      {!foundPatient ? (
+        <>
+          <Label className="text-lg font-semibold mb-4 block">
+            Search Patient by ID or Register New Patient
+          </Label>
+          <div className="flex flex-wrap gap-3">
+            <Input
+              placeholder="Enter Patient Unique ID (e.g., SCI-000003)"
+              value={patientSearchQuery}
+              onChange={(e) => setPatientSearchQuery(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handlePatientSearch();
+                }
+              }}
+              className="flex-1 h-12 text-lg"
+            />
+            <Button
+              onClick={handlePatientSearch}
+              disabled={patientSearchLoading}
+              className="min-w-[140px] h-12"
+              size="lg"
+            >
+              <Search className="w-4 h-4 mr-2" />
+              {patientSearchLoading ? "Searching..." : "Search"}
+            </Button>
+            <Button
+              onClick={() => setRegistrationOpen(true)}
+              disabled={patientSearchLoading}
+              className="min-w-[140px] h-12 bg-green-600 hover:bg-green-700"
+              size="lg"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Register
+            </Button>
+          </div>
+        </>
+      ) : (
+        // ✅ Patient found or registered — show details
+        <div className="mt-6 p-6 bg-green-50 border-2 border-green-300 rounded-lg animate-fadeIn">
+          <div className="flex items-start justify-between">
+            <div className="space-y-3 flex-1">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                <p className="font-bold text-xl text-green-800">
+                  Patient {patientSearchQuery ? "Found" : "Registered Successfully"}
+                </p>
+              </div>
 
-                    {foundPatient && (
-                      <div className="mt-6 p-6 bg-green-50 border-2 border-green-300 rounded-lg">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-3 flex-1">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="w-6 h-6 text-green-600" />
-                              <p className="font-bold text-xl text-green-800">
-                                Patient Found
-                              </p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-3 mt-4">
-                              <div>
-                                <p className="text-xs text-gray-600 mb-1">Full Name</p>
-                                <p className="text-base font-semibold">{foundPatient.name}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 mb-1">Patient ID</p>
-                                <p className="text-base font-semibold">{foundPatient.patientUniqueId}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 mb-1">Age</p>
-                                <p className="text-base font-semibold">{foundPatient.age} years</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 mb-1">Phone</p>
-                                <p className="text-base font-semibold">{foundPatient.phone}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <p className="text-xs text-gray-600 mb-1">Email</p>
-                                <p className="text-base font-semibold">{foundPatient.email}</p>
-                              </div>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            onClick={() => {
-                              setFoundPatient(null);
-                              setPatientSearchQuery("");
-                            }}
-                          >
-                            Clear
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-3 mt-4">
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Full Name</p>
+                  <p className="text-base font-semibold">{foundPatient.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Patient ID</p>
+                  <p className="text-base font-semibold">{foundPatient.patientUniqueId}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Age</p>
+                  <p className="text-base font-semibold">{foundPatient.age} years</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Phone</p>
+                  <p className="text-base font-semibold">{foundPatient.phone}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-600 mb-1">Email</p>
+                  <p className="text-base font-semibold">{foundPatient.email || "N/A"}</p>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setFoundPatient(null);
+                setPatientSearchQuery("");
+              }}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* 🔹 Step Navigation */}
+    <div className="flex justify-end">
+      <Button
+        onClick={() => setCurrentStep(2)}
+        disabled={!canProceedToStep2}
+        size="lg"
+        className="min-w-[200px]"
+      >
+        Next: Select Department
+        <ChevronRight className="w-4 h-4 ml-2" />
+      </Button>
+    </div>
+
+    {/* 🔹 Patient Registration Modal */}
+      {registrationOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-2xl font-semibold">Register New Patient</h2>
+              <Button variant="ghost" size="icon" onClick={() => setRegistrationOpen(false)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <Label className="mb-2 block">Full Name *</Label>
+                <Input
+                  placeholder="Enter full name"
+                  value={newPatient.name}
+                  onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
+                  className="h-12"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="mb-2 block">Phone Number *</Label>
+                  <Input
+                    type="tel"
+                    placeholder="10-digit phone number"
+                    value={newPatient.phone}
+                    onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
+                    className="h-12"
+                    maxLength={10}
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Age *</Label>
+                  <Input
+                    type="number"
+                    placeholder="Age"
+                    value={newPatient.age}
+                    onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
+                    className="h-12"
+                    min="0"
+                    max="150"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Email (Optional)</Label>
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={newPatient.email}
+                  onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })}
+                  className="h-12"
+                />
+              </div>
+
+<div className="relative z-[70] w-full">
+  <Label className="mb-2 block">Gender *</Label>
+  <Select
+    value={newPatient.gender}
+    onValueChange={(value: string) =>
+      setNewPatient({ ...newPatient, gender: value })
+    }
+  >
+    {/* Trigger */}
+    <SelectTrigger className="h-12 w-full bg-white">
+      <SelectValue placeholder="Select gender" />
+    </SelectTrigger>
+
+    {/* Dropdown (force full width same as trigger) */}
+    <SelectContent
+      className="z-[80] w-[var(--radix-select-trigger-width)] bg-white border rounded-lg shadow-lg"
+      style={{ width: "var(--radix-select-trigger-width)" }}
+    >
+      <SelectItem value="Male">Male</SelectItem>
+      <SelectItem value="Female">Female</SelectItem>
+      <SelectItem value="Other">Other</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
+
+
+
+
+              <div className="border-t pt-4 mt-4">
+                <Label className="mb-3 block text-base font-semibold">Medical History (Optional)</Label>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="mb-2 block text-sm">Conditions</Label>
+                    <Input
+                      placeholder="e.g., Hypertension, Asthma (comma-separated)"
+                      value={newPatient.conditions}
+                      onChange={(e) => setNewPatient({ ...newPatient, conditions: e.target.value })}
+                      className="h-11"
+                    />
                   </div>
 
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => setCurrentStep(2)}
-                      disabled={!canProceedToStep2}
-                      size="lg"
-                      className="min-w-[200px]"
-                    >
-                      Next: Select Department
-                      <ChevronRight className="w-4 h-4 ml-2" />
-                    </Button>
+                  <div>
+                    <Label className="mb-2 block text-sm">Surgeries</Label>
+                    <Input
+                      placeholder="e.g., Heart transplant, Appendectomy (comma-separated)"
+                      value={newPatient.surgeries}
+                      onChange={(e) => setNewPatient({ ...newPatient, surgeries: e.target.value })}
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="mb-2 block text-sm">Allergies</Label>
+                    <Input
+                      placeholder="e.g., Dust, Pollen, Penicillin (comma-separated)"
+                      value={newPatient.allergies}
+                      onChange={(e) => setNewPatient({ ...newPatient, allergies: e.target.value })}
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="mb-2 block text-sm">Family History</Label>
+                    <Input
+                      placeholder="e.g., Diabetes, Heart disease (comma-separated)"
+                      value={newPatient.familyHistory}
+                      onChange={(e) => setNewPatient({ ...newPatient, familyHistory: e.target.value })}
+                      className="h-11"
+                    />
                   </div>
                 </div>
-              )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setRegistrationOpen(false)}
+                  disabled={registrationLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePatientRegistration}
+                  disabled={registrationLoading}
+                  className="min-w-[150px] bg-green-600 hover:bg-green-700"
+                >
+                  {registrationLoading ? "Registering..." : "Register Patient"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+  </div>
+)}
+
 
               {/* Step 2: Department Selection */}
               {currentStep === 2 && (
@@ -586,16 +829,15 @@ const handleDoctorSelect = (doctorId: string, doctorName: string) => {
                             className="h-12"
                           />
                         </div>
-                       <div>
-  <Label className="mb-2 block">Appointment Time *</Label>
-  <Input
-    type="time"
-    value={selectedTime}
-    onChange={(e) => setSelectedTime(e.target.value)}
-    className="h-12"
-  />
-</div>
-
+                        <div>
+                          <Label className="mb-2 block">Appointment Time *</Label>
+                          <Input
+                            type="time"
+                            value={selectedTime}
+                            onChange={(e) => setSelectedTime(e.target.value)}
+                            className="h-12"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
