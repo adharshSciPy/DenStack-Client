@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Calendar,
   DollarSign,
@@ -13,25 +13,13 @@ import {
   Home,
   ChevronLeft,
   ChevronRight,
-  Stethoscope
+  Stethoscope,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-
-const menuItems = [
-  { id: "overview", label: "Overview", icon: Home },
-  { id: "appointments", label: "Appointments", icon: Calendar, badge: 12 },
-  { id: "financial", label: "Financial", icon: DollarSign },
-  { id: "staff", label: "Staff", icon: Users },
-  { id: "inventory", label: "Inventory", icon: Package, badge: 3 },
-  { id: "lab", label: "Lab Orders", icon: FlaskConical, badge: 7 },
-  { id: "reports", label: "Reports", icon: FileText },
-  { id: "notifications", label: "Notifications", icon: Bell, badge: 5 },
-  { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
-  { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
-  { id: "settings", label: "Settings", icon: Settings },
-
-];
+import axios from "axios";
+import  patientServiceBaseUrl  from "../patientServiceBaseUrl.js";
+import { useParams } from "react-router-dom";
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -43,6 +31,43 @@ export function DashboardSidebar({
   onTabChange,
 }: DashboardSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [appointmentCount, setAppointmentCount] = useState<number>(0);
+
+  const { clinicId } = useParams();
+
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const response = await axios.get(
+          `${patientServiceBaseUrl}/api/v1/patient-service/appointment/clinic-appointments/${clinicId}`
+        );
+
+        // Assuming API returns an array of appointments in response.data.data
+        const appointments = response.data?.data || [];
+        setAppointmentCount(appointments.length); // Dynamic badge count
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+      }
+    };
+
+    if (clinicId) {
+      fetchAppointments();
+    }
+  }, [clinicId]);
+
+  const menuItems = [
+    { id: "overview", label: "Overview", icon: Home },
+    { id: "appointments", label: "Appointments", icon: Calendar, badge: appointmentCount },
+    { id: "financial", label: "Financial", icon: DollarSign },
+    { id: "staff", label: "Staff", icon: Users },
+    { id: "inventory", label: "Inventory", icon: Package, badge: 3 },
+    { id: "lab", label: "Lab Orders", icon: FlaskConical, badge: 7 },
+    { id: "reports", label: "Reports", icon: FileText },
+    { id: "notifications", label: "Notifications", icon: Bell, badge: 5 },
+    { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
+    { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
 
   return (
     <div
@@ -87,32 +112,26 @@ export function DashboardSidebar({
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              style={{
-                background: isActive
-                  ? "var(--primary-gradient)"
-                  : "transparent",
-              }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:text-primary)`}
-              onMouseEnter={(e) => {
-                if (!isActive)
-                  e.currentTarget.style.background = "var(--sidebar-foreground)";          
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) e.currentTarget.style.background = "transparent";
-              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                isActive
+                  ? "bg-primary text-white"
+                  : "hover:bg-muted hover:text-primary"
+              }`}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
               {!collapsed && (
                 <>
                   <span className="text-sm">{item.label}</span>
-                  {item.badge && !isActive && (
+                  {item.badge ? (
                     <Badge
                       variant="secondary"
-                      className="ml-auto bg-secondary text-secondary-foreground"
+                      className={`ml-auto ${
+                        isActive ? "bg-white text-primary" : "bg-secondary"
+                      }`}
                     >
                       {item.badge}
                     </Badge>
-                  )}
+                  ) : null}
                 </>
               )}
             </button>

@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
 
 interface Appointment {
   _id: string;
@@ -67,6 +68,7 @@ interface DoctorAvailability {
 }
 
 export function AppointmentsOverview() {
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [fullStatus, setFullStatus] = useState<FullStatus>({
     totalAppointments: 0,
@@ -104,6 +106,7 @@ export function AppointmentsOverview() {
   
   // Step 2: Department Selection
   const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [departments, setDepartments] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [doctorAvailability, setDoctorAvailability] = useState<DoctorAvailability[]>([]);
   
@@ -125,17 +128,17 @@ export function AppointmentsOverview() {
 
   const todayFormatted = today.toLocaleDateString("en-US", options);
 
-  const departments = [
-    "Cardiology",
-    "Neurology",
-    "Orthopedics",
-    "Pediatrics",
-    "Dermatology",
-    "General Medicine",
-    "Dental",
-    "ENT",
-    "Ophthalmology"
-  ];
+  // const departments = [
+  //   "Cardiology",
+  //   "Neurology",
+  //   "Orthopedics",
+  //   "Pediatrics",
+  //   "Dermatology",
+  //   "General Medicine",
+  //   "Dental",
+  //   "ENT",
+  //   "Ophthalmology"
+  // ];
 
   // Fetch appointments from backend
   const fetchAppointments = async (query = "", date = "") => {
@@ -264,6 +267,26 @@ export function AppointmentsOverview() {
     setRegistrationLoading(false);
   }
 };
+//fetch departments from backend
+useEffect(() => {
+  const fetchDepartments = async () => {
+    try {
+      const response = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/department/details/${clinicId}`
+      );
+
+      const departments = response.data?.departments || [];
+      console.log("Departments Response:", departments);
+      setDepartments(departments); // ✅ update state
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    }
+  };
+
+  fetchDepartments(); // ✅ call the async function
+}, [clinicId]); // ✅ re-run if clinicId changes
+
+
 
 
   // Step 2: Fetch Doctor Availability
