@@ -59,7 +59,7 @@ interface LabOrderResponse {
 type OrderStatus = "pending" | "completed" | "in-progress" | "cancelled";
 
 export default function LabOrdersPage() {
-  const { clinicId = "demo-clinic" } = useParams();
+  const { clinicId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedStatus, setSelectedStatus] = useState(
@@ -279,13 +279,13 @@ export default function LabOrdersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6 ">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+          className="flex flex-col rounded-xl md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
         >
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
@@ -312,9 +312,9 @@ export default function LabOrdersPage() {
             <motion.div
               key={idx}
               whileHover={{ scale: 1.03 }}
-              className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-100"
+              className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-100"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between ">
                 <div>
                   <p className="text-gray-600 text-sm">{stat.label}</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -332,7 +332,7 @@ export default function LabOrdersPage() {
         </motion.div>
 
         {/* Filters & Search */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-gray-100 roroundedunded-2xl p-5 shadow-sm rounded-xl" style={{padding:"5px"}}>
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
               {/* <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" /> */}
@@ -381,7 +381,7 @@ export default function LabOrdersPage() {
         </div>
 
         {/* Orders Table */}
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table
               className="min-w-full w-full"
@@ -398,7 +398,7 @@ export default function LabOrdersPage() {
                     Date
                   </th>
                   <th className="text-center px-6 py-3 font-medium">Status</th>
-                  <th className="text-right px-6 py-3 font-medium">Actions</th>
+                  {/* <th className="text-right px-6 py-3 font-medium">Actions</th> */}
                 </tr>
               </thead>
 
@@ -436,7 +436,7 @@ export default function LabOrdersPage() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                          className={`inline-block px-3 py-1 C text-xs font-medium ${
                             order.status === "completed"
                               ? "bg-green-100 text-green-700"
                               : order.status === "pending"
@@ -449,11 +449,11 @@ export default function LabOrdersPage() {
                           {order.status}
                         </span>
                       </td>
-                      <td className="text-right px-6 py-4">
+                      {/* <td className="text-right px-6 py-4">
                         <button className="text-blue-600 hover:text-blue-800 transition">
                           <Eye className="w-4 h-4" />
                         </button>
-                      </td>
+                      </td> */}
                     </motion.tr>
                   ))
                 ) : (

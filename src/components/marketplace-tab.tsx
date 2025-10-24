@@ -151,14 +151,13 @@ export function MarketplaceTab() {
   const getCategories = async () => {
     try {
       const response = await axios.get(
-        `${inventoryBaseUrl}api/v1/category/categoryDetails`,{
+        `${inventoryBaseUrl}/api/v1/category/categoryDetails`,{
           headers: {
             Authorization: `Bearer ${token}`,
           }
         }
       );
-      console.log(response.data.data);
-      // Extract categoryName from each object and add "All Products" at the beginning
+      console.log(response.data);
       const categoryNames = response.data.data.map((cat: any) => cat.categoryName);
       setCategories(["All Products", ...categoryNames]);  
       
@@ -177,6 +176,8 @@ export function MarketplaceTab() {
         }
       );  
       setProducts(response.data.data);
+      console.log(response.data.data);
+      
     } catch (error) {
       console.log(error);
     }
@@ -184,13 +185,7 @@ export function MarketplaceTab() {
   useEffect(() => {
     getCategories();
     getProducts()
-  }, []);
-  const filteredProducts =
-    selectedCategory === "All Products"
-      ? marketplaceProducts
-      : marketplaceProducts.filter(
-          (product) => product.category === selectedCategory
-        );
+  }, []); 
 
   return (
     <div className="space-y-6">
@@ -267,18 +262,18 @@ export function MarketplaceTab() {
                 key={product.id}
                 className="hover:shadow-lg transition-shadow group"
               >
-                <div className="relative overflow-hidden">
+                <div className="relative overflow-hidden rounded-lg">
                   <img
                     src={`${inventoryBaseUrl}${product.image}`}
                     alt={product.name}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform "
                   />
                   {product.discount > 0 && (
                     <Badge className="absolute top-2 left-2 bg-destructive">
                       -{product.discount}%
                     </Badge>
                   )}
-                  {!product.inStock && (
+                  {product.isLowStock && (
                     <Badge
                       variant="secondary"
                       className="absolute top-2 right-2"
@@ -334,7 +329,7 @@ export function MarketplaceTab() {
                       <Button
                         size="sm"
                         className="flex-1 bg-primary hover:bg-primary/90"
-                        disabled={!product.inStock}
+                        disabled={product.isLowStock}
                         onClick={() => addToCart(product.id)}
                       >
                         <ShoppingCart className="w-4 h-4 mr-2" />
