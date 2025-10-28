@@ -42,7 +42,6 @@ interface DoctorAvailability {
   clinic: string;
 }
 
-
 interface Doctor {
   _id: string;
   doctorUniqueId: string;
@@ -56,7 +55,7 @@ interface Doctor {
   doctorId?: string;
   name?: string;
   email?: string;
-   doctor: {
+  doctor: {
     name: string;
     email: string;
     phoneNumber: number;
@@ -184,7 +183,9 @@ const DoctorRegistrationForm: React.FC = () => {
   const [specializationInput, setSpecializationInput] = useState<string>("");
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const [currentView, setCurrentView] = useState<"registration" | "doctors">("registration");
+  const [currentView, setCurrentView] = useState<"registration" | "doctors">(
+    "registration"
+  );
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState<boolean>(false);
@@ -321,26 +322,28 @@ const DoctorRegistrationForm: React.FC = () => {
         { params: { clinicId } }
       );
       console.log("Fetched doctors response:", response.data);
-      
-      // Handle different possible response structures
+
       let doctorsList = [];
       if (Array.isArray(response.data)) {
         doctorsList = response.data;
-      } else if (response.data?.doctors && Array.isArray(response.data.doctors)) {
+      } else if (Array.isArray(response.data?.doctors)) {
         doctorsList = response.data.doctors;
-      } else if (response.data?.data && Array.isArray(response.data.data)) {
+      } else if (Array.isArray(response.data?.data)) {
         doctorsList = response.data.data;
       }
-      
-      // Filter out null/undefined and ensure all required fields exist
-      const validDoctors = doctorsList.filter((doc: any) => {
-        return doc && (doc._id || doc.doctorId);
-      }).map((doc: any) => ({
-        ...doc,
-        specialization: Array.isArray(doc.specialization) ? doc.specialization : [],
-        availability: Array.isArray(doc.availability) ? doc.availability : [],
-      }));
-      
+
+      const validDoctors = doctorsList
+        .filter((doc: any) => doc && (doc._id || doc.doctorId))
+        .map((doc: any) => ({
+          ...doc,
+          specialization: Array.isArray(doc.specialization)
+            ? doc.specialization
+            : doc.specialization
+            ? [doc.specialization]
+            : [],
+          availability: Array.isArray(doc.availability) ? doc.availability : [],
+        }));
+
       setDoctors(validDoctors);
     } catch (error) {
       console.error("Error fetching doctors:", error);
@@ -366,10 +369,11 @@ const DoctorRegistrationForm: React.FC = () => {
 
     try {
       setIsRemoving(true);
-      
+
       // Get the correct doctorId
-      const doctorIdToRemove = removeModal.doctor.doctorId || removeModal.doctor._id;
-      
+      const doctorIdToRemove =
+        removeModal.doctor.doctorId || removeModal.doctor._id;
+
       const response = await axios.delete(
         `${clinicServiceBaseUrl}/api/v1/clinic-service/remove/doctor-from-clinic`,
         {
@@ -379,7 +383,7 @@ const DoctorRegistrationForm: React.FC = () => {
           data: {
             clinicId: clinicId,
             doctorId: doctorIdToRemove,
-          }
+          },
         }
       );
 
@@ -388,12 +392,18 @@ const DoctorRegistrationForm: React.FC = () => {
           prev.filter((doc) => doc._id !== removeModal.doctor?._id)
         );
         const affectedCount = response.data?.affectedAppointments || 0;
-        alert(`Doctor removed successfully!${affectedCount > 0 ? ` ${affectedCount} appointments updated.` : ''}`);
+        alert(
+          `Doctor removed successfully!${
+            affectedCount > 0 ? ` ${affectedCount} appointments updated.` : ""
+          }`
+        );
         setRemoveModal({ isOpen: false, doctor: null });
       }
     } catch (error: any) {
       console.error("Error removing doctor:", error);
-      const errorMsg = error.response?.data?.message || "Failed to remove doctor. Please try again.";
+      const errorMsg =
+        error.response?.data?.message ||
+        "Failed to remove doctor. Please try again.";
       alert(errorMsg);
     } finally {
       setIsRemoving(false);
@@ -402,7 +412,7 @@ const DoctorRegistrationForm: React.FC = () => {
 
   const filteredDoctors = doctors.filter((doctor) => {
     if (!doctor) return false;
-    
+
     const id = doctor?.doctorUniqueId || doctor?.doctorId || "";
     const email = doctor?.clinicEmail || doctor?.email || "";
     const specializations = Array.isArray(doctor?.specialization)
@@ -416,7 +426,8 @@ const DoctorRegistrationForm: React.FC = () => {
         (spec || "").toLowerCase().includes(searchTerm.toLowerCase())
       );
 
-    const matchesRole = filterRole === "all" || doctor?.roleInClinic === filterRole;
+    const matchesRole =
+      filterRole === "all" || doctor?.roleInClinic === filterRole;
 
     return matchesSearch && matchesRole;
   });
@@ -889,29 +900,39 @@ const DoctorRegistrationForm: React.FC = () => {
                   {filteredDoctors.map((doctorItem, index) => {
                     // Safety check
                     if (!doctorItem) return null;
-                    
+
                     const doctorData = doctorItem || {};
                     const clinicLogin = doctorData.clinicLogin || {};
-                    const availability = Array.isArray(doctorData.availability) 
-                      ? doctorData.availability 
+                    const availability = Array.isArray(doctorData.availability)
+                      ? doctorData.availability
                       : [];
-                    const specialization = Array.isArray(doctorData.specialization)
+                    const specialization = Array.isArray(
+                      doctorData.specialization
+                    )
                       ? doctorData.specialization
                       : [];
 
                     return (
                       <div
-                        key={doctorData._id || doctorData.doctorId || `doctor-${index}`}
+                        key={
+                          doctorData._id ||
+                          doctorData.doctorId ||
+                          `doctor-${index}`
+                        }
                         className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
                       >
                         <div className="bg-gradient-to-r from-primary to-blue-600 p-4">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
                               <h3 className="text-base font-bold text-white mb-1 truncate">
-                                {doctorData.doctorName || doctorData.name || "Unnamed Doctor"}
+                                {doctorData.doctorName ||
+                                  doctorData.name ||
+                                  "Unnamed Doctor"}
                               </h3>
                               <p className="text-white/90 text-xs truncate">
-                                {doctorData.doctorId || doctorData.doctorUniqueId || "No ID"}
+                                {doctorData.doctorId ||
+                                  doctorData.doctorUniqueId ||
+                                  "No ID"}
                               </p>
                             </div>
                             {doctorData.roleInClinic && (
@@ -920,7 +941,9 @@ const DoctorRegistrationForm: React.FC = () => {
                                   doctorData.roleInClinic
                                 )}`}
                               >
-                                {doctorData.roleInClinic.charAt(0).toUpperCase() +
+                                {doctorData.roleInClinic
+                                  .charAt(0)
+                                  .toUpperCase() +
                                   doctorData.roleInClinic.slice(1)}
                               </div>
                             )}
@@ -943,7 +966,10 @@ const DoctorRegistrationForm: React.FC = () => {
                               />
                             </svg>
                             <span className="text-xs truncate">
-                              {clinicLogin.email || doctorData.clinicEmail || doctorData.email || "No email"}
+                              {clinicLogin.email ||
+                                doctorData.clinicEmail ||
+                                doctorData.email ||
+                                "No email"}
                             </span>
                           </div>
 
@@ -966,65 +992,92 @@ const DoctorRegistrationForm: React.FC = () => {
                             </span>
                           </div>
 
-                         <div>
-  <p className="text-xs font-semibold text-gray-600 mb-1">
-    SPECIALIZATIONS
-  </p>
-  <div className="flex flex-wrap gap-1">
-    {Array.isArray(doctorData?.doctor?.specialization) ? (
-      doctorData.doctor.specialization.length > 0 ? (
-        doctorData.doctor.specialization.map((spec: string, idx: number) => (
-          <span
-            key={`${doctorData._id}-spec-${idx}`}
-            className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
-          >
-            {spec}
-          </span>
-        ))
-      ) : (
-        <span className="text-gray-400 text-xs italic">
-          No specialization
-        </span>
-      )
-    ) : doctorData?.doctor?.specialization ? (
-      <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
-        {doctorData.doctor.specialization}
-      </span>
-    ) : (
-      <span className="text-gray-400 text-xs italic">No specialization</span>
-    )}
-  </div>
-</div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-600 mb-1">
+                              SPECIALIZATIONS
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const specialization =
+                                  doctorData?.specialization ||
+                                  doctorData?.doctor?.specialization ||
+                                  [];
 
+                                if (Array.isArray(specialization)) {
+                                  return specialization.length > 0 ? (
+                                    specialization.map(
+                                      (spec: string, idx: number) => (
+                                        <span
+                                          key={`${
+                                            doctorData._id ||
+                                            doctorData.doctorId
+                                          }-spec-${idx}`}
+                                          className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
+                                        >
+                                          {spec}
+                                        </span>
+                                      )
+                                    )
+                                  ) : (
+                                    <span className="text-gray-400 text-xs italic">
+                                      No specialization
+                                    </span>
+                                  );
+                                } else if (typeof specialization === "string") {
+                                  return (
+                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
+                                      {specialization}
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <span className="text-gray-400 text-xs italic">
+                                      No specialization
+                                    </span>
+                                  );
+                                }
+                              })()}
+                            </div>
+                          </div>
 
                           <div>
                             <p className="text-xs font-semibold text-gray-600 mb-1">
                               AVAILABILITY
                             </p>
-   <div className="flex flex-wrap gap-1">
-  {availability.length > 0 ? (
-    availability.map((day: DoctorAvailability, i: number) => (
-      <span
-        key={`${doctorData.doctorId || doctorData._id || index}-${day.dayOfWeek}-${i}`}
-        className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs"
-      >
-        {day.dayOfWeek}: {day.startTime} - {day.endTime}
-      </span>
-    ))
-  ) : (
-    <span className="text-gray-400 text-xs italic">
-      No schedule set
-    </span>
-  )}
-</div>
-
-
+                            <div className="flex flex-wrap gap-1">
+                              {availability.length > 0 ? (
+                                availability.map(
+                                  (day: DoctorAvailability, i: number) => (
+                                    <span
+                                      key={`${
+                                        doctorData.doctorId ||
+                                        doctorData._id ||
+                                        index
+                                      }-${day.dayOfWeek}-${i}`}
+                                      className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs"
+                                    >
+                                      {day.dayOfWeek}: {day.startTime} -{" "}
+                                      {day.endTime}
+                                    </span>
+                                  )
+                                )
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">
+                                  No schedule set
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
                         <div className="px-4 pb-4">
                           <button
-                            onClick={() => setRemoveModal({ isOpen: true, doctor: doctorItem })}
+                            onClick={() =>
+                              setRemoveModal({
+                                isOpen: true,
+                                doctor: doctorItem,
+                              })
+                            }
                             className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
                           >
                             <svg
