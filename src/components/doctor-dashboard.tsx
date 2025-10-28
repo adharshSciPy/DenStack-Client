@@ -547,7 +547,7 @@ const DoctorRegistrationForm: React.FC = () => {
                     name="roleInClinic"
                     value={formData.roleInClinic}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none bg-white cursor-pointer"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none bg-white cursor-pointer "
                   >
                     <option value="">Select a role</option>
                     {roleOptions.map((option: RoleOption) => (
@@ -604,7 +604,9 @@ const DoctorRegistrationForm: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                      
+                       style={{ right: "10px", top: "15px" }}
+className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                     >
                       {showPassword ? (
                         <svg
@@ -814,6 +816,8 @@ const DoctorRegistrationForm: React.FC = () => {
                 <div className="flex-1 relative">
                   <svg
                     className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                     style={{ right: "15px", top: "15px" }}
+
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -827,7 +831,7 @@ const DoctorRegistrationForm: React.FC = () => {
                   </svg>
                   <input
                     type="text"
-                    placeholder="Search by ID, email, or specialization..."
+                    placeholder="  Search by ID, email, or specialization..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
