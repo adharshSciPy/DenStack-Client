@@ -930,8 +930,11 @@ const DoctorRegistrationForm: React.FC = () => {
                                   "Unnamed Doctor"}
                               </h3>
                               <p className="text-white/90 text-xs truncate">
-                                {doctorData.doctorId ||
-                                  doctorData.doctorUniqueId ||
+                                {doctorData.doctor.name ||
+                                  "No ID"}
+                              </p>
+                                <p className="text-white/90 text-xs truncate">
+                                {doctorData.doctor.uniqueId ||
                                   "No ID"}
                               </p>
                             </div>
@@ -998,10 +1001,19 @@ const DoctorRegistrationForm: React.FC = () => {
                             </p>
                             <div className="flex flex-wrap gap-1">
                               {(() => {
-                                const specialization =
-                                  doctorData?.specialization ||
-                                  doctorData?.doctor?.specialization ||
-                                  [];
+                               const specializationData =
+  doctorData?.specialization && doctorData.specialization.length > 0
+    ? doctorData.specialization
+    : doctorData?.doctor?.specialization && doctorData.doctor.specialization.length > 0
+    ? doctorData.doctor.specialization
+    : [];
+
+const specialization = Array.isArray(specializationData)
+  ? specializationData
+  : specializationData
+  ? [specializationData]
+  : [];
+
 
                                 if (Array.isArray(specialization)) {
                                   return specialization.length > 0 ? (
