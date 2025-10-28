@@ -924,23 +924,21 @@ const DoctorRegistrationForm: React.FC = () => {
                         <div className="bg-gradient-to-r from-primary to-blue-600 p-4">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-base font-bold text-white mb-1 truncate">
+                              <h2 className="text-base font-bold text-white mb-1 truncate font-size-lg">
                                 {doctorData.doctorName ||
                                   doctorData.name ||
                                   "Unnamed Doctor"}
-                              </h3>
+                              </h2>
+                              <h2 className="text-base font-bold  mb-1 truncate font-size-lg">
+                                {doctorData.doctor.name || "No ID"}
+                              </h2>
                               <p className="text-white/90 text-xs truncate">
-                                {doctorData.doctor.name ||
-                                  "No ID"}
-                              </p>
-                                <p className="text-white/90 text-xs truncate">
-                                {doctorData.doctor.uniqueId ||
-                                  "No ID"}
+                                {doctorData.doctor.uniqueId || "No ID"}
                               </p>
                             </div>
                             {doctorData.roleInClinic && (
                               <div
-                                className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getRoleBadgeColor(
+                                className={`px-2 py-1 rounded-full text-primary font-semibold whitespace-nowrap ml-2 ${getRoleBadgeColor(
                                   doctorData.roleInClinic
                                 )}`}
                               >
@@ -990,30 +988,34 @@ const DoctorRegistrationForm: React.FC = () => {
                                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                               />
                             </svg>
-                            <span className="text-xs font-medium">
+                            <span className="text-xs font-bold">
                               ₹{doctorData.standardConsultationFee ?? "N/A"}
                             </span>
                           </div>
 
                           <div>
-                            <p className="text-xs font-semibold text-gray-600 mb-1">
+                            <p className="text-xs font-semibold text-gray-600 mb-1 font-bold">
                               SPECIALIZATIONS
                             </p>
                             <div className="flex flex-wrap gap-1">
                               {(() => {
-                               const specializationData =
-  doctorData?.specialization && doctorData.specialization.length > 0
-    ? doctorData.specialization
-    : doctorData?.doctor?.specialization && doctorData.doctor.specialization.length > 0
-    ? doctorData.doctor.specialization
-    : [];
+                                const specializationData =
+                                  doctorData?.specialization &&
+                                  doctorData.specialization.length > 0
+                                    ? doctorData.specialization
+                                    : doctorData?.doctor?.specialization &&
+                                      doctorData.doctor.specialization.length >
+                                        0
+                                    ? doctorData.doctor.specialization
+                                    : [];
 
-const specialization = Array.isArray(specializationData)
-  ? specializationData
-  : specializationData
-  ? [specializationData]
-  : [];
-
+                                const specialization = Array.isArray(
+                                  specializationData
+                                )
+                                  ? specializationData
+                                  : specializationData
+                                  ? [specializationData]
+                                  : [];
 
                                 if (Array.isArray(specialization)) {
                                   return specialization.length > 0 ? (
@@ -1024,7 +1026,7 @@ const specialization = Array.isArray(specializationData)
                                             doctorData._id ||
                                             doctorData.doctorId
                                           }-spec-${idx}`}
-                                          className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
+                                          className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-bold text-primary"
                                         >
                                           {spec}
                                         </span>
@@ -1066,7 +1068,7 @@ const specialization = Array.isArray(specializationData)
                                         doctorData._id ||
                                         index
                                       }-${day.dayOfWeek}-${i}`}
-                                      className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs"
+                                      className="px-2 py-0.5 bg-green-50  rounded text-xs font-bold text-green-700"
                                     >
                                       {day.dayOfWeek}: {day.startTime} -{" "}
                                       {day.endTime}
