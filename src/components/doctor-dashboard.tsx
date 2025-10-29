@@ -341,44 +341,67 @@ const DoctorRegistrationForm: React.FC = () => {
     }
   };
 
-  const fetchDoctors = async (): Promise<void> => {
-    try {
-      setLoadingDoctors(true);
-      const response = await axios.get(
-        `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
-        { params: { clinicId } }
-      );
-      console.log("Fetched doctors response:", response.data);
 
-      let doctorsList = [];
-      if (Array.isArray(response.data)) {
-        doctorsList = response.data;
-      } else if (Array.isArray(response.data?.doctors)) {
-        doctorsList = response.data.doctors;
-      } else if (Array.isArray(response.data?.data)) {
-        doctorsList = response.data.data;
+const fetchDoctors = async (): Promise<void> => {
+  try {
+    setLoadingDoctors(true);
+
+    const response = await axios.get(
+      `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
+      {
+        params: {
+          clinicId,
+          search: searchTerm || undefined, // Send search term to backend
+          role: filterRole !== "all" ? filterRole : undefined, // Send role filter to backend
+        },
       }
+    );
 
-      const validDoctors = doctorsList
-        .filter((doc: any) => doc && (doc._id || doc.doctorId))
-        .map((doc: any) => ({
-          ...doc,
-          specialization: Array.isArray(doc.specialization)
-            ? doc.specialization
-            : doc.specialization
-            ? [doc.specialization]
-            : [],
-          availability: Array.isArray(doc.availability) ? doc.availability : [],
-        }));
+    console.log("Fetched doctors response:", response.data);
 
-      setDoctors(validDoctors);
-    } catch (error) {
-      console.error("Error fetching doctors:", error);
-      setDoctors([]);
-    } finally {
-      setLoadingDoctors(false);
+    // Normalize API response structure
+    let doctorsList: any[] = [];
+
+    if (Array.isArray(response.data)) {
+      doctorsList = response.data;
+    } else if (Array.isArray(response.data?.doctors)) {
+      doctorsList = response.data.doctors;
+    } else if (Array.isArray(response.data?.data)) {
+      doctorsList = response.data.data;
+    } else if (response.data?.success && Array.isArray(response.data?.results)) {
+      doctorsList = response.data.results;
     }
-  };
+
+    // Validate and normalize each doctor entry
+    const validDoctors = doctorsList
+      .filter((doc: any) => doc && (doc._id || doc.doctorId))
+      .map((doc: any) => ({
+        ...doc,
+        specialization: Array.isArray(doc.specialization)
+          ? doc.specialization
+          : doc.specialization
+          ? [doc.specialization]
+          : [],
+        availability: Array.isArray(doc.availability) ? doc.availability : [],
+      }));
+
+    setDoctors(validDoctors);
+  } catch (error) {
+    console.error("Error fetching doctors:", error);
+    setDoctors([]);
+  } finally {
+    setLoadingDoctors(false);
+  }
+};
+
+// Add useEffect to refetch when search or filter changes
+useEffect(() => {
+  if (currentView === "doctors") {
+    if (searchTerm === "" || searchTerm.length >= 3) {
+      fetchDoctors();
+    }
+  }
+}, [searchTerm, filterRole, currentView]);
 
   const handleViewDoctors = (): void => {
     setCurrentView("doctors");
@@ -438,28 +461,8 @@ const DoctorRegistrationForm: React.FC = () => {
     }
   };
 
-  const filteredDoctors = doctors.filter((doctor) => {
-    if (!doctor) return false;
-
-    const id = doctor?.doctorUniqueId || doctor?.doctorId || "";
-    const email = doctor?.clinicEmail || doctor?.email || "";
-    const specializations = Array.isArray(doctor?.specialization)
-      ? doctor.specialization
-      : [];
-
-    const matchesSearch =
-      id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      specializations.some((spec) =>
-        (spec || "").toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-    const matchesRole =
-      filterRole === "all" || doctor?.roleInClinic === filterRole;
-
-    return matchesSearch && matchesRole;
-  });
-
+ // Derived filtered list (client-side filtering)
+const filteredDoctors = doctors;
   const getRoleBadgeColor = (role: string): string => {
     switch (role.toLowerCase()) {
       case "consultant":
@@ -831,9 +834,10 @@ className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gr
                   </svg>
                   <input
                     type="text"
-                    placeholder="  Search by ID, email, or specialization..."
+                    placeholder="Search by ID, email, or specialization..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                     style={{ paddingLeft: "15px" }}
                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
                   />
                 </div>
