@@ -9,6 +9,7 @@ import { useClinicTheme } from "./hooks/UseClinicTheme";
 import LoginPage from "./components/LoginPage/LoginPage";
 import LabOrdersPage from "./components/Laborders-dashboard";
 import DoctorPage from "./components/doctor-dashboard"
+import SettingsPage from "./components/settings-sidebar";
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
 import StaffRegistration from "./components/staff-dashboard";
 import { Provider } from "react-redux";
@@ -58,19 +59,7 @@ function Notifications() {
   );
 }
 
-function Settings() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl">Settings & Feature Toggles</h2>
-      <p className="text-muted-foreground">
-        Configure clinic settings and enable/disable modules
-      </p>
-      <div className="p-8 text-center bg-muted/30 rounded-lg">
-        <p>Settings & feature toggles module coming soon...</p>
-      </div>
-    </div>
-  );
-}
+
 function DashboardLayout() {
   const { clinicId } = useParams();
   const [activeTab, setActiveTab] = useState("overview");
@@ -97,7 +86,7 @@ function DashboardLayout() {
       case "marketplace":
         return <MarketplaceTab />;
       case "settings":
-        return <Settings />;
+        return <SettingsPage />;
       case "doctoronboard":
         return <DoctorPage />;
       default:

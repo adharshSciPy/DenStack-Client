@@ -94,6 +94,7 @@ interface DashboardData {
   activeDoctors: any[];
   patients: any[];
   todaysAppointments: any[];
+  pendingLabOrdersCount: number;
 }
 
 export function OverviewDashboard() {
@@ -200,7 +201,7 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pending Lab Orders</p>
-                <p className="text-3xl text-primary">{quickStats.pendingLabOrders}</p>
+                <p className="text-3xl text-primary">{dashboardData?.pendingLabOrdersCount}</p>
                 <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p>
               </div>
               <Activity className="w-8 h-8 text-primary/60" />
