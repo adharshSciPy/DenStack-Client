@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Heart, User, Lock } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import {loginSuccess} from "../../redux/slice/authSlice";
+import { loginSuccess } from "../../redux/slice/authSlice";
 import { useAppDispatch } from "../../redux/hook";
 export default function HospitalLogin() {
   const dispatch = useAppDispatch();
@@ -20,7 +20,11 @@ export default function HospitalLogin() {
           endpoint = "http://localhost:8001/api/v1/auth/clinic/login";
           break;
         case "600":
-          endpoint = "/api/doctor/login";
+          endpoint = "http://localhost:8001/api/v1/auth/doctor/login";
+          break;
+        case "456": // ✅ Clinic Doctor login
+          endpoint =
+            "http://localhost:8003/api/v1/clinic-service/clinic-doctor/login";
           break;
         case "lab":
           endpoint = "/api/lab/login";
@@ -40,19 +44,101 @@ export default function HospitalLogin() {
         default:
           endpoint = "/api/admin/login";
       }
+      //old payload
+      // const res = await axios.post(endpoint, {
+      //   email,
+      //   password,
+      // });
+      // console.log(res);
+      //new payload with clinic doctor included
+      const payload =
+        activeRole === "456"
+          ? {
+              clinicEmail: email,
+              clinicPassword: password,
+            }
+          : {
+              email,
+              password,
+            };
 
-      const res = await axios.post(endpoint, {
-        email,
-        password,
-      });
-      console.log(res);
+      const res = await axios.post(endpoint, payload);
 
+      //Old login success code
+
+      //     if (res.status === 200) {
+      //       const clinicId = res.data.clinic.id; // Adjust based on actual response structure
+      //       dispatch(
+      //         loginSuccess({ user: res.data.clinic, token: res.data.accessToken })
+      //       );
+      //       console.log(res.data);
+
+      //       navigate(`/dashboard/${clinicId}`); // Redirect to dashboard with a sample clinicId
+      //     }
+      //   } catch (error) {
+      //     console.error("Login failed:", error);
+      //     if (axios.isAxiosError(error)) {
+      //       alert(error.response?.data?.message || "Login failed");
+      //     } else {
+      //       alert("Login failed");
+      //     }
+      //   }
+      // };
+      //New code with clinc-doctor included
       if (res.status === 200) {
-        const clinicId = res.data.clinic.id; // Adjust based on actual response structure
-        dispatch(loginSuccess({ user: res.data.clinic, token: res.data.accessToken }));
-        console.log(res.data);
-        
-        navigate(`/dashboard/${clinicId}`); // Redirect to dashboard with a sample clinicId
+        console.log("✅ Login success:", res.data);
+        localStorage.clear();
+        sessionStorage.clear();
+
+        dispatch(
+          loginSuccess({
+            user: res.data.doctorClinic || res.data.clinic,
+            token: res.data.accessToken,
+          })
+        );
+
+        const token = res.data.accessToken;
+        const doctorId = res.data.doctorClinic?.doctor?.id;
+        const clinicId = res.data.doctorClinic?.clinic?.id;
+
+        // 🧠 Determine role safely
+        const role =
+          activeRole === "456"
+            ? "456"
+            : activeRole === "600"
+            ? "600"
+            : res.data.doctorClinic?.role || res.data.doctor?.role || "unknown";
+
+        console.log("🔍 Final computed role:", role);
+
+        if (role === "600") {
+          console.log("🧠 Redirecting Doctor to 3001 —", {
+            token,
+            role,
+            doctorId,
+          });
+          const redirectURL = `http://localhost:3001/login-redirect?token=${encodeURIComponent(
+            token
+          )}&role=${role}&doctorId=${doctorId}`;
+          window.location.href = redirectURL;
+        } else if (role === "456") {
+          console.log("🧠 Redirecting Clinic Doctor to 3001 —", {
+            token,
+            role,
+            clinicId,
+          });
+          const redirectURL = `http://localhost:3001/login-redirect?token=${encodeURIComponent(
+            token
+          )}&role=${role}&clinicId=${clinicId}`;
+          window.location.href = redirectURL;
+        }
+
+        // 🧠 Admin (700)
+        else if (role === "700") {
+          navigate("/admin-dashboard");
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (error) {
       console.error("Login failed:", error);
@@ -63,7 +149,6 @@ export default function HospitalLogin() {
       }
     }
   };
-
   const roles = [
     { id: "700", label: "Admin" },
     { id: "600", label: "Doctor" },
@@ -72,6 +157,7 @@ export default function HospitalLogin() {
     { id: "tech", label: "Tech" },
     { id: "staff", label: "Staff" },
     { id: "300", label: "Nurse" },
+    { id: "456", label: "Clinic Doctor" }, //new role to temporarily test clinic doctor login
   ];
 
   return (
