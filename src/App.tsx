@@ -14,6 +14,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "rea
 import StaffRegistration from "./components/staff-dashboard";
 import { Provider } from "react-redux";
 import { store } from "./redux/store";
+import { PersistGate } from "redux-persist/integration/react";
+import { persistStore } from "redux-persist";
+import { persistor } from "./redux/persistor";
 // Placeholder components for other tabs
 function StaffPayroll() {
   return (
@@ -106,13 +109,16 @@ function DashboardLayout() {
 export default function App() {
   return (
     <Provider store={store}>
-    <Router>
+  <PersistGate loading={null} persistor={persistor}>
+     <Router>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard/:clinicId" element={<DashboardLayout />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
+    </PersistGate>
+   
     </Provider>
   );
 }

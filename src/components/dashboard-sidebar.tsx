@@ -147,7 +147,7 @@ export function DashboardSidebar({
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                 isActive
-                  ? "bg-primary text-white"
+                  ? "bg-primary-gradient text-white"
                   : "hover:bg-muted hover:text-primary"
               }`}
             >
