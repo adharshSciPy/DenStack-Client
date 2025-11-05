@@ -378,56 +378,68 @@ export function AppointmentsOverview() {
   }, [clinicId]); // ✅ re-run if clinicId changes
 
   // Step 2: Fetch Doctor Availability
-  const handleDepartmentSelect = async (department: string) => {
-    setSelectedDepartment(department);
+ const handleDepartmentSelect = async (department: string) => {
+  setSelectedDepartment(department);
 
-    try {
-      setAvailabilityLoading(true);
+  try {
+    setAvailabilityLoading(true);
 
-      const response = await axios.get(
-        `http://localhost:8003/api/v1/clinic-service/department-based/availability`,
-        {
-          params: { clinicId, department },
-        }
+    // ✅ Fetch only doctors of the selected department from this clinic
+    const response = await axios.get(
+      `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
+      {
+        params: { clinicId, department },
+      }
+    );
+
+    console.log("Doctor Availability Response:", response.data);
+
+    const doctors = response.data?.doctors || [];
+
+    if (doctors.length > 0) {
+      // ✅ Filter only those whose specialization/department matches the selected one
+      const filteredDoctors = doctors.filter(
+        (doc: any) =>
+          doc.doctor?.specialization?.toLowerCase() === department.toLowerCase()
       );
 
-      console.log("Doctor Availability Response:", response.data);
-
-      const doctors = response.data?.doctors || [];
-
-      if (doctors.length > 0) {
-        setDoctorAvailability(
-          doctors.map((doc: any) => ({
-            doctorId: doc.doctorId,
-            doctorName: doc.doctor?.name,
-            email: doc.doctor?.email,
-            phoneNumber: doc.doctor?.phoneNumber,
-            specialization: response.data?.specialization || "",
-            roleInClinic: doc.roleInClinic,
-            status: doc.status,
-            clinicEmail: doc.clinicLogin?.email,
-            availableSlots:
-              doc.availability
-                ?.filter((a: any) => a.isActive)
-                ?.map(
-                  (a: any) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`
-                ) || [],
-          }))
-        );
-
-        setCurrentStep(3);
-      } else {
-        alert("No doctors available for this department");
+      if (filteredDoctors.length === 0) {
+        alert("No doctors found for the selected department");
         setDoctorAvailability([]);
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching availability:", error);
-      alert("Error fetching doctor availability. Please try again.");
+
+      // ✅ Map clean doctor data
+      setDoctorAvailability(
+        filteredDoctors.map((doc: any) => ({
+          doctorId: doc.doctorId,
+          doctorName: doc.doctor?.name,
+          email: doc.doctor?.email,
+          phoneNumber: doc.doctor?.phoneNumber,
+          specialization: doc.doctor?.specialization || "",
+          roleInClinic: doc.roleInClinic,
+          status: doc.status,
+          clinicEmail: doc.clinicLogin?.email,
+          availableSlots:
+            doc.availability
+              ?.filter((a: any) => a.isActive)
+              ?.map((a: any) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`) || [],
+        }))
+      );
+
+      setCurrentStep(3);
+    } else {
+      alert("No doctors available for this department");
       setDoctorAvailability([]);
-    } finally {
-      setAvailabilityLoading(false);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching availability:", error);
+    alert("Error fetching doctor availability. Please try again.");
+    setDoctorAvailability([]);
+  } finally {
+    setAvailabilityLoading(false);
+  }
+};
 
   // Step 3: Select Doctor
   const handleDoctorSelect = (doctorId: string, doctorName: string) => {
