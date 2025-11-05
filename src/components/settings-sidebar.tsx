@@ -17,7 +17,7 @@ function Settings() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [fileInfo, setFileInfo] = useState<string>("");
-  const id = "6901e075332f8ca5d8173170";
+  const id = "69089148396a44cd2fb6a5f9";
 
   useEffect(() => {
     const getData = async () => {
@@ -53,7 +53,6 @@ function Settings() {
 
           setFileInfo(`File: ${niiFile.fileName}`);
           setFileUrl(fullUrl);
-
           // Test if the file is accessible
           try {
             const testResponse = await fetch(fullUrl, { method: 'HEAD' });

@@ -97,8 +97,8 @@ function DashboardLayout() {
   return (
     <div className="flex h-screen bg-background">
       <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6 max-w-7xl mx-auto">{renderContent()}</div>
+      <main className="flex-1 overflow-auto  bg-primary-gradient">
+        <div className="p-6 max-w-7xl mx-auto ">{renderContent()}</div>
       </main>
     </div>
   );
