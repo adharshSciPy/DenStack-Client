@@ -49,6 +49,7 @@ interface FullStatus {
   completedAppointments: number;
   pendingAppointments: number;
   cancelledAppointments: number;
+   tomorrowRescheduleCount?: number;
 }
 
 interface Patient {
@@ -74,6 +75,7 @@ export function AppointmentsOverview() {
     completedAppointments: 0,
     pendingAppointments: 0,
     cancelledAppointments: 0,
+    
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -187,6 +189,7 @@ export function AppointmentsOverview() {
         completedAppointments: stats.completedCount || 0,
         pendingAppointments: stats.scheduledCount || 0,
         cancelledAppointments: stats.cancelledCount || 0,
+        tomorrowRescheduleCount: data.tomorrowRescheduleCount || 0,
       });
 
       // Update showing range
@@ -262,9 +265,15 @@ export function AppointmentsOverview() {
 
     try {
       setPatientSearchLoading(true);
+
       const res = await axios.get(
         `${patientServiceBaseUrl}/api/v1/patient-service/patient/single-patient`,
-        { params: { id: patientSearchQuery } }
+        {
+          params: {
+            id: patientSearchQuery,
+            clinicId: clinicId, // ✅ pass current clinic ID
+          },
+        }
       );
 
       const patient = res.data.data;
@@ -275,9 +284,16 @@ export function AppointmentsOverview() {
         alert("No patient found for this ID");
         setFoundPatient(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching patient:", error);
-      alert("Error fetching patient. Please try again.");
+
+      // ✅ Show the backend message if available
+      if (error.response?.data?.message) {
+        alert(error.response.data.message);
+      } else {
+        alert("Error fetching patient. Please try again.");
+      }
+
       setFoundPatient(null);
     } finally {
       setPatientSearchLoading(false);
@@ -378,68 +394,73 @@ export function AppointmentsOverview() {
   }, [clinicId]); // ✅ re-run if clinicId changes
 
   // Step 2: Fetch Doctor Availability
- const handleDepartmentSelect = async (department: string) => {
-  setSelectedDepartment(department);
+  const handleDepartmentSelect = async (department: string) => {
+    setSelectedDepartment(department);
 
-  try {
-    setAvailabilityLoading(true);
+    try {
+      setAvailabilityLoading(true);
 
-    // ✅ Fetch only doctors of the selected department from this clinic
-    const response = await axios.get(
-      `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
-      {
-        params: { clinicId, department },
-      }
-    );
-
-    console.log("Doctor Availability Response:", response.data);
-
-    const doctors = response.data?.doctors || [];
-
-    if (doctors.length > 0) {
-      // ✅ Filter only those whose specialization/department matches the selected one
-      const filteredDoctors = doctors.filter(
-        (doc: any) =>
-          doc.doctor?.specialization?.toLowerCase() === department.toLowerCase()
+      // ✅ Fetch only doctors of the selected department from this clinic
+      const response = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
+        {
+          params: { clinicId, department },
+        }
       );
 
-      if (filteredDoctors.length === 0) {
-        alert("No doctors found for the selected department");
+      console.log("Doctor Availability Response:", response.data);
+
+      const doctors = response.data?.doctors || [];
+
+      if (doctors.length > 0) {
+        // ✅ Filter only those whose specialization/department matches the selected one
+        const filteredDoctors = doctors.filter((doc: any) => {
+          const specializations = doc.specialization || [];
+          return specializations.some(
+            (spec: string) => spec.toLowerCase() === department.toLowerCase()
+          );
+        });
+
+        if (filteredDoctors.length === 0) {
+          alert("No doctors found for the selected department");
+          setDoctorAvailability([]);
+          return;
+        }
+
+        // ✅ Map clean doctor data
+        setDoctorAvailability(
+          filteredDoctors.map((doc: any) => ({
+            doctorId: doc.doctorId,
+            doctorName: doc.doctor?.name || "Unnamed Doctor",
+            email: doc.doctor?.email || "N/A",
+            phoneNumber: doc.doctor?.phoneNumber || "N/A",
+            specialization: Array.isArray(doc.specialization)
+              ? doc.specialization.join(", ")
+              : doc.specialization || "",
+            roleInClinic: doc.roleInClinic,
+            status: doc.status,
+            availableSlots:
+              doc.availability
+                ?.filter((a: any) => a.isActive)
+                ?.map(
+                  (a: any) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`
+                ) || [],
+          }))
+        );
+
+        setCurrentStep(3);
+      } else {
+        alert("No doctors available for this department");
         setDoctorAvailability([]);
-        return;
       }
-
-      // ✅ Map clean doctor data
-      setDoctorAvailability(
-        filteredDoctors.map((doc: any) => ({
-          doctorId: doc.doctorId,
-          doctorName: doc.doctor?.name,
-          email: doc.doctor?.email,
-          phoneNumber: doc.doctor?.phoneNumber,
-          specialization: doc.doctor?.specialization || "",
-          roleInClinic: doc.roleInClinic,
-          status: doc.status,
-          clinicEmail: doc.clinicLogin?.email,
-          availableSlots:
-            doc.availability
-              ?.filter((a: any) => a.isActive)
-              ?.map((a: any) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`) || [],
-        }))
-      );
-
-      setCurrentStep(3);
-    } else {
-      alert("No doctors available for this department");
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+      alert("Error fetching doctor availability. Please try again.");
       setDoctorAvailability([]);
+    } finally {
+      setAvailabilityLoading(false);
     }
-  } catch (error) {
-    console.error("Error fetching availability:", error);
-    alert("Error fetching doctor availability. Please try again.");
-    setDoctorAvailability([]);
-  } finally {
-    setAvailabilityLoading(false);
-  }
-};
+  };
 
   // Step 3: Select Doctor
   const handleDoctorSelect = (doctorId: string, doctorName: string) => {
@@ -482,17 +503,27 @@ export function AppointmentsOverview() {
         appointmentTime: selectedTime,
       };
 
-      await axios.post(
+      const res = await axios.post(
         `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
         payload
       );
 
-      alert("Appointment booked successfully!");
+      alert(res.data.message);
       handleCloseModal();
       fetchAppointments();
-    } catch (err) {
-      console.error("Error booking appointment:", err);
-      alert("Failed to book appointment. Please try again.");
+    } catch (error: unknown) {
+      // ✅ Explicitly type as 'unknown'
+      console.error("Error booking appointment:", error);
+
+      // ✅ Safely handle if it's an Axios error
+      if (axios.isAxiosError(error)) {
+        alert(
+          error.response?.data?.message ||
+            "Failed to book appointment. Please try again."
+        );
+      } else {
+        alert("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -1180,19 +1211,20 @@ export function AppointmentsOverview() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Cancelled</p>
-                <p className="text-3xl font-bold text-red-600">
-                  {fullStatus.cancelledAppointments}
-                </p>
-              </div>
-              <AlertCircle className="w-8 h-8 text-red-600/60" />
-            </div>
-          </CardContent>
-        </Card>
+       <Card className="hover:shadow-md transition-shadow">
+  <CardContent className="p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-muted-foreground">Tomorrow’s Reschedules</p>
+        <p className="text-3xl font-bold text-primary">
+          {fullStatus?.tomorrowRescheduleCount || 0}
+        </p>
+      </div>
+      <Calendar className="w-8 h-8 text-primary/60" />
+    </div>
+  </CardContent>
+</Card>
+
       </div>
 
       {/* Search Filters */}
@@ -1250,116 +1282,131 @@ export function AppointmentsOverview() {
             )}
           </CardTitle>
         </CardHeader>
+   <CardContent className="space-y-4">
+  {appointments.length === 0 && !loading ? (
+    <div className="text-center py-8 text-muted-foreground">
+      <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+      <p>No appointments scheduled for the selected criteria</p>
+    </div>
+  ) : (
+    <>
+      {appointments.map((appointment) => (
+        <div
+          key={appointment._id}
+          className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
+            appointment.status === "cancelled"
+              ? "bg-red-50 hover:bg-red-100 border border-red-200"
+              : "bg-green-50 hover:bg-green-100 border border-green-200"
+          }`}
+        >
+          <div className="flex flex-col w-full">
+            <div className="flex items-center gap-3 mb-2">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <p className="font-semibold text-lg">
+                {appointment.patientId?.name}
+              </p>
 
-        <CardContent className="space-y-4">
-          {appointments.length === 0 && !loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No appointments scheduled for the selected criteria</p>
+              {/* 🟡 Inline styled badge */}
+              <span
+                style={{
+                  backgroundColor:
+                    appointment.status === "confirmed"
+                      ? "#22c55e" // green
+                      : appointment.status === "cancelled"
+                      ? "#ef4444" // red
+                      : appointment.status === "rescheduled" ||
+                        appointment.status === "needs_reschedule"
+                      ? "#facc15" // yellow
+                      : "#9ca3af", // gray
+                  color:
+                    appointment.status === "rescheduled" ||
+                    appointment.status === "needs_reschedule"
+                      ? "#000"
+                      : "#fff",
+                  fontWeight: "bold",
+                  borderRadius: "8px",
+                  padding: "4px 10px",
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                }}
+              >
+                {appointment.status === "rescheduled" ||
+                appointment.status === "needs_reschedule"
+                  ? "NEED RESCHEDULE"
+                  : appointment.status.toUpperCase()}
+              </span>
             </div>
-          ) : (
-            <>
-              {appointments.map((appointment) => (
-                <div
-                  key={appointment._id}
-                  className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
-                    appointment.status === "cancelled"
-                      ? "bg-red-50 hover:bg-red-100 border border-red-200"
-                      : "bg-green-50 hover:bg-green-100 border border-green-200"
-                  }`}
-                >
-                  <div className="flex flex-col w-full">
-                    <div className="flex items-center gap-3 mb-2">
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      <p className="font-semibold text-lg">
-                        {appointment.patientId?.name}
-                      </p>
-                      <Badge
-                        variant={
-                          appointment.status === "confirmed"
-                            ? "default"
-                            : appointment.status === "cancelled"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                        className="capitalize"
-                      >
-                        {appointment.status}
-                      </Badge>
-                    </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-6">
-                        <span className="text-sm font-medium">
-                          OP No:{" "}
-                          <span className="font-bold">
-                            {appointment.opNumber}
-                          </span>
-                        </span>
-                        <span className="text-sm font-medium">
-                          Patient ID:{" "}
-                          <span className="font-bold">
-                            {appointment.patientId?.patientUniqueId}
-                          </span>
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">
-                            {appointment.patientId?.phone}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-primary">
-                          {appointment.appointmentTime}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {appointment.appointmentDate}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {appointment.status !== "cancelled" && (
-                    <div className="flex items-start gap-2 ml-4">
-                      <Button variant="outline" size="sm">
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground"
-                      >
-                        Call
-                      </Button>
-                    </div>
-                  )}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <span className="text-sm font-medium">
+                  OP No:{" "}
+                  <span className="font-bold">{appointment.opNumber}</span>
+                </span>
+                <span className="text-sm font-medium">
+                  Patient ID:{" "}
+                  <span className="font-bold">
+                    {appointment.patientId?.patientUniqueId}
+                  </span>
+                </span>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">
+                    {appointment.patientId?.phone}
+                  </span>
                 </div>
-              ))}
+              </div>
 
-              {/* Load More */}
-              {nextCursor && (
-                <div className="flex justify-center mt-4 gap-2">
-                  <Button
-                    onClick={handlePrevPage}
-                    disabled={currentPageIndex < 0 || loading}
-                    variant="outline"
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    onClick={handleNextPage}
-                    disabled={!nextCursor || loading}
-                    variant="outline"
-                  >
-                    {loading ? "Loading..." : "Next"}
-                  </Button>
-                </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-primary">
+                  {appointment.appointmentTime}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {appointment.appointmentDate}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ✅ Dynamic button rendering */}
+          {appointment.status !== "cancelled" && (
+            <div className="flex items-start gap-2 ml-4">
+              {appointment.status === "needs_reschedule" ? (
+                <Button variant="outline" size="sm">
+                  Reschedule
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm">
+                  Edit
+                </Button>
               )}
-            </>
+            </div>
           )}
-        </CardContent>
+        </div>
+      ))}
+
+      {/* Load More */}
+      {nextCursor && (
+        <div className="flex justify-center mt-4 gap-2">
+          <Button
+            onClick={handlePrevPage}
+            disabled={currentPageIndex < 0 || loading}
+            variant="outline"
+          >
+            Previous
+          </Button>
+          <Button
+            onClick={handleNextPage}
+            disabled={!nextCursor || loading}
+            variant="outline"
+          >
+            {loading ? "Loading..." : "Next"}
+          </Button>
+        </div>
+      )}
+    </>
+  )}
+</CardContent>
       </Card>
     </div>
   );
