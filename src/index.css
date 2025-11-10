@@ -173,6 +173,9 @@
 .bg-primary-gradient {
   background: linear-gradient(to left, var(--primary), var(--primary-end));
 }
+.mb-4 {
+  margin-bottom: 1rem;
+}
   sub {
     bottom: -.25em;
   }

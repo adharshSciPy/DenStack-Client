@@ -477,12 +477,12 @@ const filteredDoctors = doctors;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 py-12 px-4">
+    <div slot="card" className="min-h-screen bg-card rounded-xl from-green-50 via-white to-blue-50 py-12 px-4 ">
       <div className="max-w-7xl mx-auto">
         {currentView === "registration" && (
           <div className="max-w-2xl mx-auto">
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <div className="bg-primary p-8 text-white rounded-t-2xl">
+              <div slot="card" className=" p-8 text-var(--secondary) rounded-xl bg-card">
                 <div className="flex justify-between items-start">
                   <div>
                     <h1 className="text-3xl font-bold mb-2">
@@ -773,7 +773,8 @@ className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gr
 
                 <button
                   onClick={handleSubmit}
-                  className="w-full bg-primary text-white py-4 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                  style={{padding:"10px"}}
+                  className="w-full bg-primary hover:bg-blue-700 text-white font-medium py-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   Complete Registration
                 </button>
@@ -784,7 +785,7 @@ className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gr
 
         {currentView === "doctors" && (
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-primary p-6 text-white">
+            <div className="bg-white p-6 text-var(--secondary)">
               <div className="flex justify-between items-center">
                 <div>
                   <h2 className="text-2xl font-bold">Clinic Doctors</h2>
