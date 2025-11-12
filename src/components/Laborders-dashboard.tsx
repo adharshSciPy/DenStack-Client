@@ -36,7 +36,7 @@ interface LabOrder {
   consultationId?: string;
   patientname?: string;
   doctorName?: string;
-  orderType?: string;
+  note?: string;
   toothNumbers?: string[];
   expectedDeliveryDate?: string;
   status: string;
@@ -74,7 +74,7 @@ export default function LabOrdersPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Cursor-based pagination state
-  const [cursors, setCursors] = useState<string[]>([""]);
+  const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
   const [pageSize] = useState(10);
 
@@ -83,9 +83,16 @@ export default function LabOrdersPage() {
     const fetchStats = async () => {
       try {
         const statsResponse = await axios.get(
-          `${labBaseUrl}api/v1/lab-order/clinic-lab-stats/${clinicId}`
+          `${labBaseUrl}api/v1/lab-orders/lab-stats/${clinicId}`
         );
-        setLabOrders(statsResponse.data.data);
+        console.log(statsResponse);
+
+        setLabOrders({
+          totalLabs: statsResponse.data.totalLabs,
+          pendingOrders: statsResponse.data.pendingCount,
+          completedOrders: statsResponse.data.completedCount,
+          totalOrders: statsResponse.data.totalOrders,
+        });
       } catch (err) {
         console.error("Failed to fetch stats:", err);
       }
@@ -105,62 +112,60 @@ export default function LabOrdersPage() {
           limit: pageSize,
         };
 
-        // Add cursor if not on first page
+        // ✅ Add cursor only if not the first page
         if (cursors[currentCursorIndex]) {
           params.cursor = cursors[currentCursorIndex];
         }
 
-        // Add status filter if not "all"
+        // ✅ Status filter
         if (selectedStatus !== "all") {
           params.status = selectedStatus;
         }
 
-        // Add search query if present
+        // ✅ Search
         if (searchQuery.trim()) {
           params.search = searchQuery.trim();
         }
+
         console.log("API params:", params);
-        const ordersResponse = await axios.get(
-          `${labBaseUrl}api/v1/lab-order/lab-orders/${clinicId}`,
+
+        const response = await axios.get(
+          `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
           { params }
         );
-        console.log("okok",ordersResponse);
-        
-        const baseURL = `${labBaseUrl}api/v1/lab-order/lab-orders/${clinicId}`;
-        const queryString = new URLSearchParams(params).toString();
-        const fullURL = `${baseURL}?${queryString}`;
-        console.log("urrl",fullURL);
-        
-        setLabData(ordersResponse.data);
 
-        // If there's a next page and we don't have this cursor yet, add it
-        if (ordersResponse.data.hasNextPage && ordersResponse.data.nextCursor) {
-          const nextCursor = ordersResponse.data.nextCursor;
+        const fullURL = `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}?${new URLSearchParams(
+          params
+        ).toString()}`;
+        console.log("Final URL:", fullURL);
+
+        const {  hasNextPage, nextCursor } = response.data;
+        console.log("API response:", response.data);
+        // ✅ Set the loaded data
+        setLabData(response.data);
+
+        // ✅ Store next cursor only once
+        if (hasNextPage && nextCursor) {
           setCursors((prev) => {
-            const newCursors = prev.slice(0, currentCursorIndex + 1);
-            if (newCursors[newCursors.length - 1] !== nextCursor) {
-              newCursors.push(nextCursor);
+            const trimmed = prev.slice(0, currentCursorIndex + 1);
+
+            if (trimmed[trimmed.length - 1] !== nextCursor) {
+              trimmed.push(nextCursor);
             }
-            return newCursors;
+
+            return trimmed;
           });
         }
       } catch (err) {
+        console.error("Error fetching lab orders:", err);
         setError("Failed to load lab orders. Please try again.");
-        console.error(err);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchOrders();
-  }, [
-    clinicId,
-    selectedStatus,
-    currentCursorIndex,
-    searchQuery,
-    pageSize,
-    // cursors,
-  ]);
+  }, [clinicId, selectedStatus, searchQuery, pageSize, currentCursorIndex]);
 
   // Reset to first page when filters change
   const handleStatusChange = (status: string) => {
@@ -285,7 +290,7 @@ export default function LabOrdersPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex flex-col rounded-xl md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+          className="flex flex-col rounded-xl md:flex-row md:items-center justify-between gap-4 bg-muted/60 p-6 rounded-2xl shadow-sm border border-gray-100"
         >
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
@@ -312,7 +317,7 @@ export default function LabOrdersPage() {
             <motion.div
               key={idx}
               whileHover={{ scale: 1.03 }}
-              className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-100"
+              className="bg-muted/60 rounded-xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-100"
             >
               <div className="flex items-center justify-between ">
                 <div>
@@ -332,7 +337,10 @@ export default function LabOrdersPage() {
         </motion.div>
 
         {/* Filters & Search */}
-        <div className="bg-white border border-gray-100 roroundedunded-2xl p-5 shadow-sm rounded-xl" style={{padding:"5px"}}>
+        <div
+          className="bg-muted/60 border border-gray-100 roroundedunded-2xl p-5 shadow-sm rounded-xl"
+          style={{ padding: "5px" }}
+        >
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
               {/* <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" /> */}
@@ -341,7 +349,7 @@ export default function LabOrdersPage() {
                 placeholder="Search by patient name, order ID, or test..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="w-full h-10 pl-10 pr-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                className="w-full h-10 pl-10 pr-4 bg-muted/60 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
               />
             </div>
             <button className="inline-flex items-center gap-2 px-4 h-10 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all">
@@ -360,7 +368,7 @@ export default function LabOrdersPage() {
 
           {/* Status Tabs */}
           <div className="flex gap-2 mt-4 overflow-auto">
-            {["all", "Pending", "in-progress", "Delivered", "Rejected"].map(
+            {["all", "pending", "in-progress", "delivered", "cancelled"].map(
               (status) => (
                 <button
                   key={status}
@@ -381,7 +389,7 @@ export default function LabOrdersPage() {
         </div>
 
         {/* Orders Table */}
-        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-muted/60 border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table
               className="min-w-full w-full"
@@ -429,7 +437,7 @@ export default function LabOrdersPage() {
                         {order.doctorName || "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {order.orderType || "N/A"}
+                        {order.note || "N/A"}
                       </td>
                       <td className="hidden lg:table-cell px-6 py-4 text-sm text-gray-600">
                         {formatDate(order.createdAt)}

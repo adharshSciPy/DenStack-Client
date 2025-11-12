@@ -581,7 +581,7 @@ const StaffRegistration: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 bg-white px-6 py-3 rounded-full border border-gray-200 mb-6 shadow-sm">
+          <div className="inline-flex bg-muted/60 items-center gap-3 px-6 py-3 rounded-full border border-gray-200 mb-6 shadow-sm">
             <Users className="w-8 h-8 text-blue-600" />
             <div>
               <p className="text-sm text-gray-600 font-medium">
@@ -613,7 +613,7 @@ const StaffRegistration: React.FC = () => {
               <div
                 key={role}
                 onClick={() => handleStaffCardClick(singularRole)}
-                className="bg-white rounded-xl p-4 border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer"
+                className="bg-muted/60 rounded-xl p-4 border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer"
               >
                 <div
                   className="w-12 h-12 rounded-lg flex items-center justify-center text-white mb-3"
@@ -630,7 +630,7 @@ const StaffRegistration: React.FC = () => {
           })}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
+        <div className="bg-muted/60 rounded-xl border border-gray-200 p-8 shadow-sm">
           <div
             className="flex items-center gap-3 mb-6"
             style={{ marginBottom: "20px" }}

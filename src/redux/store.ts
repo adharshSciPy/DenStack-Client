@@ -4,16 +4,18 @@ import { persistReducer, persistStore } from "redux-persist";
 
 import authReducer from "./slice/authSlice";
 import clinicReducer from "./slice/clinicSlice";
+import cartReducer from "./slice/cartSlice";   
 
 const rootReducer = combineReducers({
   auth: authReducer,
   clinic: clinicReducer,
+  cart: cartReducer,        
 });
 
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["auth", "clinic"], // ✅ Persist both slices
+  whitelist: ["auth", "clinic", "cart"], 
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

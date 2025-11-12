@@ -1138,7 +1138,7 @@ export function AppointmentsOverview() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md bg-muted/60 transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1152,7 +1152,7 @@ export function AppointmentsOverview() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md bg-muted/60 transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1166,7 +1166,7 @@ export function AppointmentsOverview() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md bg-muted/60 transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1180,7 +1180,7 @@ export function AppointmentsOverview() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md bg-muted/60 transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1196,7 +1196,7 @@ export function AppointmentsOverview() {
       </div>
 
       {/* Search Filters */}
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-3 items-center ">
         <Input
           placeholder="Enter Patient ID..."
           value={searchQuery}
@@ -1206,27 +1206,27 @@ export function AppointmentsOverview() {
               handleSearch();
             }
           }}
-          className="w-[250px]"
+          className="w-[250px] bg-muted/60"
         />
         <Input
           type="date"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
-          className="w-[200px]"
+          className="w-[200px] bg-muted/60"
         />
         <Button
           onClick={handleSearch}
-          className="bg-primary hover:bg-primary/90"
+          className="bg-primary hover:bg-primary/90 "
         >
           <Calendar className="w-4 h-4 mr-2" /> Search
         </Button>
-        <Button onClick={handleClearFilters} variant="outline">
+        <Button onClick={handleClearFilters} variant="outline" className="bg-muted/60">
           Clear
         </Button>
       </div>
 
       {/* Appointments List */}
-      <Card>
+      <Card className="bg-muted/60">
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">

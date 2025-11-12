@@ -138,7 +138,7 @@ export function OverviewDashboard() {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md transition-shadow bg-muted/60">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -154,7 +154,7 @@ export function OverviewDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md transition-shadow bg-muted/60">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -170,7 +170,7 @@ export function OverviewDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md transition-shadow bg-muted/60">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -183,7 +183,7 @@ export function OverviewDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md transition-shadow bg-muted/60">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -196,7 +196,7 @@ export function OverviewDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md transition-shadow bg-muted/60">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -212,7 +212,7 @@ export function OverviewDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Weekly Appointments Chart */}
-        <Card>
+        <Card className="bg-muted/60">
           <CardHeader>
             <CardTitle>Weekly Appointment Trends</CardTitle>
           </CardHeader>
@@ -237,7 +237,7 @@ export function OverviewDashboard() {
         </Card>
 
         {/* Weekly Revenue Chart */}
-        <Card>
+        <Card className="bg-muted/60">
           <CardHeader>
             <CardTitle>Weekly Revenue Trends</CardTitle>
           </CardHeader>
@@ -265,7 +265,7 @@ export function OverviewDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <Card>
+        <Card className="bg-muted/60">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="w-5 h-5" />
@@ -291,7 +291,7 @@ export function OverviewDashboard() {
         </Card>
 
         {/* Quick Actions & Status */}
-        <Card>
+        <Card className="bg-muted/60">
           <CardHeader>
             <CardTitle>Clinic Status</CardTitle>
           </CardHeader>
