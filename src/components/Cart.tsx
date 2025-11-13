@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ShoppingCart,
   Trash2,
@@ -13,99 +13,86 @@ import {
   MapPin,
 } from "lucide-react";
 import inventoryBaseUrl from "../inventoryBaseUrl";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import { Input } from "../components/ui/input";
-import {removeFromCart} from "../redux/slice/cartSlice"
+import { removeFromCart } from "../redux/slice/cartSlice";
 // Mock Redux selector - replace with your actual implementation
 import { useAppSelector } from "../redux/hook";
 import { useDispatch } from "react-redux";
+import axios from "axios";
 // import { removeFromCart, updateQuantity, clearCart } from "../redux/slice/cartSlice";
 
 // Mock data for demonstration
 
+interface cart {
+  image: string[];
+  name: string;
+  price: number;
+  quantity: number;
+  _id: string;
+  stock: number;
+}
+interface order {
+  items: ProductItem[];
+  orderStatus: string;
+  paymentStatus: string;
+  totalAmount: number;
+  userId: string;
+  _id: string;
+}
+interface ProductItem {
+  itemId: itemData;
+  quantity: string;
+  totalCost: number;
+  unitCost: number;
+  _id: string;
+}
 
-const mockOrderHistory = [
-  {
-    id: "ORD-2024-001",
-    date: "2025-11-08",
-    items: 4,
-    total: 567.89,
-    status: "Delivered",
-    deliveredDate: "2025-11-10",
-    products: [
-      { name: "Dental Mirror", quantity: 2, price: 15.99 },
-      { name: "Anesthetic Cartridges", quantity: 10, price: 45.50 },
-    ],
-  },
-  {
-    id: "ORD-2024-002",
-    date: "2025-11-05",
-    items: 2,
-    total: 234.99,
-    status: "In Transit",
-    estimatedDelivery: "2025-11-14",
-    products: [
-      { name: "Ultrasonic Scaler Tips", quantity: 5, price: 28.99 },
-      { name: "Dental Burs Set", quantity: 1, price: 89.99 },
-    ],
-  },
-  {
-    id: "ORD-2024-003",
-    date: "2025-11-01",
-    items: 3,
-    total: 445.50,
-    status: "Processing",
-    products: [
-      { name: "LED Curing Light", quantity: 1, price: 299.99 },
-      { name: "Composite Kit", quantity: 2, price: 72.75 },
-    ],
-  },
-  {
-    id: "ORD-2024-004",
-    date: "2025-10-28",
-    items: 6,
-    total: 678.25,
-    status: "Delivered",
-    deliveredDate: "2025-10-30",
-    products: [
-      { name: "Disposable Masks", quantity: 100, price: 0.25 },
-      { name: "Hand Sanitizer", quantity: 5, price: 12.50 },
-    ],
-  },
-];
-
-interface cart{
-  image: string[],
-  name: string,
-  price: number,
-  quantity: number,
-  _id: string,
-  stock: number
+interface itemData{
+  name:string;
+  price:number;
+  _id:string;
+  image:string[]
 }
 export default function CartOrderPage() {
   // Replace with actual Redux hooks
   const cartItem = useAppSelector((state) => state.cart.items);
-  console.log("gjh",cartItem);
-  
+  console.log("gjh", cartItem);
+
   const dispatch = useDispatch();
-  
+
   const [cartItems, setCartItems] = useState<cart[]>(cartItem);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-
+  const [orders, setOrders] = useState<order[]>([]);
   // Cart operations
   const updateQuantity = (id: string, newQuantity: number) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item._id === id ? { ...item, quantity: Math.max(1, Math.min(newQuantity, item.stock)) } : item
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item._id === id
+          ? {
+              ...item,
+              quantity: Math.max(1, Math.min(newQuantity, item.stock)),
+            }
+          : item
       )
     );
   };
 
   const handleRemoveFromCart = (id: string) => {
-    setCartItems(prev => prev.filter(item => item._id !== id));
+    setCartItems((prev) => prev.filter((item) => item._id !== id));
     dispatch(removeFromCart(id));
   };
 
@@ -114,9 +101,12 @@ export default function CartOrderPage() {
   };
 
   // Calculate totals
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
   const tax = subtotal * 0.08; // 8% tax
-  const shipping = cartItems.length > 0 ? 15.00 : 0;
+  const shipping = cartItems.length > 0 ? 15.0 : 0;
   const total = subtotal + tax + shipping;
 
   const getStatusIcon = (status: string) => {
@@ -144,7 +134,69 @@ export default function CartOrderPage() {
         return "bg-gray-600";
     }
   };
+  const clinicId = useAppSelector((state) => state.auth.clinicId);
+  const clinicToken = useAppSelector((state) => state.auth.token);
 
+  const handleCheckOut = async () => {
+    try {
+      if (cartItem.length === 0) {
+        alert("Cart item is empty");
+        return;
+      }
+      if (!clinicToken || !clinicId) {
+        alert("Please log in to complete purchase");
+        return;
+      }
+      const itemToSend = cartItems.map((item) => ({
+        productId: item._id,
+        quantity: item.quantity,
+      }));
+
+      const response = await axios.post(
+        `${inventoryBaseUrl}/api/v1/order/createOrder`,
+        {
+          userId: clinicId,
+          items: itemToSend,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${clinicToken}`,
+          },
+        }
+      );
+      console.log(response);
+      if (response.status === 201) {
+        itemToSend.forEach((item) => {
+          dispatch(removeFromCart(item.productId));
+        });
+        setCartItems([]);
+        handleGetOrderHistory();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleGetOrderHistory = async () => {
+    try {
+      const res = await axios.get(
+        `${inventoryBaseUrl}/api/v1/order/clinic/${clinicId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${clinicToken}`,
+          },
+        }
+      );
+      console.log(res);
+      setOrders(res.data?.data || []);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    handleGetOrderHistory();
+  }, []);
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -184,7 +236,9 @@ export default function CartOrderPage() {
               <Card className="bg-muted/60">
                 <CardContent className="p-12 text-center ">
                   <ShoppingCart className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Your cart is empty</h3>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Your cart is empty
+                  </h3>
                   <p className="text-muted-foreground mb-6">
                     Add some products to get started
                   </p>
@@ -209,19 +263,25 @@ export default function CartOrderPage() {
                         Clear Cart
                       </Button>
                     </CardHeader>
-                    <CardContent className="space-y-4 " style={{overflow:"hidden"}}>
+                    <CardContent
+                      className="space-y-4 "
+                      style={{ overflow: "hidden" }}
+                    >
                       {cartItems.map((item) => (
                         <div
                           key={item._id}
                           className="flex gap-4 p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
                         >
                           {/* Product Image */}
-                          <div className="w-24 h-24 flex-shrink-0 bg-muted rounded-lg overflow-hidden" style={{height:"100px",width:"100px"}}>
+                          <div
+                            className="w-24 h-24 flex-shrink-0 bg-muted rounded-lg overflow-hidden"
+                            style={{ height: "100px", width: "100px" }}
+                          >
                             <img
                               src={`${inventoryBaseUrl}${item.image[0]}`}
                               alt={item.name}
                               className="w-full h-full object-cover"
-                              style={{height:"100%",width:"100%"}}
+                              style={{ height: "100%", width: "100%" }}
                             />
                           </div>
 
@@ -252,7 +312,9 @@ export default function CartOrderPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                                onClick={() =>
+                                  updateQuantity(item._id, item.quantity - 1)
+                                }
                                 disabled={item.quantity <= 1}
                               >
                                 <Minus className="w-4 h-4" />
@@ -263,7 +325,9 @@ export default function CartOrderPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                                onClick={() =>
+                                  updateQuantity(item._id, item.quantity + 1)
+                                }
                                 disabled={item.quantity >= item.stock}
                               >
                                 <Plus className="w-4 h-4" />
@@ -289,44 +353,52 @@ export default function CartOrderPage() {
                       {/* Price Breakdown */}
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Subtotal</span>
-                          <span className="font-medium">${subtotal.toFixed(2)}</span>
+                          <span className="text-muted-foreground">
+                            Subtotal
+                          </span>
+                          <span className="font-medium">
+                            ${subtotal.toFixed(2)}
+                          </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Tax (8%)</span>
-                          <span className="font-medium">${tax.toFixed(2)}</span>
+                          {/* <span className="text-muted-foreground">Tax (8%)</span> */}
+                          {/* <span className="font-medium">${tax.toFixed(2)}</span> */}
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Shipping</span>
-                          <span className="font-medium">${shipping.toFixed(2)}</span>
+                          {/* <span className="text-muted-foreground">Shipping</span> */}
+                          {/* <span className="font-medium">${shipping.toFixed(2)}</span> */}
                         </div>
                         <div className="border-t pt-2 mt-2">
                           <div className="flex justify-between">
                             <span className="font-semibold text-lg">Total</span>
                             <span className="font-bold text-2xl text-primary">
-                              ${total.toFixed(2)}
+                              ${subtotal.toFixed(2)}
                             </span>
                           </div>
                         </div>
                       </div>
 
                       {/* Promo Code */}
-                      <div className="space-y-2">
+                      {/* <div className="space-y-2">
                         <label className="text-sm font-medium">Promo Code</label>
                         <div className="flex gap-2">
                           <Input placeholder="Enter code" className="bg-muted/60" />
                           <Button variant="outline">Apply</Button>
                         </div>
-                      </div>
+                      </div> */}
 
                       {/* Checkout Button */}
-                      <Button className="w-full" size="lg">
+                      <Button
+                        className="w-full"
+                        size="lg"
+                        onClick={handleCheckOut}
+                      >
                         <CreditCard className="w-5 h-5 mr-2" />
                         Proceed to Checkout
                       </Button>
 
                       {/* Shipping Info */}
-                      <div className="p-3 bg-muted/30 rounded-lg text-sm space-y-1">
+                      {/* <div className="p-3 bg-muted/30 rounded-lg text-sm space-y-1">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Truck className="w-4 h-4" />
                           <span>Free shipping on orders over $500</span>
@@ -335,7 +407,7 @@ export default function CartOrderPage() {
                           <MapPin className="w-4 h-4" />
                           <span>Delivery in 3-5 business days</span>
                         </div>
-                      </div>
+                      </div> */}
                     </CardContent>
                   </Card>
                 </div>
@@ -353,67 +425,56 @@ export default function CartOrderPage() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mockOrderHistory.map((order) => (
+                {orders.map((order) => (
                   <div
-                    key={order.id}
+                    key={order._id}
                     className="p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        {getStatusIcon(order.status)}
+                        {getStatusIcon(order.orderStatus)}
                         <div>
-                          <p className="font-semibold">{order.id}</p>
+                          <p className="font-semibold">
+                            Order #{order._id.slice(-8)}
+                          </p>
                           <p className="text-sm text-muted-foreground">
-                            Placed on {new Date(order.date).toLocaleDateString()}
+                            Payment: {order.paymentStatus}
                           </p>
                         </div>
                       </div>
-                      <Badge className={getStatusColor(order.status)}>
-                        {order.status}
+                      <Badge className={getStatusColor(order.orderStatus)}>
+                        {order.orderStatus}
                       </Badge>
                     </div>
 
-                    <div className="grid md:grid-cols-3 gap-4 mb-3 text-sm">
+                    <div className="grid md:grid-cols-2 gap-4 mb-3 text-sm">
                       <div>
                         <span className="text-muted-foreground">Items:</span>
-                        <span className="ml-2 font-medium">{order.items}</span>
+                        <span className="ml-2 font-medium">
+                          {order.items.length}
+                        </span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Total:</span>
-                        <span className="ml-2 font-medium">${order.total.toFixed(2)}</span>
-                      </div>
-                      <div>
-                        {order.deliveredDate && (
-                          <>
-                            <span className="text-muted-foreground">Delivered:</span>
-                            <span className="ml-2 font-medium">
-                              {new Date(order.deliveredDate).toLocaleDateString()}
-                            </span>
-                          </>
-                        )}
-                        {order.estimatedDelivery && (
-                          <>
-                            <span className="text-muted-foreground">Est. Delivery:</span>
-                            <span className="ml-2 font-medium">
-                              {new Date(order.estimatedDelivery).toLocaleDateString()}
-                            </span>
-                          </>
-                        )}
+                        <span className="ml-2 font-medium">
+                          ${order.totalAmount.toFixed(2)}
+                        </span>
                       </div>
                     </div>
 
                     {/* Order Products */}
                     <div className="border-t pt-3 mt-3 space-y-2">
-                      {order.products.map((product, idx) => (
+                      {order.items.map((item) => (
                         <div
-                          key={idx}
+                          key={item.itemId?._id}
                           className="flex justify-between text-sm"
                         >
                           <span className="text-muted-foreground">
-                            {product.name} × {product.quantity}
+                            {item.itemId?.name || "Product"} × {item.quantity}
                           </span>
+
                           <span className="font-medium">
-                            ${(product.price * product.quantity).toFixed(2)}
+                            ${item.totalCost} {/* ✔ Correct */}
                           </span>
                         </div>
                       ))}
@@ -424,12 +485,12 @@ export default function CartOrderPage() {
                       <Button variant="outline" size="sm" className="flex-1">
                         View Details
                       </Button>
-                      {order.status === "Delivered" && (
+                      {order.orderStatus === "DELIVERED" && (
                         <Button variant="outline" size="sm" className="flex-1">
                           Reorder
                         </Button>
                       )}
-                      {order.status === "In Transit" && (
+                      {order.orderStatus === "PROCESSING" && (
                         <Button variant="outline" size="sm" className="flex-1">
                           <Truck className="w-4 h-4 mr-1" />
                           Track Order
