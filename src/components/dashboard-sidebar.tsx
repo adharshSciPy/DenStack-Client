@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import {
+import {persistor} from "../redux/persistor.js"
+import { 
   Calendar,
   DollarSign,
-  Users,
+  Users, 
   Package,
   FlaskConical,
   FileText,
@@ -10,6 +11,7 @@ import {
   Settings,
   ShoppingCart,
   Activity,
+  LogOut,
   Home,
   ChevronLeft,
   ChevronRight,
@@ -18,17 +20,22 @@ import {
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import axios from "axios";
-import  patientServiceBaseUrl  from "../patientServiceBaseUrl.js";
+import patientServiceBaseUrl from "../patientServiceBaseUrl.js";
 import { useParams } from "react-router-dom";
 import baseUrl from "../baseUrl.js";
-
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { clearCart
+ } from "../redux/slice/cartSlice.js";
+import { logout } from "../redux/slice/authSlice.js";
+import { useAppSelector } from "../redux/hook";
 interface DashboardSidebarProps {
   activeTab: string;
   onTabChange: (tabId: string) => void;
 }
 interface Clinic {
   id: string;
-  name: string; 
+  name: string;
   address: string;
   contactNumber: string;
   email: string;
@@ -42,8 +49,11 @@ export function DashboardSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [appointmentCount, setAppointmentCount] = useState<number>(0);
   const [clinic, setClinic] = useState<Clinic | null>(null);
-
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { clinicId } = useParams();
+  const cartItem = useAppSelector((state) => state.cart.items);
+console.log("cart",cartItem);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -65,10 +75,12 @@ export function DashboardSidebar({
     }
   }, [clinicId]);
 
- useEffect(() => {
+  useEffect(() => {
     const fetchClinicDetails = async () => {
       try {
-        const response = await axios.get(`${baseUrl}api/v1/auth/clinic/view-clinic/${clinicId}`);
+        const response = await axios.get(
+          `${baseUrl}api/v1/auth/clinic/view-clinic/${clinicId}`
+        );
         const clinicData = response.data.data;
         setClinic(clinicData);
         console.log("Clinic Details:", clinicData);
@@ -81,7 +93,23 @@ export function DashboardSidebar({
       fetchClinicDetails();
     }
   }, [clinicId]);
-   const getGreeting = () => {
+  const handleLogout = async () => {
+    // 1️⃣ Purge persisted state (clears redux-persist storage)
+    await persistor.purge();
+
+    // 2️⃣ Optional: clear any auth tokens from localStorage/sessionStorage
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 3️⃣ Optional: dispatch reset actions (if slices have their own reset reducers)
+    dispatch(clearCart());
+    dispatch(logout());
+    // dispatch(clearClinic());
+
+    // 4️⃣ Redirect to main page
+    navigate("/");
+  };
+  const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return "Good Morning";
     if (hour >= 12 && hour < 16) return "Good Afternoon";
@@ -90,7 +118,12 @@ export function DashboardSidebar({
   };
   const menuItems = [
     { id: "overview", label: "Overview", icon: Home },
-    { id: "appointments", label: "Appointments", icon: Calendar, badge: appointmentCount },
+    {
+      id: "appointments",
+      label: "Appointments",
+      icon: Calendar,
+      badge: appointmentCount,
+    },
     { id: "financial", label: "Financial", icon: DollarSign },
     { id: "staff", label: "Staff", icon: Users },
     { id: "inventory", label: "Inventory", icon: Package, badge: 3 },
@@ -99,6 +132,7 @@ export function DashboardSidebar({
     { id: "notifications", label: "Notifications", icon: Bell, badge: 5 },
     { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
     { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
+    { id: "cart", label: "Cart", icon: ShoppingCart ,badge:cartItem.length || ''},
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -107,6 +141,7 @@ export function DashboardSidebar({
       className={`bg-white border-r border-border h-full flex flex-col transition-all duration-300 ${
         collapsed ? "w-16" : "w-64"
       }`}
+      style={{ overflow: "scroll", scrollbarWidth: "none" }}
     >
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between">
@@ -173,15 +208,26 @@ export function DashboardSidebar({
       </nav>
 
       {/* User Profile */}
-      {!collapsed && (  
+      {!collapsed && (
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
-              <span className="text-sm text-secondary-foreground"> {clinic?.name ? clinic.name[0].toUpperCase() : "D"}</span>
+              <span className="text-sm text-secondary-foreground">
+                {" "}
+                {clinic?.name ? clinic.name[0].toUpperCase() : "D"}
+              </span>
             </div>
             <div className="flex-1">
               <p className="text-xs text-muted-foreground">{getGreeting()}</p>
               <p className="text-sm">{clinic?.name}</p>
+            </div>
+            <div className="">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
