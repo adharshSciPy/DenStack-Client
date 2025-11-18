@@ -477,12 +477,12 @@ const filteredDoctors = doctors;
   };
 
   return (
-    <div slot="card" className="min-h-screen bg-card rounded-xl from-green-50 via-white to-blue-50 py-12 px-4 ">
+    <div slot="card" className="min-h-screen bg-muted/60  rounded-xl from-green-50  to-blue-50 py-12 px-4 ">
       <div className="max-w-7xl mx-auto">
         {currentView === "registration" && (
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <div slot="card" className=" p-8 text-var(--secondary) rounded-xl bg-card">
+            <div className=" rounded-2xl shadow-xl overflow-hidden">
+              <div slot="card" className=" p-8 text-var(--secondary) rounded-xl ">
                 <div className="flex justify-between items-start">
                   <div>
                     <h1 className="text-3xl font-bold mb-2">
@@ -550,7 +550,7 @@ const filteredDoctors = doctors;
                     name="roleInClinic"
                     value={formData.roleInClinic}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none bg-white cursor-pointer "
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer "
                   >
                     <option value="">Select a role</option>
                     {roleOptions.map((option: RoleOption) => (

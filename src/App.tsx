@@ -15,7 +15,7 @@ import StaffRegistration from "./components/staff-dashboard";
 import { Provider } from "react-redux";
 import { store } from "./redux/store";
 import { PersistGate } from "redux-persist/integration/react";
-import { persistStore } from "redux-persist";
+import Cart from "./components/Cart";
 import { persistor } from "./redux/persistor";
 // Placeholder components for other tabs
 function StaffPayroll() {
@@ -92,6 +92,8 @@ function DashboardLayout() {
         return <SettingsPage />;
       case "doctoronboard":
         return <DoctorPage />;
+      case "cart":
+        return <Cart />;
       default:
         return <OverviewDashboard />;
     }
@@ -115,6 +117,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard/:clinicId" element={<DashboardLayout />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="cart" element={<Cart/>} />
       </Routes>
     </Router>
     </PersistGate>
