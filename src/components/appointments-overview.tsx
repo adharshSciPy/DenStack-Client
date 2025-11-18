@@ -467,6 +467,35 @@ export function AppointmentsOverview() {
     setSelectedDoctor(doctorId);
     setSelectedDoctorName(doctorName);
   };
+const forceBookAppointment = async () => {
+  try {
+    setLoading(true);
+
+    const payload = {
+      userId: clinicId,
+      userRole: "admin",
+      patientId: foundPatient?._id,
+      doctorId: selectedDoctor,
+      department: selectedDepartment,
+      appointmentDate,
+      appointmentTime: selectedTime,
+      forceBooking: true, // ⬅️ IMPORTANT !
+    };
+
+    const res = await axios.post(
+      `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
+      payload
+    );
+
+    alert("Forced Appointment Booked Successfully");
+    handleCloseModal();
+    fetchAppointments();
+  } catch (error) {
+    alert("Force booking failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Final Submit
   const handleSubmit = async () => {
@@ -491,42 +520,49 @@ export function AppointmentsOverview() {
       return;
     }
 
-    try {
-      setLoading(true);
-      const payload = {
-        userId: clinicId,
-        userRole: "admin",
-        patientId: foundPatient._id,
-        doctorId: selectedDoctor,
-        department: selectedDepartment,
-        appointmentDate: appointmentDate,
-        appointmentTime: selectedTime,
-      };
+   try {
+  setLoading(true);
 
-      const res = await axios.post(
-        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
-        payload
-      );
+  const payload = {
+    userId: clinicId,
+    userRole: "admin",
+    patientId: foundPatient._id,
+    doctorId: selectedDoctor,
+    department: selectedDepartment,
+    appointmentDate,
+    appointmentTime: selectedTime,
+  };
 
-      alert(res.data.message);
-      handleCloseModal();
-      fetchAppointments();
-    } catch (error: unknown) {
-      // ✅ Explicitly type as 'unknown'
-      console.error("Error booking appointment:", error);
+  const res = await axios.post(
+    `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
+    payload
+  );
 
-      // ✅ Safely handle if it's an Axios error
-      if (axios.isAxiosError(error)) {
-        alert(
-          error.response?.data?.message ||
-            "Failed to book appointment. Please try again."
-        );
-      } else {
-        alert("An unexpected error occurred. Please try again.");
-      }
-    } finally {
-      setLoading(false);
+  alert(res.data.message);
+  handleCloseModal();
+  fetchAppointments();
+} catch (error: any) {
+
+  if (axios.isAxiosError(error) && error.response?.status === 409) {
+    const confirmForce = window.confirm(
+      `${error.response.data.message}\n\nDo you want to force book with a different doctor?`
+    );
+
+    if (confirmForce) {
+      return forceBookAppointment(); // ⬅️ we call a new function
     }
+
+    return; // stop normal flow
+  }
+
+  alert(
+    error.response?.data?.message ||
+      "Failed to book appointment. Please try again."
+  );
+} finally {
+  setLoading(false);
+}
+
   };
 
   const handleCloseModal = () => {
