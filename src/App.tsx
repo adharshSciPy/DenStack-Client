@@ -17,6 +17,7 @@ import { store } from "./redux/store";
 import { PersistGate } from "redux-persist/integration/react";
 import Cart from "./components/Cart";
 import { persistor } from "./redux/persistor";
+import Patients from "./components/patient-dashboard";
 // Placeholder components for other tabs
 function StaffPayroll() {
   return (
@@ -34,19 +35,19 @@ function StaffPayroll() {
 
 
 
-function Reports() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl">Reports & Exports</h2>
-      <p className="text-muted-foreground">
-        Generate and export clinic reports
-      </p>
-      <div className="p-8 text-center bg-muted/30 rounded-lg">
-        <p>Reports & exports module coming soon...</p>
-      </div>
-    </div>
-  );
-}
+// function Reports() {
+//   return (
+//     <div className="space-y-6">
+//       <h2 className="text-2xl">Reports & Exports</h2>
+//       <p className="text-muted-foreground">
+//         Generate and export clinic reports
+//       </p>
+//       <div className="p-8 text-center bg-muted/30 rounded-lg">
+//         <p>Reports & exports module coming soon...</p>
+//       </div>
+//     </div>
+//   );
+// }
 
 function Notifications() {
   return (
@@ -82,8 +83,8 @@ function DashboardLayout() {
         return <InventoryTracker />;
       case "lab":
         return <LabOrdersPage />;
-      case "reports":
-        return <Reports />;
+      case "patients":
+        return <Patients />;
       case "notifications":
         return <Notifications />;
       case "marketplace":

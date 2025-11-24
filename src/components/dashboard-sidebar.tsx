@@ -128,7 +128,7 @@ console.log("cart",cartItem);
     { id: "staff", label: "Staff", icon: Users },
     { id: "inventory", label: "Inventory", icon: Package, badge: 3 },
     { id: "lab", label: "Lab Orders", icon: FlaskConical, badge: 7 },
-    { id: "reports", label: "Reports", icon: FileText },
+    { id: "patients", label: "Patient", icon: FileText },
     { id: "notifications", label: "Notifications", icon: Bell, badge: 5 },
     { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
     { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
