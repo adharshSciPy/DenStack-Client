@@ -3,7 +3,7 @@ import { DashboardSidebar } from "./components/dashboard-sidebar";
 import { OverviewDashboard } from "./components/overview-dashboard";
 import { AppointmentsOverview } from "./components/appointments-overview";
 import { FinancialDashboard } from "./components/financial-dashboard";
-import { InventoryTracker } from "./components/inventory-tracker";
+import {InventoryTracker} from "./components/inventory-tracker";
 import { MarketplaceTab } from "./components/marketplace-tab";
 import { useClinicTheme } from "./hooks/UseClinicTheme";
 import LoginPage from "./components/LoginPage/LoginPage";

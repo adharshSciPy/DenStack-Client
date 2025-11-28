@@ -16,7 +16,7 @@ import {
   X,
   MapPin,
   Calendar,
-  User
+  User,
 } from "lucide-react";
 import inventoryBaseUrl from "../inventoryBaseUrl";
 import {
@@ -37,7 +37,8 @@ import { removeFromCart } from "../redux/slice/cartSlice";
 import { useAppSelector } from "../redux/hook";
 import { useDispatch } from "react-redux";
 import axios from "axios";
-import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
+import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl";
+import { log } from "console";
 
 // Interfaces
 interface cart {
@@ -89,58 +90,87 @@ const getStatusConfig = (status: string) => {
   const configs = {
     DELIVERED: {
       icon: <CheckCircle className="w-5 h-5" />,
-      color: 'bg-green-500/10 text-green-700 border-green-200',
-      dotColor: 'bg-green-500',
-      label: 'Delivered'
+      color: "bg-green-500/10 text-green-700 border-green-200",
+      dotColor: "bg-green-500",
+      label: "Delivered",
     },
     PROCESSING: {
       icon: <Clock className="w-5 h-5" />,
-      color: 'bg-blue-500/10 text-blue-700 border-blue-200',
-      dotColor: 'bg-blue-500',
-      label: 'Processing'
+      color: "bg-blue-500/10 text-blue-700 border-blue-200",
+      dotColor: "bg-blue-500",
+      label: "Processing",
     },
     CANCELLED: {
       icon: <XCircle className="w-5 h-5" />,
-      color: 'bg-red-500/10 text-red-700 border-red-200',
-      dotColor: 'bg-red-500',
-      label: 'Cancelled'
+      color: "bg-red-500/10 text-red-700 border-red-200",
+      dotColor: "bg-red-500",
+      label: "Cancelled",
     },
     SHIPPED: {
       icon: <Truck className="w-5 h-5" />,
-      color: 'bg-purple-500/10 text-purple-700 border-purple-200',
-      dotColor: 'bg-purple-500',
-      label: 'Shipped'
+      color: "bg-purple-500/10 text-purple-700 border-purple-200",
+      dotColor: "bg-purple-500",
+      label: "Shipped",
     },
     PENDING: {
       icon: <Clock className="w-5 h-5" />,
-      color: 'bg-yellow-500/10 text-yellow-700 border-yellow-200',
-      dotColor: 'bg-yellow-500',
-      label: 'Pending'
-    }
+      color: "bg-yellow-500/10 text-yellow-700 border-yellow-200",
+      dotColor: "bg-yellow-500",
+      label: "Pending",
+    },
   };
   return configs[status as keyof typeof configs] || configs.PROCESSING;
 };
 // Order Details Modal Component
-const OrderDetailsModal = ({ order, onClose }: { order: order; onClose: () => void }) => {
+const OrderDetailsModal = ({
+  order,
+  onClose,
+}: {
+  order: order;
+  onClose: () => void;
+}) => {
   const statusConfig = getStatusConfig(order.status);
-  
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
+  const [status, setStatus] = useState("PENDING");
 
+  const toggleStatus = () => {
+    setStatus(status === "PENDING" ? "DELIVERED" : "PENDING");
+  };
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem' }}>
-      <div className="bg-white rounded-xl  overflow-hidden shadow-2xl " style={{height:"80vh",overflow:"scroll",width:"max-content",scrollbarWidth: "none"}}>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        padding: "1rem",
+      }}
+    >
+      <div
+        className="bg-white rounded-xl  overflow-hidden shadow-2xl "
+        style={{
+          height: "80vh",
+          overflow: "scroll",
+          width: "max-content",
+          scrollbarWidth: "none",
+        }}
+      >
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-slate-50 to-white p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 z-10" >
+        <div className="bg-gradient-to-r from-slate-50 to-white p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 z-10">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Order Details</h2>
             <p className="text-sm text-slate-500 mt-1">
@@ -164,12 +194,16 @@ const OrderDetailsModal = ({ order, onClose }: { order: order; onClose: () => vo
                 {statusConfig.icon}
                 <div>
                   <h3 className="font-bold text-lg">{statusConfig.label}</h3>
-                  <p className="text-sm opacity-80">Payment: {order.paymentStatus}</p>
+                  <p className="text-sm opacity-80">
+                    Payment: {order.paymentStatus}
+                  </p>
                 </div>
               </div>
-              <div className={`w-3 h-3 rounded-full ${statusConfig.dotColor} animate-pulse`}></div>
+              <div
+                className={`w-3 h-3 rounded-full ${statusConfig.dotColor} animate-pulse`}
+              ></div>
             </div>
-            
+
             {/* Order Info Grid */}
             <div className="grid md:grid-cols-2 gap-4 mt-4">
               <div className="flex items-center gap-2">
@@ -183,7 +217,9 @@ const OrderDetailsModal = ({ order, onClose }: { order: order; onClose: () => vo
                 <DollarSign className="w-4 h-4 opacity-60" />
                 <div>
                   <p className="text-xs opacity-70">Total Amount</p>
-                  <p className="font-bold text-lg">${order.totalAmount.toFixed(2)}</p>
+                  <p className="font-bold text-lg">
+                    ${order.totalAmount.toFixed(2)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -197,8 +233,10 @@ const OrderDetailsModal = ({ order, onClose }: { order: order; onClose: () => vo
                 <h3 className="font-bold text-slate-900">Delivery Address</h3>
               </div>
               <p className="text-slate-700">
-                {order.deliveryAddress.street}<br />
-                {order.deliveryAddress.city}, {order.deliveryAddress.state} {order.deliveryAddress.zipCode}
+                {order.deliveryAddress.street}
+                <br />
+                {order.deliveryAddress.city}, {order.deliveryAddress.state}{" "}
+                {order.deliveryAddress.zipCode}
               </p>
             </div>
           )}
@@ -218,7 +256,15 @@ const OrderDetailsModal = ({ order, onClose }: { order: order; onClose: () => vo
                   <div className="flex items-start gap-4">
                     {/* Product Image Placeholder */}
                     <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center border-2 border-slate-200 flex-shrink-0">
-                      <img src={`${inventoryBaseUrl}/${item.product?.image[0]}`} alt={item.product?.name || ""} />
+                      <img
+                        src={`${inventoryBaseUrl}${item.product?.image[0]}`}
+                        alt={item.product?.name || ""}
+                        style={{
+                          height: "100px",
+                          width: "100px",
+                          objectFit: "cover",
+                        }}
+                      />
                     </div>
 
                     {/* Product Details */}
@@ -229,7 +275,9 @@ const OrderDetailsModal = ({ order, onClose }: { order: order; onClose: () => vo
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
                           <span className="text-slate-500">Quantity:</span>
-                          <span className="ml-2 font-medium text-slate-900">{item.quantity}</span>
+                          <span className="ml-2 font-medium text-slate-900">
+                            {item.quantity}
+                          </span>
                         </div>
                         <div>
                           <span className="text-slate-500">Unit Price:</span>
@@ -258,8 +306,12 @@ const OrderDetailsModal = ({ order, onClose }: { order: order; onClose: () => vo
             <h3 className="font-bold text-lg mb-4">Order Summary</h3>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="opacity-80">Subtotal ({order.items.length} items)</span>
-                <span className="font-medium">${order.totalAmount.toFixed(2)}</span>
+                <span className="opacity-80">
+                  Subtotal ({order.items.length} items)
+                </span>
+                <span className="font-medium">
+                  ${order.totalAmount.toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="opacity-80">Tax & Fees</span>
@@ -272,7 +324,9 @@ const OrderDetailsModal = ({ order, onClose }: { order: order; onClose: () => vo
               <div className="border-t border-white/20 pt-3 mt-3">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-lg">Total Amount</span>
-                  <span className="font-bold text-2xl">${order.totalAmount.toFixed(2)}</span>
+                  <span className="font-bold text-2xl">
+                    ${order.totalAmount.toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -308,6 +362,10 @@ export default function CartOrderPage() {
   const [cartItems, setCartItems] = useState<cart[]>(cartItem);
   const [orders, setOrders] = useState<order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<order | null>(null);
+ const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({});
+  // Local status state and toggle handler for order cards
+  const [status, setStatus] = useState<string>("PENDING");
+
 
   const clinicId = useAppSelector((state) => state.auth.clinicId);
   const clinicToken = useAppSelector((state) => state.auth.token);
@@ -355,7 +413,7 @@ export default function CartOrderPage() {
       }));
 
       const response = await axios.post(
-        `${clinicServiceBaseUrl}/api/v1/clinicPurchase/purchase`,
+        `${clinicInventoryBaseUrl}/api/v1/clinicPurchase/purchase`,
         {
           clinicId: clinicId,
           items: itemToSend,
@@ -382,7 +440,7 @@ export default function CartOrderPage() {
   const handleGetOrderHistory = async () => {
     try {
       const res = await axios.get(
-        `${clinicServiceBaseUrl}/api/v1/clinicPurchase/orders/${clinicId}`,
+        `${clinicInventoryBaseUrl}/api/v1/clinicPurchase/orders/${clinicId}`,
         {
           headers: {
             Authorization: `Bearer ${clinicToken}`,
@@ -390,6 +448,7 @@ export default function CartOrderPage() {
         }
       );
       setOrders(res.data?.data || []);
+      console.log(res);
     } catch (error) {
       console.log(error);
     }
@@ -399,6 +458,28 @@ export default function CartOrderPage() {
     handleGetOrderHistory();
   }, []);
 
+  const handleDeliver=async(orderId:string)=>{
+    try {
+      const res=await axios.post(`${clinicInventoryBaseUrl}/api/v1/clinicPurchase/clinic/order/mark-delivered`,{
+        orderId: orderId,
+        clinicId: clinicId
+      },)
+      if(res.status===200){
+        handleGetOrderHistory();
+      }
+      console.log(res);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+ const toggleOrderStatus = (orderId: string) => {
+  
+   handleDeliver(orderId);
+    // setOrderStatuses(prev => ({
+    //   ...prev,
+    //   [orderId]: prev[orderId] === "PENDING" ? "DELIVERED" : "PENDING"
+    // }));
+  };
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -581,7 +662,7 @@ export default function CartOrderPage() {
           {/* ORDER HISTORY TAB */}
           <TabsContent value="orders" className="space-y-6 mt-6">
             <Card className="border-0 shadow-sm">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b">
+              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b rounded-xl">
                 <CardTitle className="text-2xl">Order History</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Track and manage all your orders in one place
@@ -597,14 +678,17 @@ export default function CartOrderPage() {
                         key={order._id}
                         className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-slate-200"
                       >
+                        {/* HEADER */}
                         <div className="bg-gradient-to-r from-slate-50 to-white p-6 border-b border-slate-200">
                           <div className="flex items-start justify-between mb-4">
+                            {/* LEFT – Order Info */}
                             <div className="flex items-center gap-4">
                               <div
                                 className={`p-3 rounded-lg ${statusConfig.color} border`}
                               >
                                 {statusConfig.icon}
                               </div>
+
                               <div>
                                 <div className="flex items-center gap-2">
                                   <h3 className="text-lg font-bold text-slate-900">
@@ -620,29 +704,73 @@ export default function CartOrderPage() {
                               </div>
                             </div>
 
-                            <div
-                              className={`px-4 py-2 rounded-full border font-semibold text-sm ${statusConfig.color}`}
-                            >
-                              {statusConfig.label}
+                            {/* RIGHT – Status Label + Toggle */}
+                            <div className="flex items-center gap-4">
+                              {/* STATUS LABEL */}
+                              <span
+                                className={`px-4 py-2 rounded-full border font-semibold text-sm ${statusConfig.color}`}
+                              >
+                                {statusConfig.label}
+                              </span>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
+                          {/* SUMMARY ICONS */}
+                          <div className="grid grid-cols-3 gap-4">
                             <div className="flex items-center gap-2 text-sm">
                               <ShoppingBag className="w-4 h-4 text-slate-400" />
                               <span className="text-slate-600">
                                 {order.items.length} Items
                               </span>
                             </div>
+
                             <div className="flex items-center gap-2 text-sm">
                               <DollarSign className="w-4 h-4 text-slate-400" />
                               <span className="text-slate-900 font-semibold">
                                 ${order.totalAmount.toFixed(2)}
                               </span>
                             </div>
+                            <div className="flex items-end gap-2 text-sm" style={{justifyContent: "end"}}>
+                              {/* TOGGLE SWITCH */}
+                              <button
+                                onClick={() => toggleOrderStatus(order._id)}
+                                style={{
+                                  height: "28px", // same as h-7
+                                  width: "56px", // same as w-14
+                                  borderRadius: "9999px",
+                                  position: "relative",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  padding: "2px",
+                                  transition: "background-color 0.3s ease",
+                                  backgroundColor:
+                                    `${order.status}` === "DELIVERED"
+                                      ? "#22c55e" // green-500
+                                      : "#cbd5e1", // slate-300
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    height: "20px", // h-5
+                                    width: "20px", // w-5
+                                    backgroundColor: "white",
+                                    borderRadius: "9999px",
+                                    boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+                                    position: "absolute",
+                                    top: "4px",
+                                    left:
+                                      `${order.status}` === "DELIVERED"
+                                        ? "28px" // translate-x-7
+                                        : "4px", // translate-x-0
+                                    transition: "all 0.3s ease",
+                                  }}
+                                />
+                              </button>
+                            </div>
                           </div>
                         </div>
 
+                        {/* ITEMS */}
                         <div className="p-6 space-y-3">
                           {order.items.map((item) => (
                             <div
@@ -662,6 +790,7 @@ export default function CartOrderPage() {
                                   </p>
                                 </div>
                               </div>
+
                               <div className="text-right">
                                 <p className="font-bold text-slate-900">
                                   ${item.totalCost.toFixed(2)}
@@ -675,6 +804,7 @@ export default function CartOrderPage() {
                           ))}
                         </div>
 
+                        {/* FOOTER BUTTONS */}
                         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex gap-3">
                           <Button
                             variant="outline"
@@ -684,6 +814,7 @@ export default function CartOrderPage() {
                           >
                             View Details
                           </Button>
+
                           {order.orderStatus === "DELIVERED" && (
                             <Button
                               size="sm"
@@ -692,6 +823,7 @@ export default function CartOrderPage() {
                               Reorder
                             </Button>
                           )}
+
                           {order.orderStatus === "PROCESSING" && (
                             <Button
                               size="sm"
