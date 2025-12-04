@@ -38,7 +38,7 @@ import { useAppSelector } from "../redux/hook";
 import { useDispatch } from "react-redux";
 import axios from "axios";
 import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl";
-import { log } from "console";
+
 
 // Interfaces
 interface cart {
