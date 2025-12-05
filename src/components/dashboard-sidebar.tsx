@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import {persistor} from "../redux/persistor.js"
-import { 
+import { persistor } from "../redux/persistor.js";
+import {
   Calendar,
   DollarSign,
-  Users, 
+  Users,
   Package,
   FlaskConical,
   FileText,
@@ -25,10 +25,10 @@ import { useParams } from "react-router-dom";
 import baseUrl from "../baseUrl.js";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { clearCart
- } from "../redux/slice/cartSlice.js";
+import { clearCart } from "../redux/slice/cartSlice.js";
 import { logout } from "../redux/slice/authSlice.js";
 import { useAppSelector } from "../redux/hook";
+import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl.js";
 interface DashboardSidebarProps {
   activeTab: string;
   onTabChange: (tabId: string) => void;
@@ -49,11 +49,12 @@ export function DashboardSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [appointmentCount, setAppointmentCount] = useState<number>(0);
   const [clinic, setClinic] = useState<Clinic | null>(null);
+  const [inventoryCount, setInventoryCount] = useState<number>(0);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { clinicId } = useParams();
   const cartItem = useAppSelector((state) => state.cart.items);
-console.log("cart",cartItem);
+  console.log("cart", cartItem);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -89,8 +90,22 @@ console.log("cart",cartItem);
       }
     };
 
-    if (clinicId) {
+   
+    const fetchLowstockInventory = async () => {
+      try {
+        const response = await axios.get(
+          `${clinicInventoryBaseUrl}/api/v1/clinicInventory/products/low-stock/${clinicId}`
+        );
+       console.log("sidebaer",response);
+       setInventoryCount(response.data.count);
+        // setInventoryCount();
+      } catch (error) {
+        console.error("Error fetching low stock inventory:", error);
+      }
+    };
+     if (clinicId) {
       fetchClinicDetails();
+      fetchLowstockInventory()
     }
   }, [clinicId]);
   const handleLogout = async () => {
@@ -126,13 +141,18 @@ console.log("cart",cartItem);
     },
     { id: "financial", label: "Financial", icon: DollarSign },
     { id: "staff", label: "Staff", icon: Users },
-    { id: "inventory", label: "Inventory", icon: Package, badge: 3 },
+    { id: "inventory", label: "Inventory", icon: Package, badge: `${inventoryCount}` },
     { id: "lab", label: "Lab Orders", icon: FlaskConical, badge: 7 },
     { id: "patients", label: "Patient", icon: FileText },
     { id: "notifications", label: "Notifications", icon: Bell, badge: 5 },
     { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
     { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
-    { id: "cart", label: "Cart", icon: ShoppingCart ,badge:cartItem.length || ''},
+    {
+      id: "cart",
+      label: "Cart",
+      icon: ShoppingCart,
+      badge: cartItem.length || "",
+    },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
