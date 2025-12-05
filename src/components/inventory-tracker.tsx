@@ -4,7 +4,6 @@ import {
   Package,
   AlertTriangle,
   Plus,
-  TrendingDown,
   Search,
   X,
   ChevronLeft,

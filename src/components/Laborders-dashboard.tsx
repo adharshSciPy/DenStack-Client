@@ -14,11 +14,17 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  X,
+  Building2,
+  User,
+  Upload,
 } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import labBaseUrl from "../labBaseUrl";
-// Mock labBaseUrl for demo
+import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl";
+import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
+import patientServiceBaseUrl from "../patientServiceBaseUrl";
 
 interface LabStatus {
   completedOrders: number;
@@ -77,27 +83,158 @@ export default function LabOrdersPage() {
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
   const [pageSize] = useState(10);
+  const [labName, setLabName] = useState([]);
+  const [doctors, setDoctors] = useState([]);
 
-  // Fetch stats (only once on mount)
+  // Modal state
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    vendor: "",
+    dentist: "",
+    patientName: "",
+    deliveryDate: "",
+    note: "",
+    price: "",
+    appointmentId: "",
+  });
+  const [files, setFiles] = useState<File[]>([]);
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState([]);
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const statsResponse = await axios.get(
-          `${labBaseUrl}api/v1/lab-orders/lab-stats/${clinicId}`
-        );
-        console.log(statsResponse);
+    const fetchPatients = async () => {
+      if (search.length < 3) {
+        setResults([]);
+        return;
+      }
 
-        setLabOrders({
-          totalLabs: statsResponse.data.totalLabs,
-          pendingOrders: statsResponse.data.pendingCount,
-          completedOrders: statsResponse.data.completedCount,
-          totalOrders: statsResponse.data.totalOrders,
-        });
+      try {
+        setLoading(true);
+        const res = await axios.get(
+          `${patientServiceBaseUrl}/api/v1/patient-service/patient/clinic-patients/${clinicId}?search=${search}`
+        );
+        setResults(res.data.data);
       } catch (err) {
-        console.error("Failed to fetch stats:", err);
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
 
+    const debounce = setTimeout(fetchPatients, 300);
+    return () => clearTimeout(debounce);
+  }, [search, clinicId]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles(selectedFiles);
+  };
+  const logFormData = (formData: FormData) => {
+    const entries: any = {};
+    formData.forEach((value, key) => {
+      entries[key] = value;
+    });
+    console.log("FormData =>", entries);
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const formDataToSend = new FormData();
+      
+      Object.keys(formData).forEach((key) => {
+        formDataToSend.append(key, formData[key as keyof typeof formData]);
+      });
+      
+      files.forEach((file) => {
+        formDataToSend.append("files", file);
+      });
+      
+      logFormData(formDataToSend);
+      const response = await axios.post(
+        `${labBaseUrl}api/v1/lab-orders/create`,
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        alert("Dental lab order created successfully!");
+        setIsOpen(false);
+        setFormData({
+          vendor: "",
+          dentist: "",
+          patientName: "",
+          deliveryDate: "",
+          note: "",
+          price: "",
+          appointmentId: "",
+        });
+        setFiles([]);
+        setSearch("");
+
+        // Refresh the orders list and stats
+        fetchStats();
+        setCurrentCursorIndex(0);
+        setCursors([null]);
+      }
+    } catch (error) {
+      console.error("Error creating order:", error);
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error instanceof Error
+        ? error.message
+        : "Unknown error occurred";
+      alert("Error creating order: " + errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch stats function
+  const fetchStats = async () => {
+    try {
+      const statsResponse = await axios.get(
+        `${labBaseUrl}api/v1/lab-orders/lab-stats/${clinicId}`
+      );
+
+      setLabOrders({
+        totalLabs: statsResponse.data.totalLabs,
+        pendingOrders: statsResponse.data.pendingCount,
+        completedOrders: statsResponse.data.completedCount,
+        totalOrders: statsResponse.data.totalOrders,
+      });
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    }
+  };
+
+  // Fetch stats on mount
+  useEffect(() => {
     fetchStats();
   }, [clinicId]);
 
@@ -112,39 +249,27 @@ export default function LabOrdersPage() {
           limit: pageSize,
         };
 
-        // ✅ Add cursor only if not the first page
         if (cursors[currentCursorIndex]) {
           params.cursor = cursors[currentCursorIndex];
         }
 
-        // ✅ Status filter
         if (selectedStatus !== "all") {
           params.status = selectedStatus;
         }
 
-        // ✅ Search
         if (searchQuery.trim()) {
           params.search = searchQuery.trim();
         }
-
-        console.log("API params:", params);
 
         const response = await axios.get(
           `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
           { params }
         );
 
-        const fullURL = `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}?${new URLSearchParams(
-          params
-        ).toString()}`;
-        console.log("Final URL:", fullURL);
+        const { hasNextPage, nextCursor } = response.data;
 
-        const {  hasNextPage, nextCursor } = response.data;
-        console.log("API response:", response.data);
-        // ✅ Set the loaded data
         setLabData(response.data);
 
-        // ✅ Store next cursor only once
         if (hasNextPage && nextCursor) {
           setCursors((prev) => {
             const trimmed = prev.slice(0, currentCursorIndex + 1);
@@ -167,13 +292,11 @@ export default function LabOrdersPage() {
     fetchOrders();
   }, [clinicId, selectedStatus, searchQuery, pageSize, currentCursorIndex]);
 
-  // Reset to first page when filters change
   const handleStatusChange = (status: string) => {
     setSelectedStatus(status);
-    setCursors([""]);
+    setCursors([null]);
     setCurrentCursorIndex(0);
 
-    // Update URL
     const newParams = new URLSearchParams(searchParams);
     if (status === "all") {
       newParams.delete("status");
@@ -186,10 +309,9 @@ export default function LabOrdersPage() {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-    setCursors([""]);
+    setCursors([null]);
     setCurrentCursorIndex(0);
 
-    // Update URL
     const newParams = new URLSearchParams(searchParams);
     if (value.trim()) {
       newParams.set("search", value.trim());
@@ -224,6 +346,33 @@ export default function LabOrdersPage() {
     }
   };
 
+  const getVendor = async () => {
+    try {
+      const res = await axios.get(
+        `${clinicInventoryBaseUrl}/api/v1/clinicProduct/clinic/labs/${clinicId}`
+      );
+      setLabName(res.data.labs);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const getDoctors = async () => {
+    try {
+      const res = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/active-doctors?clinicId=${clinicId}`
+      );
+      setDoctors(res.data.doctors);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    getVendor();
+    getDoctors();
+  }, [clinicId]);
+
   const stats = [
     {
       label: "Total Orders",
@@ -255,7 +404,6 @@ export default function LabOrdersPage() {
     },
   ];
 
-  // Calculate display info
   const startItem = currentCursorIndex * pageSize + 1;
   const endItem = startItem + (labData?.labOrders?.length || 0) - 1;
 
@@ -284,13 +432,13 @@ export default function LabOrdersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6 ">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex flex-col rounded-xl md:flex-row md:items-center justify-between gap-4 bg-muted/60 p-6 rounded-2xl shadow-sm border border-gray-100"
+          className="flex flex-col rounded-xl md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
         >
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
@@ -300,7 +448,10 @@ export default function LabOrdersPage() {
               Manage and monitor all laboratory orders
             </p>
           </div>
-          <button className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-medium shadow hover:shadow-md hover:from-blue-700 hover:to-blue-600 transition-all">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-secondary to-blue-500 text-white rounded-xl font-medium shadow hover:shadow-md hover:from-blue-700 hover:to-blue-600 transition-all"
+          >
             <Plus className="w-4 h-4" />
             Create Order
           </button>
@@ -317,9 +468,9 @@ export default function LabOrdersPage() {
             <motion.div
               key={idx}
               whileHover={{ scale: 1.03 }}
-              className="bg-muted/60 rounded-xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-100"
+              className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-100"
             >
-              <div className="flex items-center justify-between ">
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm">{stat.label}</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -337,19 +488,15 @@ export default function LabOrdersPage() {
         </motion.div>
 
         {/* Filters & Search */}
-        <div
-          className="bg-muted/60 border border-gray-100 roroundedunded-2xl p-5 shadow-sm rounded-xl"
-          style={{ padding: "5px" }}
-        >
+        <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
-              {/* <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" /> */}
               <input
                 type="text"
                 placeholder="Search by patient name, order ID, or test..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="w-full h-10 pl-10 pr-4 bg-muted/60 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                className="w-full h-10 pl-10 pr-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
               />
             </div>
             <button className="inline-flex items-center gap-2 px-4 h-10 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all">
@@ -376,7 +523,7 @@ export default function LabOrdersPage() {
                   disabled={isLoading}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     selectedStatus === status
-                      ? "bg-blue-600 text-secondary"
+                      ? "bg-blue-600 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
@@ -389,7 +536,7 @@ export default function LabOrdersPage() {
         </div>
 
         {/* Orders Table */}
-        <div className="bg-muted/60 border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table
               className="min-w-full w-full"
@@ -406,14 +553,13 @@ export default function LabOrdersPage() {
                     Date
                   </th>
                   <th className="text-center px-6 py-3 font-medium">Status</th>
-                  {/* <th className="text-right px-6 py-3 font-medium">Actions</th> */}
                 </tr>
               </thead>
 
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center">
+                    <td colSpan={5} className="py-12 text-center">
                       <Loader2 className="animate-spin w-8 h-8 mx-auto text-blue-600" />
                       <p className="text-gray-500 mt-2">Loading orders...</p>
                     </td>
@@ -427,10 +573,7 @@ export default function LabOrdersPage() {
                       transition={{ delay: i * 0.05 }}
                       className="border-b border-gray-100 hover:bg-blue-50 transition-all"
                     >
-                      <td
-                        className="px-6 py-4 text-sm font-medium text-gray-800"
-                        style={{ padding: "20px 0px" }}
-                      >
+                      <td className="px-6 py-4 text-sm font-medium text-gray-800">
                         {order.patientname || "N/A"}
                       </td>
                       <td className="hidden md:table-cell px-6 py-4 text-sm text-gray-600">
@@ -444,7 +587,7 @@ export default function LabOrdersPage() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span
-                          className={`inline-block px-3 py-1 C text-xs font-medium ${
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
                             order.status === "completed"
                               ? "bg-green-100 text-green-700"
                               : order.status === "pending"
@@ -457,16 +600,11 @@ export default function LabOrdersPage() {
                           {order.status}
                         </span>
                       </td>
-                      {/* <td className="text-right px-6 py-4">
-                        <button className="text-blue-600 hover:text-blue-800 transition">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </td> */}
                     </motion.tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-gray-500">
+                    <td colSpan={5} className="py-12 text-center text-gray-500">
                       <FileText className="w-12 h-12 mx-auto text-gray-300 mb-2" />
                       <p>No lab orders found</p>
                     </td>
@@ -476,12 +614,9 @@ export default function LabOrdersPage() {
             </table>
           </div>
 
-          {/* Pagination - Cursor Based */}
+          {/* Pagination */}
           {labData && labData.labOrders.length > 0 && (
-            <div
-              className="border-t border-gray-200 px-6 py-4 flex items-center justify-between"
-              style={{ padding: "10px" }}
-            >
+            <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <p className="text-sm text-gray-600">
                   Showing{" "}
@@ -533,6 +668,538 @@ export default function LabOrdersPage() {
           )}
         </div>
       </div>
+
+      {/* Create Order Modal */}
+      {isOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "16px",
+            overflow: "hidden",
+          }}
+          onClick={() => setIsOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              boxShadow:
+                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              width: "100%",
+              maxWidth: "600px",
+              maxHeight: "90vh",
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "24px",
+                borderBottom: "1px solid #e5e7eb",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                position: "sticky",
+                top: 0,
+                backgroundColor: "white",
+                zIndex: 10,
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "700",
+                  color: "#111827",
+                  margin: 0,
+                }}
+              >
+                Create Dental Lab Order
+              </h2>
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{
+                  padding: "8px",
+                  border: "none",
+                  backgroundColor: "transparent",
+                  cursor: "pointer",
+                  borderRadius: "6px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#f3f4f6")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "transparent")
+                }
+              >
+                <X size={24} color="#6b7280" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} style={{ padding: "24px" }}>
+              <div style={{ display: "grid", gap: "20px" }}>
+                {/* Vendor */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <Building2 size={18} color="#6b7280" />
+                    Lab
+                  </label>
+                  <select
+                    name="vendor"
+                    value={formData.vendor}
+                    onChange={handleSelectChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <option value="">Select Lab</option>
+                    {labName.map((lab: any) => (
+                      <option key={lab._id} value={lab._id}>
+                        {lab.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Dentist */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <User size={18} color="#6b7280" />
+                    Dentist
+                  </label>
+                  <select
+                    name="dentist"
+                    value={formData.dentist}
+                    onChange={handleSelectChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <option value="">Select Doctor</option>
+                    {doctors.map((doctor: any) => (
+                      <option key={doctor._id} value={doctor.doctor._id}>
+                        {doctor?.doctor?.name || ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ position: "relative" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <User size={18} color="#6b7280" />
+                    Patient Name *
+                  </label>
+
+                  <input
+                    type="text"
+                    name="patientName"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setFormData((prev) => ({
+                        ...prev,
+                        patientName: e.target.value,
+                      }));
+                    }}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                    placeholder="Enter patient name"
+                  />
+
+                  {results.length > 0 && (
+                    <ul
+                      style={{
+                        position: "absolute",
+                        top: "85px",
+                        left: 0,
+                        width: "100%",
+                        background: "#fff",
+                        border: "1px solid #ddd",
+                        borderRadius: "6px",
+                        padding: 0,
+                        margin: 0,
+                        listStyle: "none",
+                        maxHeight: "200px",
+                        overflowY: "auto",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                        zIndex: 2000,
+                      }}
+                    >
+                      {results.map((p: any) => (
+                        <li
+                          key={p._id}
+                          style={{
+                            padding: "10px",
+                            borderBottom: "1px solid #eee",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => {
+                            setSearch(p.name);
+                            setFormData((prev) => ({
+                              ...prev,
+                              patientName: p._id,
+                            }));
+                            setResults([]);
+                          }}
+                        >
+                          {p.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {loading && search.length >= 3 && (
+                    <div style={{ marginTop: "5px", fontSize: "12px" }}>
+                      Loading...
+                    </div>
+                  )}
+                </div>
+
+                {/* Appointment ID */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <FileText size={18} color="#6b7280" />
+                    Appointment ID *
+                  </label>
+                  <input
+                    type="text"
+                    name="appointmentId"
+                    value={formData.appointmentId}
+                    onChange={handleInputChange}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                    placeholder="Enter appointment ID"
+                  />
+                </div>
+
+                {/* Delivery Date */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <Calendar size={18} color="#6b7280" />
+                    Delivery Date *
+                  </label>
+                  <input
+                    type="date"
+                    name="deliveryDate"
+                    value={formData.deliveryDate}
+                    onChange={handleInputChange}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                  />
+                </div>
+
+                {/* Price */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <DollarSign size={18} color="#6b7280" />
+                    Price *
+                  </label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Note */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <FileText size={18} color="#6b7280" />
+                    Note *
+                  </label>
+                  <textarea
+                    name="note"
+                    value={formData.note}
+                    onChange={handleInputChange}
+                    required
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      resize: "vertical",
+                      boxSizing: "border-box",
+                      fontFamily: "inherit",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                    placeholder="Enter order notes or special instructions"
+                  />
+                </div>
+
+                {/* File Upload */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <Upload size={18} color="#6b7280" />
+                    Attachments
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      backgroundColor: "white",
+                      cursor: "pointer",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {files.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        fontSize: "12px",
+                        color: "#6b7280",
+                      }}
+                    >
+                      {files.length} file(s) selected
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: "32px",
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  style={{
+                    padding: "10px 20px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "8px",
+                    backgroundColor: "white",
+                    color: "#374151",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "#f9fafb")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "white")
+                  }
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: "10px 20px",
+                    border: "none",
+                    borderRadius: "8px",
+                    backgroundColor: loading ? "#9ca3af" : "#3b82f6",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: loading ? "not-allowed" : "pointer",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    !loading &&
+                    (e.currentTarget.style.backgroundColor = "#2563eb")
+                  }
+                  onMouseLeave={(e) =>
+                    !loading &&
+                    (e.currentTarget.style.backgroundColor = "#3b82f6")
+                  }
+                >
+                  {loading ? "Creating..." : "Create Order"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
