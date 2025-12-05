@@ -9,8 +9,11 @@ import {
   Search,
   ChevronRight,
   Plus,
+  AlertCircleIcon
+
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
+import { Card, CardContent, CardHeader, CardTitle, } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import axios from "axios";
@@ -27,13 +30,21 @@ import {
   SelectValue,
 } from "./ui/select";
 import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "./ui/dialog";
 
 interface Appointment {
   _id: string;
   appointmentDate: string;
   appointmentTime: string;
   status: string;
-  opNumber: string;
+ opNumber?: number; 
+   rescheduledFromOp?: number;
   patientId: {
     _id: string;
     name: string;
@@ -49,7 +60,7 @@ interface FullStatus {
   completedAppointments: number;
   pendingAppointments: number;
   cancelledAppointments: number;
-   tomorrowRescheduleCount?: number;
+  tomorrowRescheduleCount?: number;
 }
 
 interface Patient {
@@ -67,6 +78,19 @@ interface DoctorAvailability {
   availableSlots: string[];
   department: string;
 }
+type ResDoctor = {
+  doctorId: string;
+  doctor: {
+    name: string;
+  };
+  roleInClinic: string;
+  availability: {
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    isActive: boolean;
+  }[];
+};
 
 export function AppointmentsOverview() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -75,7 +99,6 @@ export function AppointmentsOverview() {
     completedAppointments: 0,
     pendingAppointments: 0,
     cancelledAppointments: 0,
-    
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -124,6 +147,30 @@ export function AppointmentsOverview() {
   const [currentCursor, setCurrentCursor] = useState(null);
   const [pageCursors, setPageCursors] = useState([]); // store cursors for pages
   const [currentPageIndex, setCurrentPageIndex] = useState(-1);
+
+  // -------------------- RESCHEDULE STATES --------------------
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleAppointmentId, setRescheduleAppointmentId] = useState("");
+
+  const [resDepartments, setResDepartments] = useState<string[]>([]);
+  const [resSelectedDepartment, setResSelectedDepartment] = useState("");
+
+  const [resDoctors, setResDoctors] = useState<ResDoctor[]>([]);
+
+  const [resSelectedDoctorId, setResSelectedDoctorId] = useState("");
+
+  const [resDoctorAvailability, setResDoctorAvailability] = useState<string[]>(
+    []
+  );
+
+  const [resNewDate, setResNewDate] = useState("");
+  const [resNewTime, setResNewTime] = useState("");
+
+  const [resLoading, setResLoading] = useState(false);
+  const [missingOps, setMissingOps] = useState([]);
+  const [openMissingOps, setOpenMissingOps] = useState(false);
+
+
 
   const { clinicId } = useParams();
   const today = new Date();
@@ -175,7 +222,7 @@ export function AppointmentsOverview() {
 
       const data = response.data || {};
       const newAppointments = data.data || [];
-
+      console.log("helloookojidjwjdx9e8", response.data);
       // Replace current appointments
       setAppointments(newAppointments);
       setNextCursor(data.nextCursor || null);
@@ -200,6 +247,8 @@ export function AppointmentsOverview() {
         : 0;
       const end = start + newAppointments.length - 1;
       setShowingRange(`${start}-${end} of ${data.totalAppointments || 0}`);
+      setMissingOps(data.missingOps || []);
+
 
       // Save cursor for this page
       if (addToCursors && cursor) {
@@ -390,17 +439,13 @@ export function AppointmentsOverview() {
       }
     };
 
-    fetchDepartments(); // ✅ call the async function
-  }, [clinicId]); // ✅ re-run if clinicId changes
-
-  // Step 2: Fetch Doctor Availability
+    fetchDepartments();
+  }, [clinicId]);
   const handleDepartmentSelect = async (department: string) => {
     setSelectedDepartment(department);
 
     try {
       setAvailabilityLoading(true);
-
-      // ✅ Fetch only doctors of the selected department from this clinic
       const response = await axios.get(
         `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
         {
@@ -413,7 +458,6 @@ export function AppointmentsOverview() {
       const doctors = response.data?.doctors || [];
 
       if (doctors.length > 0) {
-        // ✅ Filter only those whose specialization/department matches the selected one
         const filteredDoctors = doctors.filter((doc: any) => {
           const specializations = doc.specialization || [];
           return specializations.some(
@@ -467,35 +511,35 @@ export function AppointmentsOverview() {
     setSelectedDoctor(doctorId);
     setSelectedDoctorName(doctorName);
   };
-const forceBookAppointment = async () => {
-  try {
-    setLoading(true);
+  const forceBookAppointment = async () => {
+    try {
+      setLoading(true);
 
-    const payload = {
-      userId: clinicId,
-      userRole: "admin",
-      patientId: foundPatient?._id,
-      doctorId: selectedDoctor,
-      department: selectedDepartment,
-      appointmentDate,
-      appointmentTime: selectedTime,
-      forceBooking: true, // ⬅️ IMPORTANT !
-    };
+      const payload = {
+        userId: clinicId,
+        userRole: "admin",
+        patientId: foundPatient?._id,
+        doctorId: selectedDoctor,
+        department: selectedDepartment,
+        appointmentDate,
+        appointmentTime: selectedTime,
+        forceBooking: true,
+      };
 
-    const res = await axios.post(
-      `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
-      payload
-    );
+      const res = await axios.post(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
+        payload
+      );
 
-    alert("Forced Appointment Booked Successfully");
-    handleCloseModal();
-    fetchAppointments();
-  } catch (error) {
-    alert("Force booking failed");
-  } finally {
-    setLoading(false);
-  }
-};
+      alert("Forced Appointment Booked Successfully");
+      handleCloseModal();
+      fetchAppointments();
+    } catch (error) {
+      alert("Force booking failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Final Submit
   const handleSubmit = async () => {
@@ -520,66 +564,172 @@ const forceBookAppointment = async () => {
       return;
     }
 
-   try {
-  setLoading(true);
+    try {
+      setLoading(true);
 
-  const payload = {
-    userId: clinicId,
-    userRole: "admin",
-    patientId: foundPatient._id,
-    doctorId: selectedDoctor,
-    department: selectedDepartment,
-    appointmentDate,
-    appointmentTime: selectedTime,
-  };
+      const payload = {
+        userId: clinicId,
+        userRole: "admin",
+        patientId: foundPatient._id,
+        doctorId: selectedDoctor,
+        department: selectedDepartment,
+        appointmentDate,
+        appointmentTime: selectedTime,
+      };
 
-  const res = await axios.post(
-    `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
-    payload
-  );
+      const res = await axios.post(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
+        payload
+      );
 
-  alert(res.data.message);
-  handleCloseModal();
-  fetchAppointments();
-} catch (error: any) {
+      alert(res.data.message);
+      handleCloseModal();
+      fetchAppointments();
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        const confirmForce = window.confirm(
+          `${error.response.data.message}\n\nDo you want to force book with a different doctor?`
+        );
 
-  if (axios.isAxiosError(error) && error.response?.status === 409) {
-    const confirmForce = window.confirm(
-      `${error.response.data.message}\n\nDo you want to force book with a different doctor?`
-    );
+        if (confirmForce) {
+          return forceBookAppointment(); // ⬅️ we call a new function
+        }
 
-    if (confirmForce) {
-      return forceBookAppointment(); // ⬅️ we call a new function
+        return; // stop normal flow
+      }
+
+      alert(
+        error.response?.data?.message ||
+          "Failed to book appointment. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return; // stop normal flow
-  }
-
-  alert(
-    error.response?.data?.message ||
-      "Failed to book appointment. Please try again."
-  );
-} finally {
+ const handleCloseModal = () => {
+  setOpen(false);
+  setCurrentStep(1);
+  setFoundPatient(null);
+  setPatientSearchQuery("");
+  setSelectedDepartment("");
+  setSelectedDoctor("");
+  setSelectedDoctorName("");
+  setSelectedTime("");
+  setAppointmentDate("");
+  setDoctorAvailability([]);
+  
+  // ✅ ADD THESE MISSING RESETS:
+  setAvailabilityLoading(false);
   setLoading(false);
-}
-
-  };
-
-  const handleCloseModal = () => {
-    setOpen(false);
-    setCurrentStep(1);
-    setFoundPatient(null);
-    setPatientSearchQuery("");
-    setSelectedDepartment("");
-    setSelectedDoctor("");
-    setSelectedDoctorName("");
-    setSelectedTime("");
-    setAppointmentDate("");
-    setDoctorAvailability([]);
-  };
+  setRegistrationOpen(false);
+  setNewPatient({
+    name: "",
+    phone: "",
+    email: "",
+    age: "",
+    gender: "",
+    conditions: "",
+    surgeries: "",
+    allergies: "",
+    familyHistory: "",
+  });
+};
 
   const canProceedToStep2 = foundPatient !== null;
   const canProceedToStep3 = canProceedToStep2 && selectedDepartment !== "";
+  // reschedule
+  const fetchRescheduleDepartments = async () => {
+    try {
+      const res = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/department/details/${clinicId}`
+      );
+      setResDepartments(res.data?.departments || []);
+    } catch (err) {
+      console.log("Err loading departments", err);
+    }
+  };
+  const fetchRescheduleDoctors = async (dept: string) => {
+    setResSelectedDepartment(dept);
+
+    try {
+      const res = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
+        { params: { clinicId, department: dept } }
+      );
+
+      const filtered = (res.data?.doctors || []).filter((d: any) =>
+        d.specialization?.some(
+          (s: string) => s.toLowerCase() === dept.toLowerCase()
+        )
+      );
+
+      setResDoctors(filtered);
+    } catch (err) {
+      console.log("Error fetching doctors", err);
+      setResDoctors([]);
+    }
+  };
+  const selectRescheduleDoctor = (doctorId: string) => {
+    setResSelectedDoctorId(doctorId);
+
+    const doc = resDoctors.find((d) => d.doctorId === doctorId);
+    const slots =
+      doc?.availability
+        ?.filter((a) => a.isActive)
+        ?.map((a) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`) || [];
+
+    setResDoctorAvailability(slots);
+  };
+
+ const submitReschedule = async () => {
+  if (!resSelectedDoctorId || !resNewDate || !resNewTime) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  try {
+    setResLoading(true);
+
+    const payload = {
+      doctorId: resSelectedDoctorId,
+      newDate: resNewDate,
+      newTime: resNewTime,
+      userId: clinicId,
+      userRole: "admin",
+      forceReschedule: true,
+    };
+
+    const res = await axios.patch(
+      `${patientServiceBaseUrl}/api/v1/patient-service/appointment/reschedule/${rescheduleAppointmentId}`,
+      payload
+    );
+
+    alert(res.data.message);
+    
+    // ✅ PROPER CLEANUP
+    resetRescheduleForm();
+    setRescheduleAppointmentId(""); // ✅ ADD THIS
+    setRescheduleOpen(false);
+    
+    fetchAppointments(); // Refresh list
+  } catch (err: any) {
+    alert(err.response?.data?.message || "Failed to reschedule");
+  } finally {
+    setResLoading(false);
+  }
+};
+  useEffect(() => {
+    document.body.style.overflow = rescheduleOpen ? "hidden" : "auto";
+  }, [rescheduleOpen]);
+
+  const resetRescheduleForm = () => {
+    setResSelectedDepartment("");
+    setResSelectedDoctorId("");
+    setResDoctorAvailability([]);
+    setResNewDate("");
+    setResNewTime("");
+  };
 
   return (
     <div className="space-y-6">
@@ -1247,21 +1397,132 @@ const forceBookAppointment = async () => {
           </CardContent>
         </Card>
 
-       <Card className="hover:shadow-md bg-muted/60 transition-shadow">
-  <CardContent className="p-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm text-muted-foreground">Tomorrow’s Reschedules</p>
-        <p className="text-3xl font-bold text-primary">
-          {fullStatus?.tomorrowRescheduleCount || 0}
-        </p>
+        <Card className="hover:shadow-md bg-muted/60 transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Tomorrow’s Reschedules
+                </p>
+                <p className="text-3xl font-bold text-primary">
+                  {fullStatus?.tomorrowRescheduleCount || 0}
+                </p>
+              </div>
+              <Calendar className="w-8 h-8 text-primary/60" />
+            </div>
+          </CardContent>
+        </Card>
+<div style={{ position: "relative" }}>
+  <Card
+    className="hover:shadow-md bg-muted/60 transition-shadow"
+    onClick={() => setOpenMissingOps((prev) => !prev)}
+  >
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-yellow-700 font-semibold">Missing OPs</p>
+          <p className="text-3xl font-bold text-yellow-800">
+            {missingOps?.length || 0}
+          </p>
+        </div>
+        <AlertCircle className="w-8 h-8 text-yellow-700/60" />
       </div>
-      <Calendar className="w-8 h-8 text-primary/60" />
+    </CardContent>
+  </Card>
+
+  {openMissingOps && (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: "absolute",
+        top: "100%", // dropdown appears below the card
+        left: 0,
+        width: "100%",
+        maxWidth: "400px",
+        backgroundColor: "white",
+        borderRadius: "12px",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+        padding: "16px",
+        zIndex: 99999, // very high z-index
+      }}
+    >
+      <h2
+        style={{
+          fontSize: "1.125rem",
+          fontWeight: 600,
+          marginBottom: "8px",
+          color: "#b45309", // yellow-800
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}
+      >
+        ⚠ Missing OP Numbers
+      </h2>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
+        {missingOps?.sort((a, b) => a - b).map((op) => (
+          <span
+            key={op}
+            style={{
+              padding: "4px 12px",
+              backgroundColor: "#fef3c7", // yellow-200
+              color: "#78350f", // yellow-900
+              borderRadius: "9999px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+            }}
+          >
+            OP #{op}
+          </span>
+        ))}
+      </div>
+      <p style={{ fontSize: "0.75rem", color: "#b45309" }}>
+        These OP numbers are missing from today’s appointments.
+      </p>
     </div>
-  </CardContent>
-</Card>
+  )}
+</div>
+
+
 
       </div>
+       {/* {openMissingOps && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(6px)",
+          }}
+          onClick={() => setOpenMissingOps(false)}
+        >
+          <div
+            className="bg-white rounded-xl p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold mb-4 text-yellow-800 flex items-center gap-2">
+              ⚠ Missing OP Numbers
+            </h2>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {missingOps?.sort((a, b) => a - b).map((op) => (
+                <span
+                  key={op}
+                  className="px-3 py-1 bg-yellow-200 text-yellow-900 rounded-full text-sm font-medium"
+                >
+                  OP #{op}
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-yellow-700">
+              These OP numbers are missing from today’s appointments.
+            </p>
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setOpenMissingOps(false)} variant="outline" size="sm">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )} */}
 
       {/* Search Filters */}
       <div className="flex gap-3 items-center ">
@@ -1288,10 +1549,45 @@ const forceBookAppointment = async () => {
         >
           <Calendar className="w-4 h-4 mr-2" /> Search
         </Button>
-        <Button onClick={handleClearFilters} variant="outline" className="bg-muted/60">
+        <Button
+          onClick={handleClearFilters}
+          variant="outline"
+          className="bg-muted/60"
+        >
           Clear
         </Button>
       </div>
+{/* ⚠ Missing OPs Section */}
+{/* {missingOps && missingOps.length > 0 && (
+  <Card className="mb-4 bg-yellow-50 border-yellow-200 border">
+    <CardHeader>
+      <div className="flex items-center gap-2">
+        <span className="text-yellow-700 text-lg font-semibold">⚠ Missing OP Numbers</span>
+        <span className="text-sm text-yellow-800">
+          ({missingOps.length} missing)
+        </span>
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="flex flex-wrap gap-2">
+        {missingOps.sort((a, b) => a - b).map((op) => (
+          <span
+            key={op}
+            className="px-3 py-1 bg-yellow-200 text-yellow-900 rounded-full text-sm font-medium shadow-sm hover:bg-yellow-300 cursor-default transition-colors"
+            title={`OP #${op} is missing`}
+          >
+            OP #{op}
+          </span>
+        ))}
+      </div>
+      <p className="text-xs text-yellow-800 mt-2">
+        These OP numbers belong to appointments rescheduled to future dates or not yet assigned.
+      </p>
+    </CardContent>
+  </Card>
+)} */}
+
+
 
       {/* Appointments List */}
       <Card className="bg-muted/60">
@@ -1318,132 +1614,497 @@ const forceBookAppointment = async () => {
             )}
           </CardTitle>
         </CardHeader>
-   <CardContent className="space-y-4">
-  {appointments.length === 0 && !loading ? (
-    <div className="text-center py-8 text-muted-foreground">
-      <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-      <p>No appointments scheduled for the selected criteria</p>
-    </div>
-  ) : (
-    <>
-      {appointments.map((appointment) => (
-        <div
-          key={appointment._id}
-          className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
-            appointment.status === "cancelled"
-              ? "bg-red-50 hover:bg-red-100 border border-red-200"
-              : "bg-green-50 hover:bg-green-100 border border-green-200"
-          }`}
-        >
-          <div className="flex flex-col w-full">
-            <div className="flex items-center gap-3 mb-2">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <p className="font-semibold text-lg">
-                {appointment.patientId?.name}
-              </p>
+        <CardContent className="space-y-4">
+          {appointments.length === 0 && !loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>No appointments scheduled for the selected criteria</p>
+            </div>
+          ) : (
+            <>
+              {appointments.map((appointment) => (
+                <div
+                  key={appointment._id}
+                  className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
+                    appointment.status === "cancelled"
+                      ? "bg-red-50 hover:bg-red-100 border border-red-200"
+                      : "bg-green-50 hover:bg-green-100 border border-green-200"
+                  }`}
+                >
+                  <div className="flex flex-col w-full">
+                    <div className="flex items-center gap-3 mb-2">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <p className="font-semibold text-lg">
+                        {appointment.patientId?.name}
+                      </p>
 
-              {/* 🟡 Inline styled badge */}
-              <span
-                style={{
-                  backgroundColor:
-                    appointment.status === "confirmed"
-                      ? "#22c55e" // green
-                      : appointment.status === "cancelled"
-                      ? "#ef4444" // red
-                      : appointment.status === "rescheduled" ||
+                      {/* 🟡 Inline styled badge */}
+                      <span
+                        style={{
+                          backgroundColor:
+                            appointment.status === "confirmed"
+                              ? "#22c55e" // green
+                              : appointment.status === "cancelled"
+                              ? "#ef4444" // red
+                              : appointment.status === "rescheduled" ||
+                                appointment.status === "needs_reschedule"
+                              ? "#facc15" // yellow
+                              : "#9ca3af", // gray
+                          color:
+                            appointment.status === "rescheduled" ||
+                            appointment.status === "needs_reschedule"
+                              ? "#000"
+                              : "#fff",
+                          fontWeight: "bold",
+                          borderRadius: "8px",
+                          padding: "4px 10px",
+                          fontSize: "0.75rem",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {appointment.status === "rescheduled" ||
                         appointment.status === "needs_reschedule"
-                      ? "#facc15" // yellow
-                      : "#9ca3af", // gray
-                  color:
-                    appointment.status === "rescheduled" ||
-                    appointment.status === "needs_reschedule"
-                      ? "#000"
-                      : "#fff",
-                  fontWeight: "bold",
-                  borderRadius: "8px",
-                  padding: "4px 10px",
-                  fontSize: "0.75rem",
-                  textTransform: "uppercase",
+                          ? "NEED RESCHEDULE"
+                          : appointment.status.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-6">
+                        <span className="text-sm font-medium">
+                          OP No:{" "}
+                         <span
+  style={{
+    backgroundColor: "#facc15",
+    color: "#000",
+    fontWeight: "bold",
+    borderRadius: "8px",
+    padding: "4px 10px",
+    fontSize: "0.75rem",
+    textTransform: "uppercase",
+  }}
+>
+  {appointment.opNumber
+    ? `OP #${appointment.opNumber}`
+    : appointment.rescheduledFromOp
+    ? `Rescheduled OP #${appointment.rescheduledFromOp}`
+    : "Pending OP"}
+</span>
+
+                        </span>
+                        <span className="text-sm font-medium">
+                          Patient ID:{" "}
+                          <span className="font-bold">
+                            {appointment.patientId?.patientUniqueId}
+                          </span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {appointment.patientId?.phone}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-primary">
+                          {appointment.appointmentTime}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {appointment.appointmentDate}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ✅ Dynamic button rendering */}
+                  {appointment.status !== "cancelled" && (
+                    <div className="flex items-start gap-2 ml-4">
+                      {appointment.status === "needs_reschedule" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent event bubbling
+                            console.log(
+                              "🔥 Reschedule button clicked for:",
+                              appointment._id
+                            );
+                            setRescheduleAppointmentId(appointment._id);
+                            setRescheduleOpen(true);
+                            fetchRescheduleDepartments();
+                          }}
+                        >
+                          Reschedule
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm">
+                          Edit
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Load More */}
+              {nextCursor && (
+                <div className="flex justify-center mt-4 gap-2">
+                  <Button
+                    onClick={handlePrevPage}
+                    disabled={currentPageIndex < 0 || loading}
+                    variant="outline"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    onClick={handleNextPage}
+                    disabled={!nextCursor || loading}
+                    variant="outline"
+                  >
+                    {loading ? "Loading..." : "Next"}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+      {rescheduleOpen && (
+        <>
+          {/* Prevent dropdown clipping */}
+          <div style={{ position: "relative", zIndex: 9999999 }}>
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 999999,
+                background: "rgba(0, 0, 0, 0.5)",
+                backdropFilter: "blur(6px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "20px",
+              }}
+            >
+              {/* Modal Box */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "12px",
+                  width: "100%",
+                  maxWidth: "520px",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  boxShadow: "0px 4px 24px rgba(0,0,0,0.15)",
+                  animation: "fadeIn 0.2s ease-out",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
-                {appointment.status === "rescheduled" ||
-                appointment.status === "needs_reschedule"
-                  ? "NEED RESCHEDULE"
-                  : appointment.status.toUpperCase()}
-              </span>
-            </div>
+                {/* Header */}
+                <div
+                  style={{
+                    padding: "16px 24px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderBottom: "1px solid #e5e7eb",
+                    position: "sticky",
+                    top: 0,
+                    background: "white",
+                    zIndex: 20,
+                  }}
+                >
+                  <h2 style={{ margin: 0, fontSize: "19px", fontWeight: 600 }}>
+                    Reschedule Appointment
+                  </h2>
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-6">
-                <span className="text-sm font-medium">
-                  OP No:{" "}
-                  <span className="font-bold">{appointment.opNumber}</span>
-                </span>
-                <span className="text-sm font-medium">
-                  Patient ID:{" "}
-                  <span className="font-bold">
-                    {appointment.patientId?.patientUniqueId}
-                  </span>
-                </span>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    {appointment.patientId?.phone}
-                  </span>
+                  <button
+                    onClick={() => {
+                      resetRescheduleForm();
+                      setRescheduleOpen(false);
+                      setRescheduleAppointmentId("");
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "22px",
+                    }}
+                  >
+                    ✕
+                  </button>
                 </div>
-              </div>
 
-              <div className="text-right">
-                <p className="text-sm font-semibold text-primary">
-                  {appointment.appointmentTime}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {appointment.appointmentDate}
-                </p>
+                {/* Body */}
+                <div
+                  style={{
+                    padding: "24px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "20px",
+                  }}
+                >
+                  {/* Department */}
+                 <div>
+  <label
+    style={{
+      display: "block",
+      marginBottom: "6px",
+      fontWeight: 500,
+    }}
+  >
+    Department *
+  </label>
+
+ <Select
+  value={resSelectedDepartment}
+  onValueChange={fetchRescheduleDoctors}
+>
+  <SelectTrigger
+    style={{
+      width: "100%",
+      height: "48px",
+      borderRadius: "8px",
+      border: "1px solid #d1d5db",
+      padding: "10px",
+      background: "#fff",
+    }}
+  >
+    <SelectValue placeholder="Select Department" />
+  </SelectTrigger>
+
+  <SelectContent
+    className="w-full"
+    style={{
+      width: "var(--radix-select-trigger-width)",
+      zIndex: 999999999,
+      background: "white",
+      borderRadius: "8px",
+      border: "1px solid #d1d5db",
+      marginTop: "1px",
+      boxShadow: "0px 4px 20px rgba(0,0,0,0.15)",
+    }}
+  >
+    {resDepartments.map((dept) => (
+      <SelectItem
+        key={dept}
+        value={dept}
+        style={{
+          height: "48px",
+          display: "flex",
+          alignItems: "center",
+          paddingLeft: "10px",
+          fontSize: "14px",
+        }}
+      >
+        {dept}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+</div>
+
+
+                  {/* Doctor */}
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Doctor *
+                    </label>
+
+                    <Select
+                      value={resSelectedDoctorId}
+                      onValueChange={selectRescheduleDoctor}
+                      disabled={!resSelectedDepartment}
+                    >
+                      <SelectTrigger
+                        style={{
+                          width:"100%",
+                          height: "48px",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          padding: "10px",
+                          background: "#fff",
+                        }}
+                      >
+                        <SelectValue placeholder="Select Doctor" />
+                      </SelectTrigger>
+<SelectContent
+  style={{
+    zIndex: 999999999,
+    background: "white",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
+    boxShadow: "0px 4px 20px rgba(0,0,0,0.15)",
+    width: "var(--radix-select-trigger-width)",
+    overflow: "hidden",
+    marginTop:"1px"
+  }}
+>
+  {resDoctors.map((doc, index) => (
+    <SelectItem
+      key={doc.doctorId}
+      value={doc.doctorId}
+      style={{
+        height: "44px",
+        display: "flex",
+        alignItems: "center",
+        paddingLeft: "12px",
+        fontSize: "15px",
+        cursor: "pointer",
+        background: "white",
+        borderBottom: index !== resDoctors.length - 1 ? "1px solid #e5e7eb" : "none",
+        transition: "background 0.15s ease, color 0.15s ease",
+      }}
+      onMouseEnter={(e:any) => (e.currentTarget.style.background = "#f3f4f6")}
+      onMouseLeave={(e:any) => (e.currentTarget.style.background = "white")}
+    >
+      {doc.doctor?.name} ({doc.roleInClinic})
+    </SelectItem>
+  ))}
+</SelectContent>
+
+                    </Select>
+                  </div>
+
+                  {/* Availability */}
+                  {resDoctorAvailability.length > 0 && (
+                    <div
+                      style={{
+                        padding: "14px",
+                        background: "#eaffea",
+                        border: "1px solid #c5e6c7",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <strong style={{ fontSize: "14px" }}>
+                        Doctor Availability:
+                      </strong>
+                      {resDoctorAvailability.map((slot, i) => (
+                        <p
+                          key={i}
+                          style={{ margin: "3px 0", fontSize: "14px" }}
+                        >
+                          • {slot}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Date Picker */}
+                  <div>
+                    <label
+                      style={{
+                        fontWeight: 500,
+                        marginBottom: "6px",
+                        display: "block",
+                      }}
+                    >
+                      New Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={resNewDate}
+                      onChange={(e) => setResNewDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      style={{
+                        width: "100%",
+                        height: "48px",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        border: "1px solid #d1d5db",
+                      }}
+                    />
+                  </div>
+
+                  {/* Time Picker */}
+                  <div>
+                    <label
+                      style={{
+                        fontWeight: 500,
+                        marginBottom: "6px",
+                        display: "block",
+                      }}
+                    >
+                      New Time *
+                    </label>
+                    <input
+                      type="time"
+                      value={resNewTime}
+                      onChange={(e) => setResNewTime(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: "48px",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        border: "1px solid #d1d5db",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div
+                  style={{
+                    borderTop: "1px solid #e5e7eb",
+                    padding: "16px 24px",
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: "12px",
+                    background: "white",
+                    position: "sticky",
+                    bottom: 0,
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      resetRescheduleForm();
+                      setRescheduleOpen(false);
+                    }}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: "8px",
+                      border: "1px solid #d1d5db",
+                      background: "white",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      submitReschedule();
+                      resetRescheduleForm();
+                    }}
+                    disabled={
+                      !resSelectedDoctorId || !resNewDate || !resNewTime
+                    }
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: "8px",
+                      background: "#2563eb",
+                      color: "white",
+                      cursor: "pointer",
+                      minWidth: "150px",
+                    }}
+                  >
+                    {resLoading ? "Rescheduling..." : "Confirm Reschedule"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-
-          {/* ✅ Dynamic button rendering */}
-          {appointment.status !== "cancelled" && (
-            <div className="flex items-start gap-2 ml-4">
-              {appointment.status === "needs_reschedule" ? (
-                <Button variant="outline" size="sm">
-                  Reschedule
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm">
-                  Edit
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
-
-      {/* Load More */}
-      {nextCursor && (
-        <div className="flex justify-center mt-4 gap-2">
-          <Button
-            onClick={handlePrevPage}
-            disabled={currentPageIndex < 0 || loading}
-            variant="outline"
-          >
-            Previous
-          </Button>
-          <Button
-            onClick={handleNextPage}
-            disabled={!nextCursor || loading}
-            variant="outline"
-          >
-            {loading ? "Loading..." : "Next"}
-          </Button>
-        </div>
+        </>
       )}
-    </>
-  )}
-</CardContent>
-      </Card>
     </div>
   );
 }

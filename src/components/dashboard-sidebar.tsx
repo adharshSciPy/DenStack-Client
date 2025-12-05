@@ -55,26 +55,26 @@ export function DashboardSidebar({
   const cartItem = useAppSelector((state) => state.cart.items);
 console.log("cart",cartItem);
 
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const response = await axios.get(
-          `${patientServiceBaseUrl}/api/v1/patient-service/appointment/clinic-appointments/${clinicId}`
-        );
+useEffect(() => {
+  const fetchAppointments = async () => {
+    try {
+      const response = await axios.get(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/clinic-appointments/${clinicId}`
+      );
 
-        // Assuming API returns an array of appointments in response.data.data
-        const appointments = response.data?.data || [];
-        setAppointmentCount(appointments.length); // Dynamic badge count
-      } catch (error) {
-        console.error("Error fetching appointments:", error);
-      }
-    };
+      const appointments = response.data?.data || [];
+      const total = response.data?.totalAppointments || appointments.length;
 
-    if (clinicId) {
-      fetchAppointments();
+      setAppointmentCount(total); // Use total from backend instead of page length
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
     }
-  }, [clinicId]);
+  };
 
+  if (clinicId) {
+    fetchAppointments();
+  }
+}, [clinicId]);
   useEffect(() => {
     const fetchClinicDetails = async () => {
       try {
