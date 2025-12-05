@@ -13,7 +13,7 @@ const quickStats = {
   todayAppointments: 24,
   monthlyRevenue: 67000,
   activeStaff: 12,
-  lowStockItems: 3,
+  lowStockItems: 3, 
   pendingLabOrders: 7
 };
 
