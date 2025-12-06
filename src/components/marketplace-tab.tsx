@@ -38,6 +38,7 @@ interface Product {
   expiryDate: string;
   createdAt: string;
   updatedAt: string;
+  addedById: string;
   __v: number;
 }
 
@@ -474,7 +475,8 @@ export function MarketplaceTab() {
         price: product.price,
         image: product.image,
         quantity: quantity,
-        stock:product.stock
+        stock:product.stock,
+        vendorId:product.addedById,
       })
     );
   };
@@ -522,7 +524,7 @@ export function MarketplaceTab() {
   const goToCart = () => {
     navigate("/cart");
   };
-
+console.log("products",selectedProduct);
   return (
     <div className="space-y-6">
       {/* PRODUCT DETAIL MODAL */}

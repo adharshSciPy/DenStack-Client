@@ -48,6 +48,7 @@ interface cart {
   quantity: number;
   _id: string;
   stock: number;
+  vendorId:string;
 }
 
 interface order {
@@ -141,11 +142,6 @@ const OrderDetailsModal = ({
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-  const [status, setStatus] = useState("PENDING");
-
-  const toggleStatus = () => {
-    setStatus(status === "PENDING" ? "DELIVERED" : "PENDING");
   };
   return (
     <div
@@ -363,8 +359,6 @@ export default function CartOrderPage() {
   const [orders, setOrders] = useState<order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<order | null>(null);
  const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({});
-  // Local status state and toggle handler for order cards
-  const [status, setStatus] = useState<string>("PENDING");
 
 
   const clinicId = useAppSelector((state) => state.auth.clinicId);
@@ -410,6 +404,7 @@ export default function CartOrderPage() {
       const itemToSend = cartItems.map((item) => ({
         productId: item._id,
         quantity: item.quantity,
+        vendorId:item.vendorId
       }));
 
       const response = await axios.post(
