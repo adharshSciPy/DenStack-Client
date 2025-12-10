@@ -1327,7 +1327,7 @@
   color: rgb(148 163 184);
 }
 .bg-muted\/60 {
-  background: rgba(237, 231, 231, 1); /* translucent layer */
+  background: rgba(255, 254, 254, 0.7); /* translucent layer */
   backdrop-filter: blur(50px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.2);

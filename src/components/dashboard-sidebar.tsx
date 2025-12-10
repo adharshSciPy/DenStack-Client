@@ -29,6 +29,8 @@ import { clearCart } from "../redux/slice/cartSlice.js";
 import { logout } from "../redux/slice/authSlice.js";
 import { useAppSelector } from "../redux/hook";
 import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl.js";
+import { ZAxis } from "recharts";
+import { color } from "framer-motion";
 interface DashboardSidebarProps {
   activeTab: string;
   onTabChange: (tabId: string) => void;
@@ -56,26 +58,26 @@ export function DashboardSidebar({
   const cartItem = useAppSelector((state) => state.cart.items);
   console.log("cart", cartItem);
 
-useEffect(() => {
-  const fetchAppointments = async () => {
-    try {
-      const response = await axios.get(
-        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/clinic-appointments/${clinicId}`
-      );
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const response = await axios.get(
+          `${patientServiceBaseUrl}/api/v1/patient-service/appointment/clinic-appointments/${clinicId}`
+        );
 
-      const appointments = response.data?.data || [];
-      const total = response.data?.totalAppointments || appointments.length;
+        const appointments = response.data?.data || [];
+        const total = response.data?.totalAppointments || appointments.length;
 
-      setAppointmentCount(total); // Use total from backend instead of page length
-    } catch (error) {
-      console.error("Error fetching appointments:", error);
+        setAppointmentCount(total); // Use total from backend instead of page length
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+      }
+    };
+
+    if (clinicId) {
+      fetchAppointments();
     }
-  };
-
-  if (clinicId) {
-    fetchAppointments();
-  }
-}, [clinicId]);
+  }, [clinicId]);
   useEffect(() => {
     const fetchClinicDetails = async () => {
       try {
@@ -90,22 +92,21 @@ useEffect(() => {
       }
     };
 
-   
     const fetchLowstockInventory = async () => {
       try {
         const response = await axios.get(
           `${clinicInventoryBaseUrl}/api/v1/clinicInventory/products/low-stock/${clinicId}`
         );
-       console.log("sidebaer",response);
-       setInventoryCount(response.data.count);
+        console.log("sidebaer", response);
+        setInventoryCount(response.data.count);
         // setInventoryCount();
       } catch (error) {
         console.error("Error fetching low stock inventory:", error);
       }
     };
-     if (clinicId) {
+    if (clinicId) {
       fetchClinicDetails();
-      fetchLowstockInventory()
+      fetchLowstockInventory();
     }
   }, [clinicId]);
   const handleLogout = async () => {
@@ -141,7 +142,12 @@ useEffect(() => {
     },
     { id: "financial", label: "Financial", icon: DollarSign },
     { id: "staff", label: "Staff", icon: Users },
-    { id: "inventory", label: "Inventory", icon: Package, badge: `${inventoryCount}` },
+    {
+      id: "inventory",
+      label: "Inventory",
+      icon: Package,
+      badge: `${inventoryCount}`,
+    },
     { id: "lab", label: "Lab Orders", icon: FlaskConical, badge: 7 },
     { id: "patients", label: "Patient", icon: FileText },
     { id: "notifications", label: "Notifications", icon: Bell, badge: 5 },
@@ -202,9 +208,22 @@ useEffect(() => {
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                 isActive
-                  ? "bg-primary-gradient text-white"
+                  ? "text-white" // active text style
                   : "hover:bg-muted hover:text-primary"
               }`}
+              style={
+                isActive
+                  ? {
+                      background: `
+            radial-gradient(at 0% 0%, rgba(238, 174, 202, 0.4) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(147, 197, 253, 0.4) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(253, 186, 116, 0.2) 0px, transparent 50%),
+            radial-gradient(at 0% 50%, rgba(233, 213, 255, 0.5) 0px, transparent 50%),
+            linear-gradient(to bottom right, #f8fafc, #f1f5f9)
+          `,
+                    }
+                  : {}
+              }
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
               {!collapsed && (

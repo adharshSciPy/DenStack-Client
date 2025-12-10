@@ -407,7 +407,8 @@ export default function CartOrderPage() {
         vendorId:item.vendorId
       }));
 
-      const response = await axios.post(
+      console.log(itemToSend)
+      const response = await axios.post(    
         `${clinicInventoryBaseUrl}/api/v1/clinicPurchase/purchase`,
         {
           clinicId: clinicId,
@@ -431,7 +432,6 @@ export default function CartOrderPage() {
       console.log(error);
     }
   };
-
   const handleGetOrderHistory = async () => {
     try {
       const res = await axios.get(
