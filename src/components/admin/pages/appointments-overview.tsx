@@ -407,8 +407,8 @@ export function AppointmentsOverview() {
       };
 
       const payload = {
-        userRole: "admin", // or receptionist if logged in as one
-        userId: clinicId, // replace with actual logged-in user's ID
+        userRole: "admin", 
+        userId: clinicId, 
         name: newPatient.name,
         phone: newPatient.phone,
         email: newPatient.email,
@@ -418,7 +418,7 @@ export function AppointmentsOverview() {
       };
 
       const response = await axios.post(
-        `http://localhost:8002/api/v1/patient-service/patient/register/${clinicId}`,
+        `${patientServiceBaseUrl}/api/v1/patient-service/patient/register/${clinicId}`,
         payload
       );
 
