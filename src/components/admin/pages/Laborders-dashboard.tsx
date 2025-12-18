@@ -21,10 +21,10 @@ import {
 } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import labBaseUrl from "../labBaseUrl";
-import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl";
-import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
-import patientServiceBaseUrl from "../patientServiceBaseUrl";
+import labBaseUrl from "../../../labBaseUrl";
+import clinicInventoryBaseUrl from "../../../clinicInventoryBaseUrl";
+import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
+import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
 
 interface LabStatus {
   completedOrders: number;
@@ -501,7 +501,7 @@ const getAllLab=async()=>{
         </motion.div>
 
         {/* Filters & Search */}
-        <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+        <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm" style={{padding:'10px'}}>
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
               <input

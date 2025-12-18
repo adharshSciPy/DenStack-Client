@@ -1,7 +1,7 @@
 import { DollarSign, TrendingUp, TrendingDown, CreditCard, Wallet } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Progress } from "./ui/progress";
-import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Progress } from "../../ui/progress";
+import { Button } from "../../ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 const monthlyRevenue = [

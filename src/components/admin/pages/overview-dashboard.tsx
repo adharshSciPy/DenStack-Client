@@ -1,12 +1,12 @@
 import { Calendar, DollarSign, Users, Package, Activity, TrendingUp, Clock, Bell } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { Progress } from "./ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import { Progress } from "../../ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import baseUrl from "../baseUrl";
+import baseUrl from "../../../baseUrl";
 import { useParams } from "react-router-dom";
 
 const quickStats = {
