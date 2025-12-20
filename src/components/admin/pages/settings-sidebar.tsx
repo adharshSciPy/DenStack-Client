@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Palette, Lock, User, Bell, Shield, Globe } from 'lucide-react';
 import axios from 'axios';
-import baseUrl from '../baseUrl';
+import baseUrl from '../../../baseUrl';
 import { useSelector } from 'react-redux';
 
 export default function SettingsGrid() {

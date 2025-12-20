@@ -21,6 +21,9 @@ export default function HospitalLogin() {
         case "700":
           endpoint = "http://localhost:8001/api/v1/auth/clinic/login";
           break;
+        case "500":
+          endpoint = "http://localhost:8001/api/v1/auth/receptionist/login";
+          break;
         case "600":
           endpoint = "http://localhost:8001/api/v1/auth/doctor/login";
           break;
@@ -46,7 +49,11 @@ export default function HospitalLogin() {
 
         dispatch(
           loginSuccess({
-            user: res.data.doctorClinic || res.data.doctor || res.data.clinic,
+            user:
+              res.data.doctorClinic ||
+              res.data.doctor ||
+              res.data.clinic ||
+              res.data.reception,
             token: res.data.accessToken,
           })
         );
@@ -70,27 +77,40 @@ export default function HospitalLogin() {
           // For clinic/admin login (role 700)
           clinicId = res.data.clinic?.id;
           console.log("🔍 Clinic ID extracted:", clinicId);
+        } else if (activeRole === "500") {
+          // For clinic/admin login (role 700)
+          clinicId = res.data.clinic?._id;
+          console.log("🔍 Clinic ID extracted:", clinicId);
         }
 
         // ✅ Detect role properly for all types
         const role =
           activeRole === "700"
             ? "700"
-            : activeRole === "600"
-            ? "600"
+            : activeRole === "500"
+            ? "500"
             : activeRole === "456"
             ? "456"
-            : res.data.doctorClinic?.role ||
+            : res.data.reception?.role ||
               res.data.doctor?.role ||
               res.data.clinic?.role ||
               "unknown";
 
-        console.log("🔍 Final computed values:", { role, doctorId, clinicId, token: !!token });
+        console.log("🔍 Final computed values:", {
+          role,
+          doctorId,
+          clinicId,
+          token: !!token,
+        });
 
         // ✅ Redirects
         if (role === "600") {
-          console.log("🧠 Redirecting Doctor to 3001 —", { token: !!token, role, doctorId });
-          
+          console.log("🧠 Redirecting Doctor to 3001 —", {
+            token: !!token,
+            role,
+            doctorId,
+          });
+
           if (!doctorId) {
             console.error("❌ No doctorId found for doctor login!");
             alert("Login error: Doctor ID not found");
@@ -102,8 +122,12 @@ export default function HospitalLogin() {
           )}&role=${role}&doctorId=${doctorId}`;
           window.location.href = redirectURL;
         } else if (role === "456") {
-          console.log("🧠 Redirecting Clinic Doctor to 3001 —", { token: !!token, role, clinicId });
-          
+          console.log("🧠 Redirecting Clinic Doctor to 3001 —", {
+            token: !!token,
+            role,
+            clinicId,
+          });
+
           if (!clinicId) {
             console.error("❌ No clinicId found for clinic doctor login!");
             alert("Login error: Clinic ID not found");
@@ -115,8 +139,14 @@ export default function HospitalLogin() {
           )}&role=${role}&clinicId=${clinicId}`;
           window.location.href = redirectURL;
         } else if (role === "700") {
-          console.log("🧠 Redirecting Admin to Dashboard —", { token: !!token, role, clinicId });
+          console.log("🧠 Redirecting Admin to Dashboard —", {
+            token: !!token,
+            role,
+            clinicId,
+          });
           navigate(`/dashboard/${clinicId}`);
+        } else if (role === "500") {
+          navigate(`/receptionist`);
         } else {
           navigate("/dashboard");
         }
@@ -140,6 +170,7 @@ export default function HospitalLogin() {
     { id: "staff", label: "Staff" },
     { id: "300", label: "Nurse" },
     { id: "456", label: "Clinic Doctor" },
+    { id: "500", label: "Receptionist" },
   ];
 
   return (

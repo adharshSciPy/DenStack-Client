@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Badge } from "./ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
+import { Badge } from "../../ui/badge";
 import {
   Search,
   User,
@@ -27,9 +27,9 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
-import patientServiceBaseUrl from "../patientServiceBaseUrl";
+import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
 import jsPDF from "jspdf";
-import baseUrl from "../baseUrl";
+import baseUrl from "../../../baseUrl";
 
 interface Prescription {
   _id: string;

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
+import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
 import { useParams } from "react-router-dom";
-import { useAppSelector } from "../redux/hook";
+import { useAppSelector } from "../../../redux/hook";
 
 interface FormData {
   doctorUniqueId: string;

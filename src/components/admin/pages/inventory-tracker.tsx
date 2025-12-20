@@ -16,14 +16,14 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Alert, AlertDescription } from "../components/ui/alert";
-import InventoryReportGenerator from "./inventoryReport/inventoryReport";
-import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl";
-import { useAppSelector } from "../redux/hook";
+} from "../../ui/card";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Alert, AlertDescription } from "../../ui/alert";
+import InventoryReportGenerator from "../inventoryReport/inventoryReport";
+import clinicInventoryBaseUrl from "../../../clinicInventoryBaseUrl";
+import { useAppSelector } from "../../../redux/hook";
 
 interface Inventory {
   _id: string;
@@ -795,11 +795,11 @@ export function InventoryTracker() {
                             cursor: "pointer",
                             transition: "all 0.2s ease",
                           }}
-                          onMouseEnter={(e) => {
+                          onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.currentTarget.style.backgroundColor = "#f9fafb";
                             e.currentTarget.style.borderColor = "#9ca3af";
                           }}
-                          onMouseLeave={(e) => {
+                          onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.currentTarget.style.backgroundColor = "#ffffff";
                             e.currentTarget.style.borderColor = "#d1d5db";
                           }}
@@ -823,11 +823,11 @@ export function InventoryTracker() {
                               cursor: "pointer",
                               transition: "all 0.2s ease",
                             }}
-                            onMouseEnter={(e) => {
+                            onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
                               e.currentTarget.style.backgroundColor = "#dbeafe";
                               e.currentTarget.style.borderColor = "#2563eb";
                             }}
-                            onMouseLeave={(e) => {
+                            onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
                               e.currentTarget.style.backgroundColor = "#eff6ff";
                               e.currentTarget.style.borderColor = "#3b82f6";
                             }}
@@ -851,11 +851,11 @@ export function InventoryTracker() {
                             cursor: "pointer",
                             transition: "all 0.2s ease",
                           }}
-                          onMouseEnter={(e) => {
+                          onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.currentTarget.style.backgroundColor = "#fee2e2";
                             e.currentTarget.style.borderColor = "#dc2626";
                           }}
-                          onMouseLeave={(e) => {
+                          onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.currentTarget.style.backgroundColor = "#fef2f2";
                             e.currentTarget.style.borderColor = "#ef4444";
                           }}
@@ -977,11 +977,11 @@ export function InventoryTracker() {
                   borderRadius: "0.25rem",
                   transition: "all 0.2s ease-in-out",
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.currentTarget.style.color = "#4b5563";
                   e.currentTarget.style.backgroundColor = "#f3f4f6";
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.currentTarget.style.color = "#9ca3af";
                   e.currentTarget.style.backgroundColor = "transparent";
                 }}
@@ -1178,11 +1178,11 @@ export function InventoryTracker() {
                   borderRadius: "0.25rem",
                   transition: "all 0.2s ease-in-out",
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.currentTarget.style.color = "#4b5563";
                   e.currentTarget.style.backgroundColor = "#f3f4f6";
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.currentTarget.style.color = "#9ca3af";
                   e.currentTarget.style.backgroundColor = "transparent";
                 }}
@@ -1329,11 +1329,11 @@ export function InventoryTracker() {
                   borderRadius: "0.25rem",
                   transition: "all 0.2s ease-in-out",
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.currentTarget.style.color = "#4b5563";
                   e.currentTarget.style.backgroundColor = "#f3f4f6";
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.currentTarget.style.color = "#9ca3af";
                   e.currentTarget.style.backgroundColor = "transparent";
                 }}

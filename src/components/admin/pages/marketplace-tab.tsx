@@ -11,16 +11,16 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Badge } from "./ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Badge } from "../../ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import axios from "axios";
-import { useAppSelector } from "../redux/hook";
-import inventoryBaseUrl from "../inventoryBaseUrl";
+import { useAppSelector } from "../../../redux/hook";
+import inventoryBaseUrl from "../../../inventoryBaseUrl";
 import { useNavigate } from "react-router-dom";
-import { addToCart } from "../redux/slice/cartSlice";
+import { addToCart } from "../../../redux/slice/cartSlice";
 import { useDispatch } from "react-redux";
 
 interface Product {

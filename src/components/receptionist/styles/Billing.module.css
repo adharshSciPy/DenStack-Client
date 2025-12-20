@@ -1,0 +1,520 @@
+.container {
+  padding: 24px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.subtitle {
+  color: #6b7280;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
+.buttonSecondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background-color: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.buttonSecondary:hover {
+  background-color: #e5e7eb;
+}
+
+.buttonPrimary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.buttonPrimary:hover {
+  background-color: #2563eb;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+}
+
+.iconSmall {
+  width: 16px;
+  height: 16px;
+}
+
+.iconMedium {
+  width: 24px;
+  height: 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sidebarColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card {
+  background-color: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 16px 0;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.buttonAdd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.buttonAdd:hover {
+  background-color: #dbeafe;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .formGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.labelSmall {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.input:focus {
+  ring: 2px;
+  ring-color: #3b82f6;
+  border-color: transparent;
+}
+
+.inputSmall {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.inputSmall:focus {
+  ring: 2px;
+  ring-color: #3b82f6;
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.item {
+  padding: 16px;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  background-color: #f9fafb;
+}
+
+.itemGrid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.itemField {
+  grid-column: span 12;
+}
+
+.itemFieldWide {
+  grid-column: span 12;
+}
+
+.itemFieldNarrow {
+  grid-column: span 4;
+}
+
+.itemTotal {
+  grid-column: span 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.itemDelete {
+  grid-column: span 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .itemField {
+    grid-column: span 3;
+  }
+  .itemFieldWide {
+    grid-column: span 4;
+  }
+  .itemFieldNarrow {
+    grid-column: span 2;
+  }
+  .itemTotal {
+    grid-column: span 1;
+  }
+  .itemDelete {
+    grid-column: span 1;
+  }
+}
+
+.totalValue {
+  font-size: 14px;
+  color: #111827;
+  text-align: center;
+  margin: 0;
+}
+
+.deleteButton {
+  padding: 8px;
+  color: #dc2626;
+  background-color: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.deleteButton:hover {
+  background-color: #fee2e2;
+}
+
+.discountContainer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.sliderContainer {
+  flex: 1;
+}
+
+.slider {
+  width: 100%;
+}
+
+.discountInput {
+  width: 96px;
+}
+
+.percentSymbol {
+  color: #4b5563;
+}
+
+.invoice {
+  background-color: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+  position: sticky;
+  top: 24px;
+}
+
+.invoiceHeader {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.invoiceHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.invoiceIcon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.invoiceNumber {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.invoiceDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.detailLabel {
+  color: #4b5563;
+}
+
+.detailValue {
+  color: #111827;
+  font-weight: 500;
+}
+
+.costSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.summaryLabel {
+  color: #4b5563;
+}
+
+.summaryValue {
+  color: #111827;
+}
+
+.discountLabel {
+  color: #10b981;
+}
+
+.discountValue {
+  color: #10b981;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.totalLabel {
+  color: #111827;
+  font-weight: 600;
+}
+
+.paymentSection {
+  margin-bottom: 24px;
+}
+
+.paymentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.paymentButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.paymentButton:hover {
+  border-color: #d1d5db;
+}
+
+.paymentButtonGreenActive {
+  border-color: #10b981;
+  background-color: #f0fdf4;
+}
+
+.paymentButtonBlueActive {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.paymentButtonPurpleActive {
+  border-color: #a855f7;
+  background-color: #faf5ff;
+}
+
+.paymentButtonOrangeActive {
+  border-color: #f97316;
+  background-color: #fff7ed;
+}
+
+.iconInactive {
+  color: #9ca3af;
+}
+
+.iconGreenActive {
+  color: #10b981;
+}
+
+.iconBlueActive {
+  color: #3b82f6;
+}
+
+.iconPurpleActive {
+  color: #a855f7;
+}
+
+.iconOrangeActive {
+  color: #f97316;
+}
+
+.paymentLabel {
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.collectButton {
+  width: 100%;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.collectButton:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}

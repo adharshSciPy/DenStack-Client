@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import baseUrl from "../baseUrl";
+import baseUrl from "../../../baseUrl";
 import {
   UserPlus,
   Users,
@@ -17,7 +17,7 @@ import {
   Clock,
 } from "lucide-react";
 import axios from "axios";
-import { Button } from "./ui/button";
+import { Button } from "../../ui/button";
 
 interface StaffMember {
   id: string;

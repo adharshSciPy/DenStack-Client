@@ -1,0 +1,526 @@
+/* Container */
+.container {
+  max-width: 100%;
+  /* margin: 0 auto; */
+  padding: 24px;
+  /* background: #f8f9fa; */
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 4px 0 0 0;
+}
+
+.refreshBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refreshBtn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.refreshBtn:active {
+  transform: translateY(0);
+}
+
+/* Stats Grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.statCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.statIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.statIconGreen {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.statIconRed {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.statIconBlue {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.statIconOrange {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 500;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 4px 0 0 0;
+  line-height: 1;
+}
+
+/* Section */
+.section {
+  margin-bottom: 40px;
+}
+
+.sectionTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 20px 0;
+  padding-left: 4px;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* Card */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #e5e7eb;
+  transition: background 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.itemAvailable {
+  border-color: #22c55e;
+  background: linear-gradient(to bottom, #f0fdf4 0%, white 100%);
+}
+
+.itemAvailable::before {
+  background: #22c55e;
+}
+
+.itemBusy {
+  border-color: #ef4444;
+  background: linear-gradient(to bottom, #fef2f2 0%, white 100%);
+}
+
+.itemBusy::before {
+  background: #ef4444;
+}
+
+.itemBreak {
+  border-color: #f97316;
+  background: linear-gradient(to bottom, #fff7ed 0%, white 100%);
+}
+
+.itemBreak::before {
+  background: #f97316;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.card:hover .avatar {
+  transform: scale(1.05);
+}
+
+.cardInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardSubtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 2px 0 0 0;
+}
+
+.statusBadge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.statusIndicatorGreen {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.statusIndicatorRed {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.statusIndicatorOrange {
+  background: #fed7aa;
+  color: #c2410c;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4b5563;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.infoRow:hover {
+  background: #f3f4f6;
+}
+
+.infoRow svg {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.assignBtn {
+  width: 100%;
+  padding: 10px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.assignBtn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.assignBtn:active {
+  transform: translateY(0);
+}
+
+/* Room specific */
+.roomIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.card:hover .roomIcon {
+  transform: scale(1.05);
+}
+
+.roomIconGreen {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.roomIconRed {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.roomIconOrange {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.roomDetails {
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 13px;
+  border-left: 3px solid #e5e7eb;
+}
+
+.roomDetailLabel {
+  color: #4b5563;
+  margin: 4px 0;
+  font-weight: 500;
+}
+
+.roomDetailLabel:first-child {
+  margin-top: 0;
+}
+
+.roomDetailLabel:last-child {
+  margin-bottom: 0;
+}
+
+.readyText {
+  color: #16a34a;
+  font-size: 13px;
+  font-style: italic;
+  margin: 0;
+  padding: 8px;
+  background: #f0fdf4;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Waiting patients specific */
+.assignedLabel {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.assignedValue {
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 500;
+  margin: 0 0 12px 0;
+}
+
+/* Room Layout Grid */
+.roomGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.roomCell {
+  aspect-ratio: 1;
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.roomCell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #e5e7eb;
+  transition: background 0.3s ease;
+}
+
+.roomCell:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.roomNumber {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.roomStatus {
+  font-size: 12px;
+  text-transform: capitalize;
+  color: #6b7280;
+  font-weight: 600;
+  padding: 4px 12px;
+  background: #f3f4f6;
+  border-radius: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .refreshBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .statCard {
+    padding: 16px;
+  }
+
+  .statValue {
+    font-size: 24px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .roomGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .roomNumber {
+    font-size: 24px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .roomGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

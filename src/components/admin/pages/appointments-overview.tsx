@@ -9,44 +9,40 @@ import {
   Search,
   ChevronRight,
   Plus,
-  AlertCircleIcon
-
+  Upload,
+  Building2,
+  DollarSign,
+  FileText,
+  // AlertCircleIcon
 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle, } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import patientServiceBaseUrl from "../patientServiceBaseUrl";
+import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
 import { useParams } from "react-router-dom";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
+import labBaseUrl from "../../../labBaseUrl";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
-import {
-  Dialog,
-DialogContent,
-  DialogTitle,
-  DialogDescription,
-
-} from "./ui/dialog";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
-import PatientCRMModal from "./PatientCRM";
+} from "../../ui/select";
+import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
+import PatientCRMModal from "../../PatientCRM";
 
 interface Appointment {
   _id: string;
   appointmentDate: string;
   appointmentTime: string;
   status: string;
- opNumber?: number; 
-   rescheduledFromOp?: number;
+  opNumber?: number;
+  rescheduledFromOp?: number;
   patientId: {
     _id: string;
     name: string;
@@ -106,6 +102,8 @@ export function AppointmentsOverview() {
   const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [labName, setLabName] = useState<any[]>([]);
 
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
@@ -114,7 +112,7 @@ export function AppointmentsOverview() {
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
   const [patientSearchLoading, setPatientSearchLoading] = useState(false);
   const [foundPatient, setFoundPatient] = useState<Patient | null>(null);
-
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
   // Patient Registration State
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const [registrationLoading, setRegistrationLoading] = useState(false);
@@ -129,6 +127,7 @@ export function AppointmentsOverview() {
     allergies: "",
     familyHistory: "",
   });
+  const [results, setResults] = useState([]);
 
   // Step 2: Department Selection
   const [selectedDepartment, setSelectedDepartment] = useState("");
@@ -146,10 +145,17 @@ export function AppointmentsOverview() {
   const [nextCursor, setNextCursor] = useState(null);
   const [showingRange, setShowingRange] = useState("");
   const [totalAppointments, setTotalAppointments] = useState(0);
-  const [currentCursor, setCurrentCursor] = useState(null);
+  // const [currentCursor, setCurrentCursor] = useState(null);
   const [pageCursors, setPageCursors] = useState([]); // store cursors for pages
   const [currentPageIndex, setCurrentPageIndex] = useState(-1);
-
+  const [formData, setFormData] = useState({
+    vendor: "",
+    dentist: "",
+    patientName: "",
+    deliveryDate: "",
+    note: "",
+    price: "",
+  });
   // -------------------- RESCHEDULE STATES --------------------
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleAppointmentId, setRescheduleAppointmentId] = useState("");
@@ -160,13 +166,14 @@ export function AppointmentsOverview() {
   const [resDoctors, setResDoctors] = useState<ResDoctor[]>([]);
 
   const [resSelectedDoctorId, setResSelectedDoctorId] = useState("");
-
+  const [files, setFiles] = useState<File[]>([]);
   const [resDoctorAvailability, setResDoctorAvailability] = useState<string[]>(
     []
   );
 
   const [resNewDate, setResNewDate] = useState("");
   const [resNewTime, setResNewTime] = useState("");
+  const [search, setSearch] = useState("");
 
   const [resLoading, setResLoading] = useState(false);
   const [missingOps, setMissingOps] = useState([]);
@@ -184,6 +191,7 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
 
   const { clinicId } = useParams();
   const today = new Date();
+  const [doctors, setDoctors] = useState([]);
 
   const options: Intl.DateTimeFormatOptions = {
     weekday: "long",
@@ -258,7 +266,6 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       const end = start + newAppointments.length - 1;
       setShowingRange(`${start}-${end} of ${data.totalAppointments || 0}`);
       setMissingOps(data.missingOps || []);
-
 
       // Save cursor for this page
       if (addToCursors && cursor) {
@@ -358,7 +365,15 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       setPatientSearchLoading(false);
     }
   };
-
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
   // Patient Registration
   const handlePatientRegistration = async () => {
     try {
@@ -432,6 +447,10 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
     } finally {
       setRegistrationLoading(false);
     }
+  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles(selectedFiles);
   };
   //fetch departments from backend
   useEffect(() => {
@@ -550,8 +569,174 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       setLoading(false);
     }
   };
-
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
   // Final Submit
+
+  const handleCloseModal = () => {
+    setOpen(false);
+    setCurrentStep(1);
+    setFoundPatient(null);
+    setPatientSearchQuery("");
+    setSelectedDepartment("");
+    setSelectedDoctor("");
+    setSelectedDoctorName("");
+    setSelectedTime("");
+    setAppointmentDate("");
+    setDoctorAvailability([]);
+
+    // ✅ ADD THESE MISSING RESETS:
+    setAvailabilityLoading(false);
+    setLoading(false);
+    setRegistrationOpen(false);
+    setNewPatient({
+      name: "",
+      phone: "",
+      email: "",
+      age: "",
+      gender: "",
+      conditions: "",
+      surgeries: "",
+      allergies: "",
+      familyHistory: "",
+    });
+  };
+
+  const canProceedToStep2 = foundPatient !== null;
+  const canProceedToStep3 = canProceedToStep2 && selectedDepartment !== "";
+  // reschedule
+  const fetchRescheduleDepartments = async () => {
+    try {
+      const res = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/department/details/${clinicId}`
+      );
+      setResDepartments(res.data?.departments || []);
+    } catch (err) {
+      console.log("Err loading departments", err);
+    }
+  };
+  const fetchRescheduleDoctors = async (dept: string) => {
+    setResSelectedDepartment(dept);
+
+    try {
+      const res = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
+        { params: { clinicId, department: dept } }
+      );
+
+      const filtered = (res.data?.doctors || []).filter((d: any) =>
+        d.specialization?.some(
+          (s: string) => s.toLowerCase() === dept.toLowerCase()
+        )
+      );
+
+      setResDoctors(filtered);
+    } catch (err) {
+      console.log("Error fetching doctors", err);
+      setResDoctors([]);
+    }
+  };
+  const selectRescheduleDoctor = (doctorId: string) => {
+    setResSelectedDoctorId(doctorId);
+
+    const doc = resDoctors.find((d) => d.doctorId === doctorId);
+    const slots =
+      doc?.availability
+        ?.filter((a) => a.isActive)
+        ?.map((a) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`) || [];
+
+    setResDoctorAvailability(slots);
+  };
+
+  const submitReschedule = async () => {
+    if (!resSelectedDoctorId || !resNewDate || !resNewTime) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    try {
+      setResLoading(true);
+
+      const payload = {
+        doctorId: resSelectedDoctorId,
+        newDate: resNewDate,
+        newTime: resNewTime,
+        userId: clinicId,
+        userRole: "admin",
+        forceReschedule: true,
+      };
+
+      const res = await axios.patch(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/reschedule/${rescheduleAppointmentId}`,
+        payload
+      );
+
+      alert(res.data.message);
+
+      // ✅ PROPER CLEANUP
+      resetRescheduleForm();
+      setRescheduleAppointmentId(""); // ✅ ADD THIS
+      setRescheduleOpen(false);
+
+      fetchAppointments(); // Refresh list
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to reschedule");
+    } finally {
+      setResLoading(false);
+    }
+  };
+  useEffect(() => {
+    document.body.style.overflow = rescheduleOpen ? "hidden" : "auto";
+  }, [rescheduleOpen]);
+
+  const resetRescheduleForm = () => {
+    setResSelectedDepartment("");
+    setResSelectedDoctorId("");
+    setResDoctorAvailability([]);
+    setResNewDate("");
+    setResNewTime("");
+  };
+  useEffect(() => {
+    getDoctors(), getAllLab();
+  }, [clinicId]);
+  const getDoctors = async () => {
+    try {
+      const res = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/active-doctors?clinicId=${clinicId}`
+      );
+      setDoctors(res.data.doctors);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const getAllLab = async () => {
+    try {
+      const res = await axios.get(`${labBaseUrl}api/v1/lab/vendors`);
+      console.log("labbbb", res.data);
+      setLabName(res.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const setlabOrder = async (appointment: Appointment) => {
+    setIsOpen(true);
+    setAppointment(appointment);
+    console.log("ss", appointment);
+  };
+  const logFormData = (formData: FormData) => {
+    const entries: any = {};
+    formData.forEach((value, key) => {
+      entries[key] = value;
+    });
+    console.log("FormData =>", entries);
+  };
   const handleSubmit = async () => {
     if (!foundPatient?._id) {
       alert("Please search and select a patient first");
@@ -616,131 +801,69 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       setLoading(false);
     }
   };
-
- const handleCloseModal = () => {
-  setOpen(false);
-  setCurrentStep(1);
-  setFoundPatient(null);
-  setPatientSearchQuery("");
-  setSelectedDepartment("");
-  setSelectedDoctor("");
-  setSelectedDoctorName("");
-  setSelectedTime("");
-  setAppointmentDate("");
-  setDoctorAvailability([]);
-  
-  // ✅ ADD THESE MISSING RESETS:
-  setAvailabilityLoading(false);
-  setLoading(false);
-  setRegistrationOpen(false);
-  setNewPatient({
-    name: "",
-    phone: "",
-    email: "",
-    age: "",
-    gender: "",
-    conditions: "",
-    surgeries: "",
-    allergies: "",
-    familyHistory: "",
-  });
-};
-
-  const canProceedToStep2 = foundPatient !== null;
-  const canProceedToStep3 = canProceedToStep2 && selectedDepartment !== "";
-  // reschedule
-  const fetchRescheduleDepartments = async () => {
-    try {
-      const res = await axios.get(
-        `${clinicServiceBaseUrl}/api/v1/clinic-service/department/details/${clinicId}`
-      );
-      setResDepartments(res.data?.departments || []);
-    } catch (err) {
-      console.log("Err loading departments", err);
-    }
-  };
-  const fetchRescheduleDoctors = async (dept: string) => {
-    setResSelectedDepartment(dept);
+  const handleSubmitLab = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      const res = await axios.get(
-        `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
-        { params: { clinicId, department: dept } }
+      const formDataToSend = new FormData();
+
+      Object.keys(formData).forEach((key) => {
+        formDataToSend.append(key, formData[key as keyof typeof formData]);
+      });
+      if (appointment?._id) {
+        formDataToSend.append("appointmentId", appointment?._id);
+      }
+      files.forEach((file) => {
+        formDataToSend.append("files", file);
+      });
+
+      logFormData(formDataToSend);
+      const response = await axios.post(
+        `${labBaseUrl}api/v1/lab-orders/dental-orders`,
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
-      const filtered = (res.data?.doctors || []).filter((d: any) =>
-        d.specialization?.some(
-          (s: string) => s.toLowerCase() === dept.toLowerCase()
-        )
-      );
+      if (response.status === 200 || response.status === 201) {
+        alert("Dental lab order created successfully!");
+        setIsOpen(false);
+        setFormData({
+          vendor: "",
+          dentist: "",
+          patientName: "",
+          deliveryDate: "",
+          note: "",
+          price: "",
+          // appointmentId: "",
+        });
+        setFiles([]);
 
-      setResDoctors(filtered);
-    } catch (err) {
-      console.log("Error fetching doctors", err);
-      setResDoctors([]);
+      }
+    } catch (error) {
+      console.error("Error creating order:", error);
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error instanceof Error
+        ? error.message
+        : "Unknown error occurred";
+      alert("Error creating order: " + errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
-  const selectRescheduleDoctor = (doctorId: string) => {
-    setResSelectedDoctorId(doctorId);
-
-    const doc = resDoctors.find((d) => d.doctorId === doctorId);
-    const slots =
-      doc?.availability
-        ?.filter((a) => a.isActive)
-        ?.map((a) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`) || [];
-
-    setResDoctorAvailability(slots);
-  };
-
- const submitReschedule = async () => {
-  if (!resSelectedDoctorId || !resNewDate || !resNewTime) {
-    alert("Please fill all fields");
-    return;
-  }
-
-  try {
-    setResLoading(true);
-
-    const payload = {
-      doctorId: resSelectedDoctorId,
-      newDate: resNewDate,
-      newTime: resNewTime,
-      userId: clinicId,
-      userRole: "admin",
-      forceReschedule: true,
-    };
-
-    const res = await axios.patch(
-      `${patientServiceBaseUrl}/api/v1/patient-service/appointment/reschedule/${rescheduleAppointmentId}`,
-      payload
-    );
-
-    alert(res.data.message);
-    
-    // ✅ PROPER CLEANUP
-    resetRescheduleForm();
-    setRescheduleAppointmentId(""); // ✅ ADD THIS
-    setRescheduleOpen(false);
-    
-    fetchAppointments(); // Refresh list
-  } catch (err: any) {
-    alert(err.response?.data?.message || "Failed to reschedule");
-  } finally {
-    setResLoading(false);
-  }
-};
   useEffect(() => {
-    document.body.style.overflow = rescheduleOpen ? "hidden" : "auto";
-  }, [rescheduleOpen]);
-
-  const resetRescheduleForm = () => {
-    setResSelectedDepartment("");
-    setResSelectedDoctorId("");
-    setResDoctorAvailability([]);
-    setResNewDate("");
-    setResNewTime("");
-  };
-
+    if (appointment?.patientId?.name) {
+      setFormData((prev) => ({
+        ...prev,
+        patientName: appointment.patientId._id
+      }));
+    }
+  }, [appointment]);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1422,81 +1545,89 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
             </div>
           </CardContent>
         </Card>
-<div style={{ position: "relative" }}>
-  <Card
-    className="hover:shadow-md bg-muted/60 transition-shadow"
-    onClick={() => setOpenMissingOps((prev) => !prev)}
-  >
-    <CardContent className="p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-yellow-700 font-semibold">Missing OPs</p>
-          <p className="text-3xl font-bold text-yellow-800">
-            {missingOps?.length || 0}
-          </p>
-        </div>
-        <AlertCircle className="w-8 h-8 text-yellow-700/60" />
-      </div>
-    </CardContent>
-  </Card>
-
-  {openMissingOps && (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        position: "absolute",
-        top: "100%", // dropdown appears below the card
-        left: 0,
-        width: "100%",
-        maxWidth: "400px",
-        backgroundColor: "white",
-        borderRadius: "12px",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-        padding: "16px",
-        zIndex: 99999, // very high z-index
-      }}
-    >
-      <h2
-        style={{
-          fontSize: "1.125rem",
-          fontWeight: 600,
-          marginBottom: "8px",
-          color: "#b45309", // yellow-800
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
-        ⚠ Missing OP Numbers
-      </h2>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
-        {missingOps?.sort((a, b) => a - b).map((op) => (
-          <span
-            key={op}
-            style={{
-              padding: "4px 12px",
-              backgroundColor: "#fef3c7", // yellow-200
-              color: "#78350f", // yellow-900
-              borderRadius: "9999px",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-            }}
+        <div style={{ position: "relative" }}>
+          <Card
+            className="hover:shadow-md bg-muted/60 transition-shadow"
+            onClick={() => setOpenMissingOps((prev) => !prev)}
           >
-            OP #{op}
-          </span>
-        ))}
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-yellow-700 font-semibold">
+                    Missing OPs
+                  </p>
+                  <p className="text-3xl font-bold text-yellow-800">
+                    {missingOps?.length || 0}
+                  </p>
+                </div>
+                <AlertCircle className="w-8 h-8 text-yellow-700/60" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {openMissingOps && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "absolute",
+                top: "100%", // dropdown appears below the card
+                left: 0,
+                width: "100%",
+                maxWidth: "400px",
+                backgroundColor: "white",
+                borderRadius: "12px",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                padding: "16px",
+                zIndex: 99999, // very high z-index
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: "1.125rem",
+                  fontWeight: 600,
+                  marginBottom: "8px",
+                  color: "#b45309", // yellow-800
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                ⚠ Missing OP Numbers
+              </h2>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  marginBottom: "8px",
+                }}
+              >
+                {missingOps
+                  ?.sort((a, b) => a - b)
+                  .map((op) => (
+                    <span
+                      key={op}
+                      style={{
+                        padding: "4px 12px",
+                        backgroundColor: "#fef3c7", // yellow-200
+                        color: "#78350f", // yellow-900
+                        borderRadius: "9999px",
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                      }}
+                    >
+                      OP #{op}
+                    </span>
+                  ))}
+              </div>
+              <p style={{ fontSize: "0.75rem", color: "#b45309" }}>
+                These OP numbers are missing from today’s appointments.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
-      <p style={{ fontSize: "0.75rem", color: "#b45309" }}>
-        These OP numbers are missing from today’s appointments.
-      </p>
-    </div>
-  )}
-</div>
-
-
-
-      </div>
-       {/* {openMissingOps && (
+      {/* {openMissingOps && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
           style={{
@@ -1567,8 +1698,8 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
           Clear
         </Button>
       </div>
-{/* ⚠ Missing OPs Section */}
-{/* {missingOps && missingOps.length > 0 && (
+      {/* ⚠ Missing OPs Section */}
+      {/* {missingOps && missingOps.length > 0 && (
   <Card className="mb-4 bg-yellow-50 border-yellow-200 border">
     <CardHeader>
       <div className="flex items-center gap-2">
@@ -1596,8 +1727,6 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
     </CardContent>
   </Card>
 )} */}
-
-
 
       {/* Appointments List */}
       <Card className="bg-muted/60">
@@ -1683,24 +1812,23 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
                       <div className="flex items-center gap-6">
                         <span className="text-sm font-medium">
                           OP No:{" "}
-                         <span
-  style={{
-    backgroundColor: "#facc15",
-    color: "#000",
-    fontWeight: "bold",
-    borderRadius: "8px",
-    padding: "4px 10px",
-    fontSize: "0.75rem",
-    textTransform: "uppercase",
-  }}
->
-  {appointment.opNumber
-    ? `OP #${appointment.opNumber}`
-    : appointment.rescheduledFromOp
-    ? `Rescheduled OP #${appointment.rescheduledFromOp}`
-    : "Pending OP"}
-</span>
-
+                          <span
+                            style={{
+                              backgroundColor: "#facc15",
+                              color: "#000",
+                              fontWeight: "bold",
+                              borderRadius: "8px",
+                              padding: "4px 10px",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {appointment.opNumber
+                              ? `OP #${appointment.opNumber}`
+                              : appointment.rescheduledFromOp
+                              ? `Rescheduled OP #${appointment.rescheduledFromOp}`
+                              : "Pending OP"}
+                          </span>
                         </span>
                         <span className="text-sm font-medium">
                           Patient ID:{" "}
@@ -1750,7 +1878,7 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
     <Button
       variant="outline"
       size="sm"
-      onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+      onClick={(e:any) => {
         e.stopPropagation();
         setViewAppointment(appointment); // store full appointment
         setViewOpen(true);
@@ -1868,66 +1996,64 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
                   }}
                 >
                   {/* Department */}
-                 <div>
-  <label
-    style={{
-      display: "block",
-      marginBottom: "6px",
-      fontWeight: 500,
-    }}
-  >
-    Department *
-  </label>
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Department *
+                    </label>
 
- <Select
-  value={resSelectedDepartment}
-  onValueChange={fetchRescheduleDoctors}
->
-  <SelectTrigger
-    style={{
-      width: "100%",
-      height: "48px",
-      borderRadius: "8px",
-      border: "1px solid #d1d5db",
-      padding: "10px",
-      background: "#fff",
-    }}
-  >
-    <SelectValue placeholder="Select Department" />
-  </SelectTrigger>
+                    <Select
+                      value={resSelectedDepartment}
+                      onValueChange={fetchRescheduleDoctors}
+                    >
+                      <SelectTrigger
+                        style={{
+                          width: "100%",
+                          height: "48px",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          padding: "10px",
+                          background: "#fff",
+                        }}
+                      >
+                        <SelectValue placeholder="Select Department" />
+                      </SelectTrigger>
 
-  <SelectContent
-    className="w-full"
-    style={{
-      width: "var(--radix-select-trigger-width)",
-      zIndex: 999999999,
-      background: "white",
-      borderRadius: "8px",
-      border: "1px solid #d1d5db",
-      marginTop: "1px",
-      boxShadow: "0px 4px 20px rgba(0,0,0,0.15)",
-    }}
-  >
-    {resDepartments.map((dept) => (
-      <SelectItem
-        key={dept}
-        value={dept}
-        style={{
-          height: "48px",
-          display: "flex",
-          alignItems: "center",
-          paddingLeft: "10px",
-          fontSize: "14px",
-        }}
-      >
-        {dept}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-
-</div>
-
+                      <SelectContent
+                        className="w-full"
+                        style={{
+                          width: "var(--radix-select-trigger-width)",
+                          zIndex: 999999999,
+                          background: "white",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          marginTop: "1px",
+                          boxShadow: "0px 4px 20px rgba(0,0,0,0.15)",
+                        }}
+                      >
+                        {resDepartments.map((dept) => (
+                          <SelectItem
+                            key={dept}
+                            value={dept}
+                            style={{
+                              height: "48px",
+                              display: "flex",
+                              alignItems: "center",
+                              paddingLeft: "10px",
+                              fontSize: "14px",
+                            }}
+                          >
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Doctor */}
                   <div>
@@ -1948,7 +2074,7 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
                     >
                       <SelectTrigger
                         style={{
-                          width:"100%",
+                          width: "100%",
                           height: "48px",
                           borderRadius: "8px",
                           border: "1px solid #d1d5db",
@@ -1958,41 +2084,48 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
                       >
                         <SelectValue placeholder="Select Doctor" />
                       </SelectTrigger>
-<SelectContent
-  style={{
-    zIndex: 999999999,
-    background: "white",
-    borderRadius: "10px",
-    border: "1px solid #d1d5db",
-    boxShadow: "0px 4px 20px rgba(0,0,0,0.15)",
-    width: "var(--radix-select-trigger-width)",
-    overflow: "hidden",
-    marginTop:"1px"
-  }}
->
-  {resDoctors.map((doc, index) => (
-    <SelectItem
-      key={doc.doctorId}
-      value={doc.doctorId}
-      style={{
-        height: "44px",
-        display: "flex",
-        alignItems: "center",
-        paddingLeft: "12px",
-        fontSize: "15px",
-        cursor: "pointer",
-        background: "white",
-        borderBottom: index !== resDoctors.length - 1 ? "1px solid #e5e7eb" : "none",
-        transition: "background 0.15s ease, color 0.15s ease",
-      }}
-      onMouseEnter={(e:any) => (e.currentTarget.style.background = "#f3f4f6")}
-      onMouseLeave={(e:any) => (e.currentTarget.style.background = "white")}
-    >
-      {doc.doctor?.name} ({doc.roleInClinic})
-    </SelectItem>
-  ))}
-</SelectContent>
-
+                      <SelectContent
+                        style={{
+                          zIndex: 999999999,
+                          background: "white",
+                          borderRadius: "10px",
+                          border: "1px solid #d1d5db",
+                          boxShadow: "0px 4px 20px rgba(0,0,0,0.15)",
+                          width: "var(--radix-select-trigger-width)",
+                          overflow: "hidden",
+                          marginTop: "1px",
+                        }}
+                      >
+                        {resDoctors.map((doc, index) => (
+                          <SelectItem
+                            key={doc.doctorId}
+                            value={doc.doctorId}
+                            style={{
+                              height: "44px",
+                              display: "flex",
+                              alignItems: "center",
+                              paddingLeft: "12px",
+                              fontSize: "15px",
+                              cursor: "pointer",
+                              background: "white",
+                              borderBottom:
+                                index !== resDoctors.length - 1
+                                  ? "1px solid #e5e7eb"
+                                  : "none",
+                              transition:
+                                "background 0.15s ease, color 0.15s ease",
+                            }}
+                            onMouseEnter={(e: any) =>
+                              (e.currentTarget.style.background = "#f3f4f6")
+                            }
+                            onMouseLeave={(e: any) =>
+                              (e.currentTarget.style.background = "white")
+                            }
+                          >
+                            {doc.doctor?.name} ({doc.roleInClinic})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
 
@@ -2125,6 +2258,492 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
             </div>
           </div>
         </>
+      )}
+      {isOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "16px",
+            overflow: "hidden",
+          }}
+          onClick={() => setIsOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              boxShadow:
+                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              width: "100%",
+              maxWidth: "600px",
+              maxHeight: "90vh",
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "24px",
+                borderBottom: "1px solid #e5e7eb",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                position: "sticky",
+                top: 0,
+                backgroundColor: "white",
+                zIndex: 10,
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "700",
+                  color: "#111827",
+                  margin: 0,
+                }}
+              >
+                Create Dental Lab Order
+              </h2>
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{
+                  padding: "8px",
+                  border: "none",
+                  backgroundColor: "transparent",
+                  cursor: "pointer",
+                  borderRadius: "6px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#f3f4f6")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "transparent")
+                }
+              >
+                <X size={24} color="#6b7280" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitLab} style={{ padding: "24px" }}>
+              <div style={{ display: "grid", gap: "20px" }}>
+                {/* Vendor */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <Building2 size={18} color="#6b7280" />
+                    Lab
+                  </label>
+                  <select
+                    name="vendor"
+                    value={formData.vendor}
+                    onChange={handleSelectChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <option value="">Select Lab</option>
+                    {labName.map((lab: any) => (
+                      <option key={lab._id} value={lab._id}>
+                        {lab.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Dentist */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <User size={18} color="#6b7280" />
+                    Dentist
+                  </label>
+                  <select
+                    name="dentist"
+                    value={formData.dentist}
+                    onChange={handleSelectChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <option value="">Select Doctor</option>
+                    {doctors.map((doctor: any) => (
+                      <option key={doctor._id} value={doctor.doctor._id}>
+                        {doctor?.doctor?.name || ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ position: "relative" }}>
+                  
+
+                  {results.length > 0 && (
+                    <ul
+                      style={{
+                        position: "absolute",
+                        top: "85px",
+                        left: 0,
+                        width: "100%",
+                        background: "#fff",
+                        border: "1px solid #ddd",
+                        borderRadius: "6px",
+                        padding: 0,
+                        margin: 0,
+                        listStyle: "none",
+                        maxHeight: "200px",
+                        overflowY: "auto",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                        zIndex: 2000,
+                      }}
+                    >
+                      {results.map((p: any) => (
+                        <li
+                          key={p._id}
+                          style={{
+                            padding: "10px",
+                            borderBottom: "1px solid #eee",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => {
+                            setSearch(p.name);
+                            setFormData((prev) => ({
+                              ...prev,
+                              patientName: p._id,
+                            }));
+                            setResults([]);
+                          }}
+                        >
+                          {p.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {loading && search.length >= 3 && (
+                    <div style={{ marginTop: "5px", fontSize: "12px" }}>
+                      Loading...
+                    </div>
+                  )}
+                </div>
+
+                {/* Appointment ID */}
+                {/* <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <FileText size={18} color="#6b7280" />
+                    Appointment ID *
+                  </label>
+                  <input
+                    type="text"
+                    name="appointmentId"
+                    value={formData.appointmentId}
+                    onChange={handleInputChange}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                    placeholder="Enter appointment ID"
+                  />
+                </div> */}
+
+                {/* Delivery Date */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <Calendar size={18} color="#6b7280" />
+                    Delivery Date *
+                  </label>
+                  <input
+                    type="date"
+                    name="deliveryDate"
+                    value={formData.deliveryDate}
+                    onChange={handleInputChange}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                  />
+                </div>
+
+                {/* Price */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <DollarSign size={18} color="#6b7280" />
+                    Price *
+                  </label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Note */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <FileText size={18} color="#6b7280" />
+                    Note *
+                  </label>
+                  <textarea
+                    name="note"
+                    value={formData.note}
+                    onChange={handleInputChange}
+                    required
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      resize: "vertical",
+                      boxSizing: "border-box",
+                      fontFamily: "inherit",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#3b82f6")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#d1d5db")
+                    }
+                    placeholder="Enter order notes or special instructions"
+                  />
+                </div>
+
+                {/* File Upload */}
+                <div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <Upload size={18} color="#6b7280" />
+                    Attachments
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                      backgroundColor: "white",
+                      cursor: "pointer",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {files.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        fontSize: "12px",
+                        color: "#6b7280",
+                      }}
+                    >
+                      {files.length} file(s) selected
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: "32px",
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  style={{
+                    padding: "10px 20px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "8px",
+                    backgroundColor: "white",
+                    color: "#374151",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "#f9fafb")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "white")
+                  }
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: "10px 20px",
+                    border: "none",
+                    borderRadius: "8px",
+                    backgroundColor: loading ? "#9ca3af" : "#3b82f6",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: loading ? "not-allowed" : "pointer",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    !loading &&
+                    (e.currentTarget.style.backgroundColor = "#2563eb")
+                  }
+                  onMouseLeave={(e) =>
+                    !loading &&
+                    (e.currentTarget.style.backgroundColor = "#3b82f6")
+                  }
+                >
+                  {loading ? "Creating..." : "Create Order"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

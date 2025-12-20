@@ -21,10 +21,10 @@ import {
 } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import labBaseUrl from "../labBaseUrl";
-import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl";
-import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
-import patientServiceBaseUrl from "../patientServiceBaseUrl";
+import labBaseUrl from "../../../labBaseUrl";
+import clinicInventoryBaseUrl from "../../../clinicInventoryBaseUrl";
+import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
+import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
 
 interface LabStatus {
   completedOrders: number;
@@ -83,7 +83,7 @@ export default function LabOrdersPage() {
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
   const [pageSize] = useState(10);
-  const [labName, setLabName] = useState([]);
+  const [labName, setLabName] = useState<any[]>([]);
   const [doctors, setDoctors] = useState([]);
 
   // Modal state
@@ -173,7 +173,7 @@ export default function LabOrdersPage() {
       
       logFormData(formDataToSend);
       const response = await axios.post(
-        `${labBaseUrl}api/v1/lab-orders/create`,
+        `${labBaseUrl}api/v1/lab-orders/dental-orders`,
         formDataToSend,
         {
           headers: {
@@ -346,16 +346,18 @@ export default function LabOrdersPage() {
     }
   };
 
-  const getVendor = async () => {
-    try {
-      const res = await axios.get(
-        `${clinicInventoryBaseUrl}/api/v1/clinicProduct/clinic/labs/${clinicId}`
-      );
-      setLabName(res.data.labs);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  // const getVendor = async () => {
+  //   try {
+  //     const res = await axios.get(
+  //       `${clinicInventoryBaseUrl}/api/v1/clinicProduct/clinic/labs/${clinicId}`
+  //     );
+  //     console.log("lab 2",res.data.labs);
+      
+  //     setLabName(res.data.labs);
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // };
 
   const getDoctors = async () => {
     try {
@@ -368,8 +370,19 @@ export default function LabOrdersPage() {
     }
   };
 
+const getAllLab=async()=>{
+  try {
+    const res=await axios.get(`${labBaseUrl}api/v1/lab/vendors`)
+    console.log("lab",res.data);
+   setLabName(res.data);
+  } catch (error) {
+    console.log(error)
+  }
+}
+
   useEffect(() => {
-    getVendor();
+    // getVendor();
+    getAllLab();
     getDoctors();
   }, [clinicId]);
 
@@ -488,7 +501,7 @@ export default function LabOrdersPage() {
         </motion.div>
 
         {/* Filters & Search */}
-        <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+        <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm" style={{padding:'10px'}}>
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
               <input

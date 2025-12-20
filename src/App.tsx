@@ -1,23 +1,39 @@
-import {  useState } from "react";
-import { DashboardSidebar } from "./components/dashboard-sidebar";
-import { OverviewDashboard } from "./components/overview-dashboard";
-import { AppointmentsOverview } from "./components/appointments-overview";
-import { FinancialDashboard } from "./components/financial-dashboard";
-import {InventoryTracker} from "./components/inventory-tracker";
-import { MarketplaceTab } from "./components/marketplace-tab";
+import { useState } from "react";
+import { DashboardSidebar } from "./components/admin/pages/dashboard-sidebar";
+import { OverviewDashboard } from "./components/admin/pages/overview-dashboard";
+import { AppointmentsOverview } from "./components/admin/pages/appointments-overview";
+import { FinancialDashboard } from "./components/admin/pages/financial-dashboard";
+import { InventoryTracker } from "./components/admin/pages/inventory-tracker";
+import { MarketplaceTab } from "./components/admin/pages/marketplace-tab";
 import { useClinicTheme } from "./hooks/UseClinicTheme";
 import LoginPage from "./components/LoginPage/LoginPage";
-import LabOrdersPage from "./components/Laborders-dashboard";
-import DoctorPage from "./components/doctor-dashboard"
-import SettingsPage from "./components/settings-sidebar";
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
-import StaffRegistration from "./components/staff-dashboard";
+import LabOrdersPage from "./components/admin/pages/Laborders-dashboard";
+import DoctorPage from "./components/admin/pages/doctor-dashboard";
+import SettingsPage from "./components/admin/pages/settings-sidebar";
+import AdminLayout from "./components/admin/AdminLayout";
+import ReceptionistLayout from "./components/receptionist/ReceptionistLayout";
+import Dashboard from "./components/receptionist/pages/Dashboard";
+import StaffRegistration from "./components/admin/pages/staff-dashboard";
+import PatientManagement from "./components/receptionist/pages/PatientManagement"
+import AppointmentScheduler from "./components/receptionist/pages/AppointmentScheduler"
+import QueueManagement from "./components/receptionist/pages/QueueManagement"
+import Billing from "./components/receptionist/pages/Billing"
+import DoctorAllocation from "./components/receptionist/pages/DoctorAllocation"
+
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useParams,
+} from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./redux/store";
 import { PersistGate } from "redux-persist/integration/react";
-import Cart from "./components/Cart";
+import Cart from "./components/admin/pages/Cart";
 import { persistor } from "./redux/persistor";
-import Patients from "./components/patient-dashboard";
+import Patients from "./components/admin/pages/patient-dashboard";
+import Receptionist from "./components/receptionist/pages/Dashboard";
 // Placeholder components for other tabs
 function StaffPayroll() {
   return (
@@ -33,10 +49,6 @@ function StaffPayroll() {
   );
 }
 
-
-
-
-
 function Notifications() {
   return (
     <div className="space-y-6">
@@ -50,7 +62,6 @@ function Notifications() {
     </div>
   );
 }
-
 
 function DashboardLayout() {
   const { clinicId } = useParams();
@@ -90,8 +101,19 @@ function DashboardLayout() {
 
   return (
     <div className="flex h-screen bg-background">
-      <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="flex-1 overflow-auto  bg-primary-gradient">
+      <DashboardSidebar />
+      <main
+        className="flex-1 overflow-auto  "
+        style={{
+          background: `
+      radial-gradient(at 0% 0%, rgba(238, 174, 202, 0.4) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(147, 197, 253, 0.4) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(253, 186, 116, 0.2) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, rgba(233, 213, 255, 0.5) 0px, transparent 50%),
+      linear-gradient(to bottom right, #f8fafc, #f1f5f9)
+    `,
+        }}
+      >
         <div className="p-6 max-w-7xl mx-auto ">{renderContent()}</div>
       </main>
     </div>
@@ -100,17 +122,41 @@ function DashboardLayout() {
 export default function App() {
   return (
     <Provider store={store}>
-  <PersistGate loading={null} persistor={persistor}>
-     <Router>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard/:clinicId" element={<DashboardLayout />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-        <Route path="cart" element={<Cart/>} />
-      </Routes>
-    </Router>
-    </PersistGate>
-   
+      <PersistGate loading={null} persistor={persistor}>
+        <Router>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/dashboard/:clinicId" element={<AdminLayout />}>
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<OverviewDashboard />} />
+              <Route path="appointments" element={<AppointmentsOverview />} />
+              <Route path="financial" element={<FinancialDashboard />} />
+              <Route path="inventory" element={<InventoryTracker />} />
+              <Route path="marketplace" element={<MarketplaceTab />} />
+              <Route path="lab" element={<LabOrdersPage />} />
+              <Route path="patients" element={<Patients />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="doctoronboard" element={<DoctorPage />} />
+              <Route path="cart" element={<Cart />} />
+              <Route path="staff" element={<StaffRegistration/>}/>
+            </Route>
+            <Route
+              path="/receptionist"
+              element={<ReceptionistLayout />}
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="patients" element={<PatientManagement />} />
+              <Route path="appointments" element={<AppointmentScheduler />} />
+              <Route path="queue" element={<QueueManagement />} />
+              <Route path="billing" element={<Billing />} />
+              <Route path="doctors" element={<DoctorAllocation />} />
+              {/* <Route path="notifications" element={<NotificationCenter />} /> */}
+              {/* <Route path="chat" element={<InternalChat />} /> */}
+            </Route>
+          </Routes>
+        </Router>
+      </PersistGate>
     </Provider>
   );
 }

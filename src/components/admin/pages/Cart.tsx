@@ -18,26 +18,26 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import inventoryBaseUrl from "../inventoryBaseUrl";
+import inventoryBaseUrl from "../../../inventoryBaseUrl";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
+} from "../../ui/card";
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "../components/ui/tabs";
-import { removeFromCart } from "../redux/slice/cartSlice";
-import { useAppSelector } from "../redux/hook";
+} from "../../ui/tabs";
+import { removeFromCart } from "../../../redux/slice/cartSlice";
+import { useAppSelector } from "../../../redux/hook";
 import { useDispatch } from "react-redux";
 import axios from "axios";
-import clinicInventoryBaseUrl from "../clinicInventoryBaseUrl";
+import clinicInventoryBaseUrl from "../../../clinicInventoryBaseUrl";
 
 
 // Interfaces
@@ -407,7 +407,8 @@ export default function CartOrderPage() {
         vendorId:item.vendorId
       }));
 
-      const response = await axios.post(
+      console.log(itemToSend)
+      const response = await axios.post(    
         `${clinicInventoryBaseUrl}/api/v1/clinicPurchase/purchase`,
         {
           clinicId: clinicId,
@@ -431,7 +432,6 @@ export default function CartOrderPage() {
       console.log(error);
     }
   };
-
   const handleGetOrderHistory = async () => {
     try {
       const res = await axios.get(
