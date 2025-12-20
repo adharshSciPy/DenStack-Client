@@ -212,6 +212,7 @@ export default function PatientProfile({ patient, onBack }: Props) {
   }, [patient]);
 
   console.log("ds", dashboard);
+// console.log("ha",dashboard?.visitHistory[0].visitDate);
 
   return (
     <div className={styles.container}>
@@ -230,7 +231,7 @@ export default function PatientProfile({ patient, onBack }: Props) {
           <div className={styles.headerInfo}>
             <div className={styles.headerTitle}>
               <h2 className={styles.patientName}>{patient.name}</h2>
-              <span className={styles.patientId}>{patient._id}</span>
+              <span className={styles.patientId}>{patient.patientUniqueId}</span>
             </div>
             <div className={styles.statsGrid}>
               <div>
@@ -246,7 +247,9 @@ export default function PatientProfile({ patient, onBack }: Props) {
               <div>
                 <p className={styles.statLabel}>Last Visit</p>
                 <p className={styles.statValue}>
-                  {new Date(patient.lastVisit).toLocaleDateString("en-IN")}
+                  {new Date(dashboard?.visitHistory[0]?.visitDate || 
+                    ""
+                  ).toLocaleDateString("en-IN")}
                 </p>
               </div>
               <div>
@@ -289,7 +292,7 @@ export default function PatientProfile({ patient, onBack }: Props) {
               <MapPin className={`${styles.icon} ${styles.blueIcon}`} />
               <div>
                 <p className={styles.infoLabel}>Address</p>
-                <p className={styles.infoValue}>{dashboard?.patientProfile?.address.line1}</p>
+                <p className={styles.infoValue}>{dashboard?.patientProfile?.address?.line1 }</p>
               </div>
             </div>
           </div>

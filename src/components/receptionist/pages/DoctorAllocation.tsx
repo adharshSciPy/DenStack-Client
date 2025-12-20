@@ -1,135 +1,67 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Users, MapPin, Clock, Activity, User, RefreshCw, Calendar, Phone, Mail } from 'lucide-react';
 import styles from '../styles/Doctor.module.css';
+import { useAppSelector } from "../../../redux/hook";
+import axios from 'axios';
+import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
 
 interface Doctor {
-  id: string;
-  name: string;
-  specialty: string;
-  status: 'available' | 'busy' | 'break';
-  currentPatient?: string;
-  room?: string;
-  nextAvailable?: string;
+  _id: string;
+  doctorId: string;
+  doctor: {
+    _id: string;
+    name: string;
+    email?: string;
+    phoneNumber?: number;
+    specialization?: string;
+  };
+  roleInClinic: string;
+  standardConsultationFee: number;
+  status: string;
+  clinicLogin: Record<string, any>;
 }
 
-interface Room {
-  id: string;
-  name: string;
-  status: 'vacant' | 'occupied' | 'cleaning';
-  occupiedBy?: string;
-  patient?: string;
+interface ApiResponse {
+  clinicId: string;
+  doctors: Doctor[];
+  limit: number;
+  page: number;
+  success: boolean;
+  totalDoctors: number;
 }
 
-interface Patient {
+interface ReceptionistUser {
   id: string;
   name: string;
-  assignedTo: string;
+  clinicId: string;
+  clinicData?: ClinicData;
+}
+
+interface ClinicData {
+  _id: string;
+  name: string;
 }
 
 export default function DoctorAllocation() {
-  const [doctors, setDoctors] = useState<Doctor[]>([
-    { 
-      id: 'D001', 
-      name: 'Dr. Amit Sharma', 
-      specialty: 'General Physician', 
-      status: 'busy', 
-      currentPatient: 'Rahul Verma', 
-      room: 'Room 101', 
-      nextAvailable: '2:30 PM' 
-    },
-    { 
-      id: 'D002', 
-      name: 'Dr. Priya Patel', 
-      specialty: 'Pediatrician', 
-      status: 'available', 
-      room: 'Room 102' 
-    },
-    { 
-      id: 'D003', 
-      name: 'Dr. Rajesh Kumar', 
-      specialty: 'Cardiologist', 
-      status: 'busy', 
-      currentPatient: 'Amit Patel', 
-      room: 'Room 103', 
-      nextAvailable: '3:00 PM' 
-    },
-    { 
-      id: 'D004', 
-      name: 'Dr. Meera Singh', 
-      specialty: 'Dermatologist', 
-      status: 'break', 
-      room: 'Room 104', 
-      nextAvailable: '3:30 PM' 
-    },
-  ]);
+  const reception = useAppSelector(
+    (state) => state.auth.user
+  ) as ReceptionistUser | null;
 
-  const [rooms, setRooms] = useState<Room[]>([
-    { 
-      id: 'R101', 
-      name: 'Room 101', 
-      status: 'occupied', 
-      occupiedBy: 'Dr. Amit Sharma', 
-      patient: 'Rahul Verma' 
-    },
-    { 
-      id: 'R102', 
-      name: 'Room 102', 
-      status: 'vacant', 
-      occupiedBy: 'Dr. Priya Patel' 
-    },
-    { 
-      id: 'R103', 
-      name: 'Room 103', 
-      status: 'occupied', 
-      occupiedBy: 'Dr. Rajesh Kumar', 
-      patient: 'Amit Patel' 
-    },
-    { 
-      id: 'R104', 
-      name: 'Room 104', 
-      status: 'vacant', 
-      occupiedBy: 'Dr. Meera Singh' 
-    },
-    { 
-      id: 'R105', 
-      name: 'Room 105', 
-      status: 'vacant' 
-    },
-    { 
-      id: 'R106', 
-      name: 'Room 106', 
-      status: 'cleaning' 
-    },
-  ]);
-
-  const [waitingPatients, setWaitingPatients] = useState<Patient[]>([
-    { 
-      id: 'P001', 
-      name: 'Priya Sharma', 
-      assignedTo: 'Dr. Priya Patel' 
-    },
-    { 
-      id: 'P002', 
-      name: 'Sneha Reddy', 
-      assignedTo: 'Dr. Meera Singh' 
-    },
-    { 
-      id: 'P003', 
-      name: 'Vikram Singh', 
-      assignedTo: 'Dr. Priya Patel' 
-    },
-  ]);
-
+  const clinicId = reception?.clinicData?._id || "";
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const getItemClass = (status: string) => {
-    switch (status) {
-      case 'available':
-      case 'vacant':
+    if (!status) return '';
+    
+    switch (status.toLowerCase()) {
+      case 'active':
         return styles.itemAvailable;
       case 'busy':
-      case 'occupied':
         return styles.itemBusy;
-      case 'break':
-      case 'cleaning':
+      case 'on break':
+      case 'away':
         return styles.itemBreak;
       default:
         return '';
@@ -137,37 +69,38 @@ export default function DoctorAllocation() {
   };
 
   const getStatusIndicatorClass = (status: string) => {
-    switch (status) {
-      case 'available':
-      case 'vacant':
+    if (!status) return '';
+    
+    switch (status.toLowerCase()) {
+      case 'active':
         return styles.statusIndicatorGreen;
       case 'busy':
-      case 'occupied':
         return styles.statusIndicatorRed;
-      case 'break':
-      case 'cleaning':
+      case 'on break':
+      case 'away':
         return styles.statusIndicatorOrange;
       default:
         return '';
     }
   };
 
-  const getRoomIconClass = (status: string) => {
-    switch (status) {
-      case 'vacant':
-        return styles.roomIconGreen;
-      case 'occupied':
-        return styles.roomIconRed;
-      case 'cleaning':
-        return styles.roomIconOrange;
-      default:
-        return '';
+  const formatPhoneNumber = (phoneNumber?: number | string): string => {
+    if (!phoneNumber) return 'Not available';
+    
+    try {
+      const numStr = phoneNumber.toString();
+      if (numStr.length === 10) {
+        return `+91 ${numStr.slice(0,5)} ${numStr.slice(5)}`;
+      }
+      return numStr;
+    } catch (err) {
+      console.error('Error formatting phone number:', err);
+      return 'Invalid number';
     }
   };
 
-  const handleRefresh = () => {
-    // Simulate refresh - in real app, this would fetch new data
-    console.log('Refreshing data...');
+  const handleRefresh = async () => {
+    await fetchDoctors();
   };
 
   const handleAssignPatient = (doctorId: string) => {
@@ -175,10 +108,60 @@ export default function DoctorAllocation() {
     // Implementation would go here
   };
 
-  const handleAssignRoom = (patientId: string) => {
-    console.log('Assigning room to patient:', patientId);
-    // Implementation would go here
+  const fetchDoctors = async () => {
+    if (!clinicId) {
+      setError('Clinic ID not found');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await axios.get<ApiResponse>(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/active-doctors`,
+        { params: { clinicId } }
+      );
+      
+      if (res.data.success && Array.isArray(res.data.doctors)) {
+        // Ensure all doctor objects have required properties
+        const sanitizedDoctors = res.data.doctors.map(doctor => ({
+          ...doctor,
+          doctor: {
+            _id: doctor.doctor?._id || doctor.doctorId || '',
+            name: doctor.doctor?.name || 'Unknown Doctor',
+            email: doctor.doctor?.email || 'No email',
+            phoneNumber: doctor.doctor?.phoneNumber,
+            specialization: doctor.doctor?.specialization || 'Not specified',
+          },
+          status: doctor.status || 'unknown',
+          roleInClinic: doctor.roleInClinic || 'Not specified',
+          standardConsultationFee: doctor.standardConsultationFee || 0,
+        }));
+        
+        setDoctors(sanitizedDoctors);
+      } else {
+        setDoctors([]);
+        setError('Invalid response from server');
+      }
+    } catch (err: any) {
+      console.error('Error fetching doctors:', err);
+      setError(err.response?.data?.message || 'Failed to fetch doctors');
+      setDoctors([]);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchDoctors();
+  }, [clinicId]);
+
+  // Calculate stats based on API data
+  const availableDoctors = doctors.filter(d => d.status?.toLowerCase() === 'active').length;
+  const busyDoctors = doctors.filter(d => d.status?.toLowerCase() === 'busy').length;
+  const onBreakDoctors = doctors.filter(d => 
+    d.status?.toLowerCase() === 'on break' || d.status?.toLowerCase() === 'away'
+  ).length;
 
   return (
     <div className={styles.container}>
@@ -188,11 +171,22 @@ export default function DoctorAllocation() {
           <h1 className={styles.title}>Doctor Allocation & Room Management</h1>
           <p className={styles.subtitle}>Manage doctor availability and room assignments in real-time</p>
         </div>
-        <button className={styles.refreshBtn} onClick={handleRefresh}>
-          <RefreshCw size={16} />
-          Refresh
+        <button 
+          className={styles.refreshBtn} 
+          onClick={handleRefresh}
+          disabled={loading}
+        >
+          <RefreshCw size={16} className={loading ? styles.spin : ''} />
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className={styles.errorContainer}>
+          <p className={styles.errorText}>{error}</p>
+        </div>
+      )}
 
       {/* Quick Stats */}
       <div className={styles.statsGrid}>
@@ -202,7 +196,7 @@ export default function DoctorAllocation() {
           </div>
           <div>
             <p className={styles.statLabel}>Available Doctors</p>
-            <p className={styles.statValue}>{doctors.filter(d => d.status === 'available').length}</p>
+            <p className={styles.statValue}>{availableDoctors}</p>
           </div>
         </div>
         <div className={styles.statCard}>
@@ -211,16 +205,7 @@ export default function DoctorAllocation() {
           </div>
           <div>
             <p className={styles.statLabel}>Busy Doctors</p>
-            <p className={styles.statValue}>{doctors.filter(d => d.status === 'busy').length}</p>
-          </div>
-        </div>
-        <div className={styles.statCard}>
-          <div className={`${styles.statIcon} ${styles.statIconBlue}`}>
-            <MapPin size={20} />
-          </div>
-          <div>
-            <p className={styles.statLabel}>Vacant Rooms</p>
-            <p className={styles.statValue}>{rooms.filter(r => r.status === 'vacant').length}</p>
+            <p className={styles.statValue}>{busyDoctors}</p>
           </div>
         </div>
         <div className={styles.statCard}>
@@ -228,162 +213,103 @@ export default function DoctorAllocation() {
             <Clock size={20} />
           </div>
           <div>
-            <p className={styles.statLabel}>Waiting Patients</p>
-            <p className={styles.statValue}>{waitingPatients.length}</p>
+            <p className={styles.statLabel}>On Break</p>
+            <p className={styles.statValue}>{onBreakDoctors}</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={`${styles.statIcon} ${styles.statIconBlue}`}>
+            <User size={20} />
+          </div>
+          <div>
+            <p className={styles.statLabel}>Total Doctors</p>
+            <p className={styles.statValue}>{doctors.length}</p>
           </div>
         </div>
       </div>
 
-      {/* Doctors */}
+      {/* Doctors List */}
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>
           <Users size={20} style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle' }} />
           Doctors ({doctors.length})
         </h2>
-        <div className={styles.grid}>
-          {doctors.map((doctor) => (
-            <div key={doctor.id} className={`${styles.card} ${getItemClass(doctor.status)}`}>
-              <div className={styles.cardHeader}>
-                <div className={styles.avatar}>
-                  {doctor.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div className={styles.cardInfo}>
-                  <h3 className={styles.cardTitle}>{doctor.name}</h3>
-                  <p className={styles.cardSubtitle}>{doctor.specialty}</p>
-                </div>
-                <span className={`${styles.statusBadge} ${getStatusIndicatorClass(doctor.status)}`}>
-                  {doctor.status}
-                </span>
-              </div>
-              <div className={styles.cardBody}>
-                {doctor.room && (
-                  <div className={styles.infoRow}>
-                    <MapPin size={16} />
-                    <span>{doctor.room}</span>
+        {loading ? (
+          <div className={styles.loadingContainer}>
+            <RefreshCw size={24} className={styles.spin} />
+            <p>Loading doctors...</p>
+          </div>
+        ) : doctors.length === 0 ? (
+          <div className={styles.emptyState}>
+            <p>No doctors found for this clinic.</p>
+          </div>
+        ) : (
+          <div className={styles.grid}>
+            {doctors.map((doctor) => {
+              const doctorName = doctor.doctor?.name || 'Unknown Doctor';
+              const initials = doctorName
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2);
+              
+              const status = doctor.status || 'unknown';
+              const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1);
+              
+              return (
+                <div key={doctor._id || doctor.doctorId} className={`${styles.card} ${getItemClass(status)}`}>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.avatar}>
+                      {initials}
+                    </div>
+                    <div className={styles.cardInfo}>
+                      <h3 className={styles.cardTitle}>{doctorName}</h3>
+                      <p className={styles.cardSubtitle}>{doctor.doctor?.specialization || 'Not specified'}</p>
+                    </div>
+                    <span className={`${styles.statusBadge} ${getStatusIndicatorClass(status)}`}>
+                      {formattedStatus}
+                    </span>
                   </div>
-                )}
-                {doctor.currentPatient && (
-                  <div className={styles.infoRow}>
-                    <User size={16} />
-                    <span>Currently with: {doctor.currentPatient}</span>
-                  </div>
-                )}
-                {doctor.nextAvailable && doctor.status !== 'available' && (
-                  <div className={styles.infoRow}>
-                    <Clock size={16} />
-                    <span>Next available: {doctor.nextAvailable}</span>
-                  </div>
-                )}
-                {doctor.status === 'available' && (
-                  <button 
-                    className={styles.assignBtn}
-                    onClick={() => handleAssignPatient(doctor.id)}
-                  >
-                    Assign Patient
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Rooms */}
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>
-          <MapPin size={20} style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle' }} />
-          Rooms ({rooms.length})
-        </h2>
-        <div className={styles.grid}>
-          {rooms.map((room) => (
-            <div key={room.id} className={`${styles.card} ${getItemClass(room.status)}`}>
-              <div className={styles.cardHeader}>
-                <div className={`${styles.roomIcon} ${getRoomIconClass(room.status)}`}>
-                  <MapPin size={20} />
-                </div>
-                <div className={styles.cardInfo}>
-                  <h3 className={styles.cardTitle}>{room.name}</h3>
-                  <p className={styles.cardSubtitle}>{room.id}</p>
-                </div>
-                <span className={`${styles.statusBadge} ${getStatusIndicatorClass(room.status)}`}>
-                  {room.status}
-                </span>
-              </div>
-              <div className={styles.cardBody}>
-                {room.occupiedBy && (
-                  <div className={styles.roomDetails}>
-                    <p className={styles.roomDetailLabel}>
-                      <User size={14} style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} />
-                      Doctor: {room.occupiedBy}
-                    </p>
-                    {room.patient && (
-                      <p className={styles.roomDetailLabel}>
-                        <User size={14} style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} />
-                        Patient: {room.patient}
-                      </p>
+                  <div className={styles.cardBody}>
+                    <div className={styles.infoRow}>
+                      <Mail size={16} />
+                      <span>{doctor.doctor?.email || 'No email'}</span>
+                    </div>
+                    <div className={styles.infoRow}>
+                      <Phone size={16} />
+                      <span>{formatPhoneNumber(doctor.doctor?.phoneNumber)}</span>
+                    </div>
+                    <div className={styles.infoRow}>
+                      <Users size={16} />
+                      <span>Role: {doctor.roleInClinic?.charAt(0).toUpperCase() + doctor.roleInClinic?.slice(1) || 'Not specified'}</span>
+                    </div>
+                    <div className={styles.infoRow}>
+                      <Calendar size={16} />
+                      <span>Fee: ₹{doctor.standardConsultationFee || 0}</span>
+                    </div>
+                    
+                    {status.toLowerCase() === 'active' && (
+                      <button 
+                        className={styles.assignBtn}
+                        onClick={() => handleAssignPatient(doctor.doctorId)}
+                      >
+                        Assign Patient
+                      </button>
+                    )}
+                    
+                    {status.toLowerCase() === 'busy' && (
+                      <div className={styles.infoRow}>
+                        <Clock size={16} />
+                        <span>Currently with patient</span>
+                      </div>
                     )}
                   </div>
-                )}
-                {room.status === 'vacant' && !room.patient && (
-                  <p className={styles.readyText}>✓ Ready for assignment</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Waiting Patients */}
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>
-          <Clock size={20} style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle' }} />
-          Waiting for Room Assignment ({waitingPatients.length})
-        </h2>
-        <div className={styles.grid}>
-          {waitingPatients.map((patient) => (
-            <div key={patient.id} className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div className={styles.avatar}>
-                  {patient.name.split(' ').map(n => n[0]).join('')}
                 </div>
-                <div className={styles.cardInfo}>
-                  <h3 className={styles.cardTitle}>{patient.name}</h3>
-                  <p className={styles.cardSubtitle}>{patient.id}</p>
-                </div>
-              </div>
-              <div className={styles.cardBody}>
-                <p className={styles.assignedLabel}>Assigned Doctor</p>
-                <p className={styles.assignedValue}>{patient.assignedTo}</p>
-                <button 
-                  className={styles.assignBtn}
-                  onClick={() => handleAssignRoom(patient.id)}
-                >
-                  Assign Room
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Room Layout Grid */}
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>
-          <MapPin size={20} style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle' }} />
-          Room Layout
-        </h2>
-        <div className={styles.roomGrid}>
-          {rooms.map((room) => (
-            <div 
-              key={room.id} 
-              className={`${styles.roomCell} ${getItemClass(room.status)}`}
-              title={`${room.name} - ${room.status}${room.occupiedBy ? ' - ' + room.occupiedBy : ''}`}
-            >
-              <div className={styles.roomNumber}>{room.name.replace('Room ', '')}</div>
-              <div className={styles.roomStatus}>{room.status}</div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

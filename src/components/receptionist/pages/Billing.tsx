@@ -213,7 +213,6 @@ export default function Billing() {
 
       setSelectedPatient(null);
       setSearchQuery("");
-      setDoctors([])
       setItems([]);
       console.log("ressa",res);
       
@@ -654,7 +653,7 @@ export default function Billing() {
           </div>
 
           {/* Discount */}
-          <div
+          {/* <div
             style={{
               background: "white",
               borderRadius: "12px",
@@ -689,7 +688,7 @@ export default function Billing() {
               />
               <span>%</span>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Right Column - Invoice Preview */}

@@ -1,0 +1,509 @@
+/* Container */
+.container {
+  min-height: 100vh
+}
+
+/* Header */
+.header {
+  background-color: #2563eb;
+  color: white;
+  padding: 2rem;
+  border-radius: 20px;
+}
+
+.headerContent {
+  max-width: 80rem;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.headerTitle {
+  font-size: 1.875rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.headerSubtitle {
+  color: #bfdbfe;
+}
+
+.todayButton {
+  background-color: #3b82f6;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.todayButton:hover {
+  background-color: #60a5fa;
+}
+
+/* Calendar Wrapper */
+.calendarWrapper {
+  width: 100%;
+  padding: 1rem;
+}
+
+.calendarCard {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Month Navigation */
+.monthNavigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.navButton {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.navButton:hover {
+  background-color: #f3f4f6;
+}
+
+.navIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.monthTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* Days of Week */
+.daysOfWeekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dayOfWeekLabel {
+  padding: 1rem;
+  text-align: center;
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Calendar Grid */
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.emptyCell {
+  height: 8rem;
+  border: 1px solid #e5e7eb;
+}
+
+.dayCell {
+  height:13rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dayCell:hover {
+  background-color: #f9fafb;
+}
+
+.dayNumber {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.appointmentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: hidden;
+  flex: 1;
+}
+
+/* Appointment Cards in Calendar */
+.appointmentCard {
+  font-size: 10px;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  line-height: 1.25;
+}
+
+.appointmentTeal {
+  background-color: #ccfbf1;
+  color: #0f766e;
+  border-left: 2px solid #14b8a6;
+}
+
+.appointmentOrange {
+  background-color: #fed7aa;
+  color: #c2410c;
+  border-left: 2px solid #f97316;
+}
+
+.appointmentPurple {
+  background-color: #e9d5ff;
+  color: #7e22ce;
+  border-left: 2px solid #a855f7;
+}
+
+.appointmentTime {
+  font-weight: 500;
+}
+
+.appointmentDoctor,
+.appointmentPatient {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moreIndicator {
+  font-size: 10px;
+  color: #2563eb;
+  font-weight: 600;
+  padding-left: 0.375rem;
+  padding-top: 0.125rem;
+}
+
+.moreIndicator:hover {
+  text-decoration: underline;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24rem;
+  background-color: white;
+  box-shadow: -4px 0 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  transform: translateX(0);
+  transition: transform 0.3s;
+}
+
+.sidebarContent {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarHeader {
+  background-color: #2563eb;
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sidebarTitle {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.sidebarSubtitle {
+  color: #bfdbfe;
+}
+
+.closeButton {
+  padding: 0.25rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+  color: inherit;
+}
+
+.closeButton:hover {
+  background-color: #3b82f6;
+}
+
+.closeIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.sidebarBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.newAppointmentButton {
+  width: 100%;
+  background-color: #2563eb;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.newAppointmentButton:hover {
+  background-color: #1d4ed8;
+}
+
+.plusIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.appointmentsListSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.appointmentDetailCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.appointmentDetailCard:hover {
+  border-color: #93c5fd;
+}
+
+.appointmentDetailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.appointmentTimeDetail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* Status Badge - Generic */
+.statusBadge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.appointmentDetailInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #374151;
+}
+
+.infoLabel {
+  font-weight: 500;
+}
+
+.iconSmall {
+  width: 1rem;
+  height: 1rem;
+}
+
+.iconSmallGray {
+  width: 1rem;
+  height: 1rem;
+  color: #9ca3af;
+}
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.modal {
+  background-color: white;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 42rem;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  background-color: #2563eb;
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.modalBody {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.formLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.formLabelPlain {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.formTextarea {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  resize: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.formTextarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+
+.saveButton {
+  flex: 1;
+  background-color: #2563eb;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.saveButton:hover {
+  background-color: #1d4ed8;
+}
+
+.cancelButton {
+  flex: 1;
+  background-color: #e5e7eb;
+  color: #374151;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.cancelButton:hover {
+  background-color: #d1d5db;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .headerContent {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .calendarWrapper {
+    padding: 1rem;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+}

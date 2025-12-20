@@ -168,7 +168,7 @@ export default function PatientManagement() {
 
           {/* Filter Buttons */}
           <div className={styles.filterContainer}>
-            {["all", "active", "new", "inactive"].map((filter) => (
+            {["all"].map((filter) => (
               <button
                 key={filter}
                 onClick={() => setFilterStatus(filter)}
