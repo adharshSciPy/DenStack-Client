@@ -32,11 +32,13 @@ import {
 import clinicServiceBaseUrl from "../clinicServiceBaseUrl";
 import {
   Dialog,
-  DialogContent,
-  DialogHeader,
+DialogContent,
   DialogTitle,
-  DialogFooter,
+  DialogDescription,
+
 } from "./ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import PatientCRMModal from "./PatientCRM";
 
 interface Appointment {
   _id: string;
@@ -169,7 +171,15 @@ export function AppointmentsOverview() {
   const [resLoading, setResLoading] = useState(false);
   const [missingOps, setMissingOps] = useState([]);
   const [openMissingOps, setOpenMissingOps] = useState(false);
+  const[viewOpen,setViewOpen]=useState(false);
+  const[viewAppointment,setViewAppointment]=useState<any>(null)
 
+const Info = ({ label, value }: { label: string; value?: string }) => (
+  <div>
+    <p style={{ fontSize: 12, color: "#6b7280" }}>{label}</p>
+    <p style={{ fontWeight: 500 }}>{value || "-"}</p>
+  </div>
+);
 
 
   const { clinicId } = useParams();
@@ -1718,35 +1728,41 @@ export function AppointmentsOverview() {
                   </div>
 
                   {/* ✅ Dynamic button rendering */}
-                  {appointment.status !== "cancelled" && (
-                    <div className="flex items-start gap-2 ml-4">
-                      {appointment.status === "needs_reschedule" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent event bubbling
-                            console.log(
-                              "🔥 Reschedule button clicked for:",
-                              appointment._id
-                            );
-                            setRescheduleAppointmentId(appointment._id);
-                            setRescheduleOpen(true);
-                            fetchRescheduleDepartments();
-                          }}
-                        >
-                          Reschedule
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm">
-                          Edit
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                {appointment.status !== "cancelled" && (
+  <div className="flex items-start gap-2 ml-4">
+    {/* Reschedule button */}
+    {appointment.status === "needs_reschedule" && (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          setRescheduleAppointmentId(appointment._id);
+          setRescheduleOpen(true);
+          fetchRescheduleDepartments();
+        }}
+      >
+        Reschedule
+      </Button>
+    )}
+
+    {/* View button */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={(e) => {
+        e.stopPropagation();
+        setViewAppointment(appointment); // store full appointment
+        setViewOpen(true);
+      }}
+    >
+      View
+    </Button>
+  </div>
+)}
+
                 </div>
               ))}
-
               {/* Load More */}
               {nextCursor && (
                 <div className="flex justify-center mt-4 gap-2">
@@ -1770,6 +1786,11 @@ export function AppointmentsOverview() {
           )}
         </CardContent>
       </Card>
+        <PatientCRMModal
+    viewOpen={viewOpen}
+    setViewOpen={setViewOpen}
+    viewAppointment={viewAppointment}
+  />
       {rescheduleOpen && (
         <>
           {/* Prevent dropdown clipping */}
