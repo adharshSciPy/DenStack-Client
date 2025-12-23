@@ -1598,6 +1598,117 @@
   color: #6b7280;
   font-size: 14px;
 }
+/* Department Selection */
+.departmentsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.departmentButton {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.departmentButton:hover {
+  border-color: #4299e1;
+  background: #f7fafc;
+}
+
+.departmentButtonActive {
+  border-color: #4299e1;
+  background: #ebf8ff;
+  color: #2b6cb0;
+  font-weight: 500;
+}
+
+/* Doctor Availability Card */
+.doctorAvailabilityCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 12px;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.doctorAvailabilityHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: #059669;
+}
+
+.doctorInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.doctorInfoItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.doctorInfoLabel {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.doctorInfoValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.availabilitySlots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.slotBadge {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.loadingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* Spinner Animation */
 .spinner {
