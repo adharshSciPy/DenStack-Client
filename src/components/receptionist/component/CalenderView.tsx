@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, FileText, Plus, X } from 'lucide-react';
 import styles from "../styles/calendar.module.css";
 
@@ -9,7 +9,7 @@ export type CalendarAppointment = {
   time: string;
   date: string;
   status?: string;
-  [key: string]: any; // Allow additional properties
+  [key: string]: any;
 };
 
 type CalendarViewProps = {
@@ -25,6 +25,10 @@ type CalendarViewProps = {
   headerSubtitle?: string;
   showCreateButton?: boolean;
   className?: string;
+  // Add these new props for month/year navigation
+  currentMonth?: number;
+  currentYear?: number;
+  onMonthChange?: (month: number, year: number) => void;
 };
 
 export default function CalendarView({
@@ -39,14 +43,24 @@ export default function CalendarView({
   headerTitle = "Appointment Calendar",
   headerSubtitle = "Click any day to view appointments",
   showCreateButton = true,
-  className = ""
+  className = "",
+  // New props with defaults
+  currentMonth,
+  currentYear,
+  onMonthChange
 }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(initialDate);
+  // Use external month/year if provided, otherwise use internal state
+  const [internalCurrentDate, setInternalCurrentDate] = useState(initialDate);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showDayDetails, setShowDayDetails] = useState(false);
 
   const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // Determine which date to use for calendar rendering
+  const displayDate = currentMonth && currentYear 
+    ? new Date(currentYear, currentMonth - 1, 1)
+    : internalCurrentDate;
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -68,15 +82,39 @@ export default function CalendarView({
   };
 
   const handlePrevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    const newDate = new Date(displayDate.getFullYear(), displayDate.getMonth() - 1, 1);
+    
+    if (onMonthChange) {
+      // Use external handler if provided
+      onMonthChange(newDate.getMonth() + 1, newDate.getFullYear());
+    } else {
+      // Use internal state if no external handler
+      setInternalCurrentDate(newDate);
+    }
   };
 
   const handleNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    const newDate = new Date(displayDate.getFullYear(), displayDate.getMonth() + 1, 1);
+    
+    if (onMonthChange) {
+      // Use external handler if provided
+      onMonthChange(newDate.getMonth() + 1, newDate.getFullYear());
+    } else {
+      // Use internal state if no external handler
+      setInternalCurrentDate(newDate);
+    }
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
+    const today = new Date();
+    
+    if (onMonthChange) {
+      // Use external handler if provided
+      onMonthChange(today.getMonth() + 1, today.getFullYear());
+    } else {
+      // Use internal state if no external handler
+      setInternalCurrentDate(today);
+    }
   };
 
   const handleDateClick = (dateStr: string) => {
@@ -145,9 +183,9 @@ export default function CalendarView({
   );
 
   const renderCalendar = () => {
-    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(displayDate);
+    const year = displayDate.getFullYear();
+    const month = displayDate.getMonth();
     const days = [];
 
     // Empty cells for days before month starts
@@ -212,7 +250,7 @@ export default function CalendarView({
               <ChevronLeft className={styles.navIcon} />
             </button>
             <h2 className={styles.monthTitle}>
-              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+              {monthNames[displayDate.getMonth()]} {displayDate.getFullYear()}
             </h2>
             <button onClick={handleNextMonth} className={styles.navButton}>
               <ChevronRight className={styles.navIcon} />

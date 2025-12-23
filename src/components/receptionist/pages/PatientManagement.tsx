@@ -9,6 +9,8 @@ import {
   User,
 } from "lucide-react";
 import PatientProfile from "./PatientProfile";
+import PatientBilling from "./PatientBilling";
+import PatientMedicalHistory from "./PatientMedicalHistory"; // Import the medical history component
 import styles from "../styles/PatientManagement.module.css";
 import axios from "axios";
 import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
@@ -72,6 +74,7 @@ export default function PatientManagement() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentView, setCurrentView] = useState<"list" | "profile" | "billing" | "history">("list"); // Add history view
   
   const reception = useAppSelector(
     (state) => state.auth.user
@@ -126,11 +129,50 @@ export default function PatientManagement() {
     return days;
   };
 
-  if (selectedPatient) {
+  const handleBackToList = () => {
+    setSelectedPatient(null);
+    setCurrentView("list");
+  };
+
+  const handleViewProfile = (patient: PatientData) => {
+    setSelectedPatient(patient);
+    setCurrentView("profile");
+  };
+
+  const handleViewBilling = (patient: PatientData) => {
+    setSelectedPatient(patient);
+    setCurrentView("billing");
+  };
+
+  const handleViewHistory = (patient: PatientData) => {
+    setSelectedPatient(patient);
+    setCurrentView("history");
+  };
+
+  // Render based on current view
+  if (currentView === "profile" && selectedPatient) {
     return (
       <PatientProfile
         patient={selectedPatient}
-        onBack={() => setSelectedPatient(null)}
+        onBack={handleBackToList}
+      />
+    );
+  }
+
+  if (currentView === "billing" && selectedPatient) {
+    return (
+      <PatientBilling
+        patient={selectedPatient}
+        onBack={handleBackToList}
+      />
+    );
+  }
+
+  if (currentView === "history" && selectedPatient) {
+    return (
+      <PatientMedicalHistory
+        patient={selectedPatient}
+        onBack={handleBackToList}
       />
     );
   }
@@ -278,25 +320,27 @@ export default function PatientManagement() {
                     <td className={styles.tableCell}>
                       <div className={styles.actionButtons}>
                         <button
-                          onClick={() => setSelectedPatient(patient)}
+                          onClick={() => handleViewProfile(patient)}
                           className={`${styles.actionButton} ${styles.viewButton}`}
                           title="View Profile"
                         >
                           <Eye className={styles.actionIcon} />
                         </button>
-                        <button
+                        {/* <button
                           className={`${styles.actionButton} ${styles.calendarButton}`}
                           title="Book Appointment"
                         >
                           <Calendar className={styles.actionIcon} />
-                        </button>
+                        </button> */}
                         <button
+                          onClick={() => handleViewHistory(patient)}
                           className={`${styles.actionButton} ${styles.historyButton}`}
                           title="View History"
                         >
                           <FileText className={styles.actionIcon} />
                         </button>
                         <button
+                          onClick={() => handleViewBilling(patient)}
                           className={`${styles.actionButton} ${styles.billingButton}`}
                           title="Billing"
                         >

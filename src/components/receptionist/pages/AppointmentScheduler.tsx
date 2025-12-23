@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "../../ui/button";
 import {
   Calendar,
@@ -16,6 +16,8 @@ import {
   Loader2,
   Search,
   MapPin,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import CalendarView, { CalendarAppointment } from "../component/CalenderView";
 import { useAppSelector } from "../../../redux/hook";
@@ -26,16 +28,21 @@ import axios from "axios";
 import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
 
 type Appointment = {
-  _id: string; // MongoDB document ID for updates
-  id: string; // Display ID (OP Number)
+  _id: string;
+  id: string;
   patientName: string;
   patientId: string;
-  doctor: string; // Doctor ID
-  doctorName: string; // Doctor name for display
+  doctor: string;
+  doctorName: string;
   time: string;
   duration: number;
   type: "new" | "follow-up" | "emergency" | "procedure";
-  status: "scheduled" | "confirmed" | "completed" | "cancelled";
+  status:
+    | "scheduled"
+    | "confirmed"
+    | "completed"
+    | "cancelled"
+    | "needs_reschedule";
   reason: string;
   date: string;
 };
@@ -50,7 +57,12 @@ interface AppointmentFormState {
   time: string;
   type: "new" | "follow-up" | "emergency" | "procedure";
   duration: number;
-  status: "scheduled" | "confirmed" | "completed" | "cancelled";
+  status:
+    | "scheduled"
+    | "confirmed"
+    | "completed"
+    | "cancelled"
+    | "needs_reschedule";
   reason: string;
 }
 
@@ -106,6 +118,34 @@ interface FullStatus {
   tomorrowRescheduleCount?: number;
 }
 
+interface MonthlyAppointmentResponse {
+  success: boolean;
+  message: string;
+  clinicId: string;
+  month: number;
+  year: number;
+  count: number;
+  data: {
+    date: string;
+    appointments: {
+      _id: string;
+      appointmentDate: string;
+      appointmentTime: string;
+      status: string;
+      opNumber: number;
+      doctorId: string;
+      patient: {
+        _id: string;
+        name: string;
+        phone: number;
+        age: number;
+        gender: string;
+        patientUniqueId: string;
+      };
+    }[];
+  }[];
+}
+
 export default function AppointmentScheduler() {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [isNewPatient, setIsNewPatient] = useState(false);
@@ -113,46 +153,55 @@ export default function AppointmentScheduler() {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [doctorAvailability, setDoctorAvailability] = useState<DoctorAvailability[]>([]);
-  const [editingAppointment, setEditingAppointment] = useState<AppointmentFormState>({
-    patientId: "",
-    patientName: "",
-    doctorId: "",
-    department: "",
-    date: new Date().toISOString().split("T")[0],
-    time: "",
-    type: "new",
-    duration: 30,
-    status: "scheduled",
-    reason: "",
-  });
+  const [doctorAvailability, setDoctorAvailability] = useState<
+    DoctorAvailability[]
+  >([]);
+  const [editingAppointment, setEditingAppointment] =
+    useState<AppointmentFormState>({
+      patientId: "",
+      patientName: "",
+      doctorId: "",
+      department: "",
+      date: new Date().toISOString().split("T")[0],
+      time: "",
+      type: "new",
+      duration: 30,
+      status: "scheduled",
+      reason: "",
+    });
 
-  const [newPatientForm, setNewPatientForm] = useState<PatientRegistrationForm>({
-    name: "",
-    age: "",
-    gender: "",
-    phone: "",
-    email: "",
-    address: "",
-    conditions: "",
-    surgeries: "",
-    allergies: "",
-    familyHistory: "",
-  });
+  const [newPatientForm, setNewPatientForm] = useState<PatientRegistrationForm>(
+    {
+      name: "",
+      age: "",
+      gender: "",
+      phone: "",
+      email: "",
+      address: "",
+      conditions: "",
+      surgeries: "",
+      allergies: "",
+      familyHistory: "",
+    }
+  );
 
   const [foundPatient, setFoundPatient] = useState<any>(null);
   const [registrationLoading, setRegistrationLoading] = useState(false);
   const [patientSearchLoading, setPatientSearchLoading] = useState(false);
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
-  const [currentPageIndex, setCurrentPageIndex] = useState(-1);
   const [selectedTime, setSelectedTime] = useState("");
-  const [nextCursor, setNextCursor] = useState(null);
-  const [totalAppointments, setTotalAppointments] = useState(0);
-  const [showingRange, setShowingRange] = useState("");
-  const [missingOps, setMissingOps] = useState([]);
-  const [pageCursors, setPageCursors] = useState([]);
   const [appointmentDate, setAppointmentDate] = useState("");
+
+  // State for current month/year
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState<number>(
+    today.getMonth() + 1
+  );
+  const [currentYear, setCurrentYear] = useState<number>(today.getFullYear());
+
+  // State for year selection
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
 
   const [fullStatus, setFullStatus] = useState<FullStatus>({
     totalAppointments: 0,
@@ -167,99 +216,115 @@ export default function AppointmentScheduler() {
 
   const clinicId = reception?.clinicData?._id || "";
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const LIMIT = 15;
 
-  // Fetch appointments
-  const fetchAppointments = async (
-    query = "",
-    date = "",
-    cursor = null,
-    limit = LIMIT,
-    addToCursors = true
-  ) => {
+  // Month names for display
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  // Year dropdown ref for closing on outside click
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Generate years for dropdown (10 years back and 5 years forward)
+  const generateYearOptions = () => {
+    const currentYear = today.getFullYear();
+    const years = [];
+    for (let i = currentYear - 10; i <= currentYear + 5; i++) {
+      years.push(i);
+    }
+    return years;
+  };
+
+  // Close year dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        yearDropdownRef.current &&
+        !yearDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowYearDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Fetch appointments using the new API
+  const fetchAppointments = async (month?: number, year?: number) => {
+    if (!clinicId) return;
+
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/clinic-appointments/${clinicId}`,
+      const targetMonth = month || currentMonth;
+      const targetYear = year || currentYear;
+
+      const response = await axios.get<MonthlyAppointmentResponse>(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/monthly_appointmnets/${clinicId}`,
         {
           params: {
-            search: query || undefined,
-            startDate: date || undefined,
-            lastId: cursor || undefined,
-            limit,
+            month: targetMonth,
+            year: targetYear,
           },
         }
       );
 
-      const data = response.data || {};
-      const doctorWiseData = data.doctorWise || [];
+      const data = response.data;
 
-      // Flatten the doctor-wise structure
-      const mappedAppointments: Appointment[] = [];
+      if (data.success) {
+        // Flatten the appointments from the new API response
+        const mappedAppointments: Appointment[] = [];
 
-      doctorWiseData.forEach((doctorGroup: any) => {
-        const doctorInfo = doctorGroup.doctor || {};
-        const appointments = doctorGroup.appointments || [];
-
-        appointments.forEach((apt: any) => {
-          mappedAppointments.push({
-            _id: apt._id,
-            id: apt.opNumber ? `OP${apt.opNumber}` : apt._id,
-            patientName: apt.patientId?.name || "Unknown Patient",
-            patientId: apt.patientId?._id || apt.patientId,
-            doctor: doctorInfo._id || apt.doctorId || "Unknown",
-            doctorName: doctorInfo.name || "Unknown Doctor",
-            time: apt.appointmentTime || "00:00",
-            duration: apt.duration || 30,
-            type: apt.type || "new",
-            status: apt.status || "scheduled",
-            reason: apt.reason || "",
-            date: apt.appointmentDate || "",
+        data.data.forEach((dayData) => {
+          dayData.appointments.forEach((apt) => {
+            mappedAppointments.push({
+              _id: apt._id,
+              id: `OP${apt.opNumber}`,
+              patientName: apt.patient.name || "Unknown Patient",
+              patientId: apt.patient._id,
+              doctor: apt.doctorId,
+              doctorName: "Unknown Doctor",
+              time: apt.appointmentTime,
+              duration: 30,
+              type: "new",
+              status: apt.status as any,
+              reason: "",
+              date: apt.appointmentDate,
+            });
           });
         });
-      });
 
-      setAppointments(mappedAppointments);
-      setNextCursor(data.nextCursor || null);
-      setTotalAppointments(data.totalAppointments || mappedAppointments.length);
+        setAppointments(mappedAppointments);
+        setFullStatus({
+          totalAppointments: data.count,
+          completedAppointments: 0,
+          pendingAppointments: data.count,
+          cancelledAppointments: 0,
+        });
 
-      // Update stats
-      const stats = data.stats || {};
-      setFullStatus({
-        totalAppointments:
-          stats.totalAppointments ||
-          data.totalAppointments ||
-          mappedAppointments.length,
-        completedAppointments: stats.completedCount || 0,
-        pendingAppointments: stats.scheduledCount || 0,
-        cancelledAppointments: stats.cancelledCount || 0,
-        tomorrowRescheduleCount: data.tomorrowRescheduleCount || 0,
-      });
-
-      // Update showing range
-      const start = mappedAppointments.length
-        ? cursor
-          ? currentPageIndex * limit + 1
-          : 1
-        : 0;
-      const end = start + mappedAppointments.length - 1;
-      setShowingRange(
-        `${start}-${end} of ${data.totalAppointments || mappedAppointments.length}`
-      );
-      setMissingOps(data.missingOps || []);
-
-      // Save cursor for this page
-      if (addToCursors && cursor) {
-        const newCursors = [...pageCursors];
-        newCursors.push(cursor);
-        setPageCursors(newCursors);
-        setCurrentPageIndex(newCursors.length - 1);
-      } else if (!cursor) {
-        setPageCursors([]);
-        setCurrentPageIndex(-1);
+        console.log(
+          `Fetched ${mappedAppointments.length} appointments for ${
+            monthNames[targetMonth - 1]
+          } ${targetYear}`
+        );
+      } else {
+        alert("Failed to fetch appointments");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching appointments:", error);
       alert("Failed to fetch appointments. Please try again.");
     } finally {
@@ -267,8 +332,58 @@ export default function AppointmentScheduler() {
     }
   };
 
-  // Create appointment handler
+  // Handle month change
+  const handleMonthChange = (month: number, year: number) => {
+    setCurrentMonth(month);
+    setCurrentYear(year);
+    fetchAppointments(month, year);
+  };
+
+  // Navigate to previous month
+  const handlePrevMonth = () => {
+    let newMonth = currentMonth - 1;
+    let newYear = currentYear;
+
+    if (newMonth < 1) {
+      newMonth = 12;
+      newYear = currentYear - 1;
+    }
+
+    handleMonthChange(newMonth, newYear);
+  };
+
+  // Navigate to next month
+  const handleNextMonth = () => {
+    let newMonth = currentMonth + 1;
+    let newYear = currentYear;
+
+    if (newMonth > 12) {
+      newMonth = 1;
+      newYear = currentYear + 1;
+    }
+
+    handleMonthChange(newMonth, newYear);
+  };
+
+  // Handle year selection
+  const handleYearSelect = (year: number) => {
+    setCurrentYear(year);
+    setShowYearDropdown(false);
+    fetchAppointments(currentMonth, year);
+  };
+
+  // Create appointment handler with date validation
   const handleCreateAppointment = (date: string) => {
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Prevent creating appointments in past dates
+    if (selectedDate < today) {
+      alert("Cannot create appointments for past dates.");
+      return;
+    }
+
     setEditingAppointment({
       patientId: "",
       patientName: "",
@@ -299,34 +414,55 @@ export default function AppointmentScheduler() {
     setShowBookingForm(true);
   };
 
-  // Edit appointment handler
+  // Edit appointment handler with date validation
   const handleEditAppointment = (appointment: CalendarAppointment) => {
     const fullAppointment = appointments.find(
       (apt) => apt.id === appointment.id
     );
-    if (fullAppointment) {
-      setEditingAppointment({
-        _id: fullAppointment._id,
-        patientId: fullAppointment.patientId,
-        patientName: fullAppointment.patientName,
-        doctorId: fullAppointment.doctor,
-        department: "",
-        date: fullAppointment.date,
-        time: fullAppointment.time.replace(" AM", "").replace(" PM", ""),
-        duration: fullAppointment.duration,
-        type: fullAppointment.type,
-        status: fullAppointment.status,
-        reason: fullAppointment.reason,
-      });
-      setShowBookingForm(true);
+
+    if (!fullAppointment) return;
+
+    const appointmentDate = new Date(fullAppointment.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check if appointment is in the past
+    if (appointmentDate < today) {
+      alert("Cannot edit past appointments.");
+      return;
     }
+
+    setEditingAppointment({
+      _id: fullAppointment._id,
+      patientId: fullAppointment.patientId,
+      patientName: fullAppointment.patientName,
+      doctorId: fullAppointment.doctor,
+      department: "",
+      date: fullAppointment.date,
+      time: fullAppointment.time.replace(" AM", "").replace(" PM", ""),
+      duration: fullAppointment.duration,
+      type: fullAppointment.type,
+      status: fullAppointment.status,
+      reason: fullAppointment.reason,
+    });
+    setShowBookingForm(true);
   };
 
-  // Save appointment handler
+  // Save appointment handler with date validation
   const handleSaveAppointment = async () => {
     if (!editingAppointment) return;
 
-    // Validations
+    // Validate date is not in past
+    const appointmentDate = new Date(editingAppointment.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (appointmentDate < today) {
+      alert("Cannot create or update appointments for past dates.");
+      return;
+    }
+
+    // Other validations
     if (!editingAppointment.patientId || !editingAppointment.patientName) {
       alert("Please fill in patient details");
       return;
@@ -376,7 +512,7 @@ export default function AppointmentScheduler() {
       }
 
       // Refresh appointments list
-      await fetchAppointments("", "", null, LIMIT, false);
+      await fetchAppointments(currentMonth, currentYear);
 
       setShowBookingForm(false);
       setEditingAppointment({
@@ -439,6 +575,7 @@ export default function AppointmentScheduler() {
       );
 
       alert("Forced Appointment Booked Successfully");
+      await fetchAppointments(currentMonth, currentYear);
     } catch (error) {
       alert("Force booking failed");
     } finally {
@@ -509,7 +646,7 @@ export default function AppointmentScheduler() {
     }
   };
 
-  // Patient registration handler - FIXED VERSION
+  // Patient registration handler
   const handlePatientRegistration = async () => {
     try {
       // Basic validation
@@ -581,9 +718,9 @@ export default function AppointmentScheduler() {
 
       if (data.success || data.patient || data.data) {
         const patient = data.data?.patient || data.patient || data.data;
-        
+
         alert("Patient registered successfully!");
-        
+
         // Update found patient state
         setFoundPatient(patient);
 
@@ -614,7 +751,7 @@ export default function AppointmentScheduler() {
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      
+
       if (error.response?.data?.message) {
         alert(`Error: ${error.response.data.message}`);
       } else if (error.message) {
@@ -638,27 +775,31 @@ export default function AppointmentScheduler() {
         return styles.statusCompleted;
       case "cancelled":
         return styles.statusCancelled;
+      case "needs_reschedule":
+        return styles.statusNeedsReschedule || styles.statusPending;
       default:
         return styles.statusConfirmed;
     }
   };
 
-  // Fetch appointments on component mount
+  // Fetch appointments on component mount and when month/year changes
   useEffect(() => {
-    if (!clinicId) return;
-    fetchAppointments("", "", null, LIMIT);
+    if (clinicId) {
+      fetchAppointments();
+    }
   }, [clinicId]);
 
   // Fetch departments
   useEffect(() => {
     const fetchDepartments = async () => {
+      if (!clinicId) return;
+
       try {
         const response = await axios.get(
           `${clinicServiceBaseUrl}/api/v1/clinic-service/department/details/${clinicId}`
         );
 
         const departments = response.data?.departments || [];
-        console.log("Departments Response:", departments);
         setDepartments(departments);
       } catch (error) {
         console.error("Error fetching departments:", error);
@@ -717,27 +858,45 @@ export default function AppointmentScheduler() {
       setAvailabilityLoading(false);
     }
   };
-
+  console.log("apoo",appointments);
+  
   // Custom sidebar card renderer
   const renderSidebarCard = (apt: CalendarAppointment) => {
     const fullAppointment = appointments.find((a) => a.id === apt.id);
     if (!fullAppointment) return null;
 
+    const appointmentDate = new Date(fullAppointment.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isPastAppointment = appointmentDate < today;
+    const isToday = appointmentDate.toDateString() === today.toDateString();
+
     return (
       <div
-        className={styles.appointmentDetailCard}
-        onClick={() => handleEditAppointment(apt)}
+        className={`${styles.appointmentDetailCard} ${
+          isPastAppointment ? styles.pastAppointment : ""
+        }`}
+        onClick={() => !isPastAppointment && handleEditAppointment(apt)}
+        style={{
+          cursor: isPastAppointment ? "not-allowed" : "pointer",
+          opacity: isPastAppointment ? 0.7 : 1,
+        }}
       >
         <div className={styles.appointmentDetailHeader}>
           <div className={styles.appointmentTimeDetail}>
             <Clock className={styles.iconSmall} />
             {apt.time}
+            {isToday && <span className={styles.todayBadge}>Today</span>}
+            {isPastAppointment && (
+              <span className={styles.pastBadge}>Past</span>
+            )}
           </div>
           <span
             className={getStatusClass(fullAppointment.status)}
             style={{ padding: "5px", borderRadius: "10px" }}
           >
-            {fullAppointment.status}
+            {fullAppointment.status.replace("_", " ").toUpperCase()}
           </span>
         </div>
         <div className={styles.appointmentDetailInfo}>
@@ -753,38 +912,60 @@ export default function AppointmentScheduler() {
           </div>
           <div className={styles.infoRow}>
             <Calendar className={styles.iconSmallGray} />
-            <span className={styles.infoLabel}>Type:</span>{" "}
-            {fullAppointment.type}
+            <span className={styles.infoLabel}>Date:</span>{" "}
+            {new Date(fullAppointment.date).toLocaleDateString()}
           </div>
-          <div className={styles.infoRow}>
-            <FileText className={styles.iconSmallGray} />
-            <span className={styles.infoLabel}>Reason:</span>{" "}
-            {fullAppointment.reason}
-          </div>
+          {fullAppointment.reason && (
+            <div className={styles.infoRow}>
+              <FileText className={styles.iconSmallGray} />
+              <span className={styles.infoLabel}>Reason:</span>{" "}
+              {fullAppointment.reason}
+            </div>
+          )}
         </div>
+        {isPastAppointment && (
+          <div className={styles.pastAppointmentOverlay}>
+            <span>Past appointments cannot be edited</span>
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <>
-      <CalendarView
-        appointments={appointments.map((apt) => ({
-          id: apt.id,
-          patientName: apt.patientName,
-          doctor: apt.doctorName,
-          time: apt.time,
-          date: apt.date,
-          status: apt.status,
-          type: apt.type,
-        }))}
-        onCreateAppointment={handleCreateAppointment}
-        onAppointmentClick={handleEditAppointment}
-        renderSidebarCard={renderSidebarCard}
-        initialDate={new Date()}
-        headerTitle="Appointment Calendar"
-        headerSubtitle="Click any day to schedule a new appointment"
-      />
+      <div className={styles.appointmentSchedulerContainer}>
+        <CalendarView
+          appointments={appointments.map((apt) => ({
+            id: apt.id,
+            patientName: apt.patientName,
+            doctor: apt.doctorName,
+            time: apt.time,
+            date: apt.date,
+            status: apt.status,
+            type: apt.type,
+          }))}
+          onCreateAppointment={handleCreateAppointment}
+          onAppointmentClick={handleEditAppointment}
+          renderSidebarCard={renderSidebarCard}
+          initialDate={new Date(currentYear, currentMonth - 1, 1)}
+          headerTitle={`${
+            monthNames[currentMonth - 1]
+          } ${currentYear} Appointments`}
+          headerSubtitle="Click any future date to schedule a new appointment"
+          // Add these new props to sync month/year
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          onMonthChange={handleMonthChange}
+        />
+
+        {loading && (
+          <div className={styles.loadingOverlay}>
+            <Loader2 className={styles.spinner} size={32} />
+            <span>Loading appointments...</span>
+          </div>
+        )}
+      </div>
 
       {/* Booking Form Modal */}
       {showBookingForm && (
@@ -799,9 +980,19 @@ export default function AppointmentScheduler() {
                     : "New Appointment"}
                 </h3>
                 <span className={styles.modalSubtitle}>
-                  {editingAppointment._id
-                    ? "Update existing appointment"
-                    : "Create a new appointment"}
+                  {editingAppointment.date && (
+                    <span>
+                      {new Date(editingAppointment.date).toLocaleDateString(
+                        "en-US",
+                        {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )}
+                    </span>
+                  )}
                 </span>
               </div>
               <button
@@ -879,7 +1070,7 @@ export default function AppointmentScheduler() {
                   <div className={styles.formGroup}>
                     <label className={styles.inputLabel}>
                       <Calendar size={14} />
-                      <span>Date</span>
+                      <span>Date *</span>
                     </label>
                     <input
                       type="date"
@@ -891,13 +1082,14 @@ export default function AppointmentScheduler() {
                           date: e.target.value,
                         })
                       }
+                      min={new Date().toISOString().split("T")[0]} // Prevent past dates
                     />
                   </div>
 
                   <div className={styles.formGroup}>
                     <label className={styles.inputLabel}>
                       <Clock size={14} />
-                      <span>Time</span>
+                      <span>Time *</span>
                     </label>
                     <input
                       type="time"
@@ -912,6 +1104,9 @@ export default function AppointmentScheduler() {
                     />
                   </div>
                 </div>
+                <p className={styles.hintText}>
+                  Note: Past dates cannot be selected for appointments
+                </p>
               </div>
 
               <div className={styles.divider} />
@@ -931,7 +1126,7 @@ export default function AppointmentScheduler() {
                       <div className={styles.searchInputWrapper}>
                         <input
                           className={styles.searchInput}
-                          placeholder="Enter Patient Unique ID (e.g., PT001)"
+                          placeholder="Enter Patient Unique ID (e.g., RKC-00001)"
                           value={patientSearchQuery}
                           onChange={(e) =>
                             setPatientSearchQuery(e.target.value)
@@ -1025,10 +1220,12 @@ export default function AppointmentScheduler() {
                   ) : (
                     <div className={styles.formGrid}>
                       <div className={styles.formGroup}>
-                        <label className={styles.inputLabel}>Patient ID</label>
+                        <label className={styles.inputLabel}>
+                          Patient ID *
+                        </label>
                         <input
                           className={styles.input}
-                          placeholder="PT001"
+                          placeholder="RKC-00001"
                           value={editingAppointment.patientId}
                           onChange={(e) =>
                             setEditingAppointment({
@@ -1041,7 +1238,7 @@ export default function AppointmentScheduler() {
 
                       <div className={styles.formGroup}>
                         <label className={styles.inputLabel}>
-                          Patient Name
+                          Patient Name *
                         </label>
                         <input
                           className={styles.input}
@@ -1135,7 +1332,11 @@ export default function AppointmentScheduler() {
                             onChange={(e) =>
                               setNewPatientForm({
                                 ...newPatientForm,
-                                gender: e.target.value as "Male" | "Female" | "Other" | "",
+                                gender: e.target.value as
+                                  | "Male"
+                                  | "Female"
+                                  | "Other"
+                                  | "",
                               })
                             }
                             required
@@ -1329,11 +1530,13 @@ export default function AppointmentScheduler() {
                         ))}
                       </select>
                     </div>
-                    {selectedDepartment && doctorAvailability.length === 0 && !availabilityLoading && (
-                      <p className={styles.hintText}>
-                        No doctors available in this department
-                      </p>
-                    )}
+                    {selectedDepartment &&
+                      doctorAvailability.length === 0 &&
+                      !availabilityLoading && (
+                        <p className={styles.hintText}>
+                          No doctors available in this department
+                        </p>
+                      )}
                   </div>
 
                   {/* Display selected doctor's availability */}
@@ -1347,7 +1550,8 @@ export default function AppointmentScheduler() {
                         <div className={styles.doctorInfoGrid}>
                           {(() => {
                             const selectedDoctor = doctorAvailability.find(
-                              (doc) => doc.doctorId === editingAppointment.doctorId
+                              (doc) =>
+                                doc.doctorId === editingAppointment.doctorId
                             );
                             if (!selectedDoctor) return null;
 
@@ -1382,7 +1586,8 @@ export default function AppointmentScheduler() {
                                     Available Slots:
                                   </span>
                                   <div className={styles.availabilitySlots}>
-                                    {selectedDoctor.availableSlots.length > 0 ? (
+                                    {selectedDoctor.availableSlots.length >
+                                    0 ? (
                                       selectedDoctor.availableSlots.map(
                                         (slot, index) => (
                                           <div
@@ -1420,7 +1625,11 @@ export default function AppointmentScheduler() {
                       onChange={(e) =>
                         setEditingAppointment({
                           ...editingAppointment,
-                          type: e.target.value as "new" | "follow-up" | "emergency" | "procedure",
+                          type: e.target.value as
+                            | "new"
+                            | "follow-up"
+                            | "emergency"
+                            | "procedure",
                         })
                       }
                     >
@@ -1435,7 +1644,9 @@ export default function AppointmentScheduler() {
 
               {/* Reason for Appointment - For both */}
               <div className={styles.section}>
-                <label className={styles.sectionLabel}>Reason for Appointment</label>
+                <label className={styles.sectionLabel}>
+                  Reason for Appointment
+                </label>
                 <div className={styles.formGroup}>
                   <textarea
                     className={styles.textarea}
@@ -1514,7 +1725,7 @@ export default function AppointmentScheduler() {
                     !editingAppointment.doctorId ||
                     !editingAppointment.date ||
                     !editingAppointment.time ||
-                    (isNewPatient && !foundPatient) // Disable if new patient not registered
+                    (isNewPatient && !foundPatient)
                   }
                 >
                   {editingAppointment._id
