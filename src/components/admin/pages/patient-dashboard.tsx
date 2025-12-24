@@ -23,7 +23,12 @@ import {
   Droplet,
   HeartPulse,
   CalendarDays,
-  Stethoscope
+  Stethoscope,
+  
+  AlertTriangle,
+  Scissors,
+ 
+  Users,
 } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
@@ -104,6 +109,7 @@ interface Address {
   pincode?: string;
 }
 
+// Update the Patient interface (around line 98)
 interface Patient {
   _id: string;
   name: string;
@@ -119,6 +125,13 @@ interface Patient {
   weight?: string;
   address?: Address;
   visitHistory?: string[];
+  medicalHistory?: {  // Change from string[] to object
+    conditions?: string[];
+    allergies?: string[];
+    surgeries?: string[];
+    medications?: string[];
+    familyHistory?: string[];
+  };
 }
 
 interface ClinicDetails {
@@ -146,6 +159,32 @@ export default function Reports() {
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [patientsLoading, setPatientsLoading] = useState(false);
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+const [patientDetails, setPatientDetails] = useState({
+  bloodGroup: "",
+  dateOfBirth: "",
+  height: "",
+  weight: "",
+  address: {
+    line1: "",
+    city: "",
+    state: "",
+    pincode: "",
+  },
+  emergencyContact: {
+    name: "",
+    relation: "",
+    phone: "",
+  },
+  medicalHistory: {
+    conditions: "",
+    allergies: "",
+    surgeries: "",
+    medications: "",
+    familyHistory: "",
+  },
+});
+
 
   useEffect(() => {
     if (!clinicId) return;
@@ -361,6 +400,7 @@ export default function Reports() {
       if (foundPatient?._id) {
         setPatient(foundPatient);
         fetchPatientHistory(foundPatient._id);
+        setPatientSearchQuery("");
       } else {
         alert("No patient found for this ID");
       }
@@ -408,7 +448,7 @@ export default function Reports() {
   // Handle patient click from all patients list
   const handlePatientClick = (clickedPatient: Patient) => {
     setPatient(clickedPatient);
-    setPatientSearchQuery(clickedPatient.patientRandomId);
+    setPatientSearchQuery(clickedPatient.patientUniqueId);
     fetchPatientHistory(clickedPatient._id);
   };
 
@@ -540,6 +580,55 @@ export default function Reports() {
         },
       ]
     : [];
+const medicalHistoryItems = [
+  {
+    label: "Conditions",
+    value:
+      patient?.medicalHistory?.conditions?.length
+        ? patient.medicalHistory.conditions.join(", ")
+        : "None",
+    icon: HeartPulse,
+    color: "#8B5CF6",
+  },
+  {
+    label: "Allergies",
+    value:
+      patient?.medicalHistory?.allergies?.length
+        ? patient.medicalHistory.allergies.join(", ")
+        : "None",
+    icon: AlertTriangle,
+    color: "#EF4444",
+  },
+  {
+    label: "Surgeries",
+    value:
+      patient?.medicalHistory?.surgeries?.length
+        ? patient.medicalHistory.surgeries.join(", ")
+        : "None",
+    icon: Scissors,
+    color: "#0EA5E9",
+  },
+  {
+    label: "Medications",
+    value:
+      patient?.medicalHistory?.medications?.length
+        ? patient.medicalHistory.medications.join(", ")
+        : "None",
+    icon: Pill,
+    color: "#22C55E",
+  },
+  {
+    label: "Family History",
+    value:
+      patient?.medicalHistory?.familyHistory?.length
+        ? patient.medicalHistory.familyHistory.join(", ")
+        : "None",
+    icon: Users,
+    color: "#F97316",
+  },
+];
+
+
 
   return (
     <div style={{ backgroundColor: "#F9FAF9", minHeight: "100vh" }}>
@@ -711,6 +800,24 @@ export default function Reports() {
                   >
                     {history.length} Visit{history.length !== 1 ? "s" : ""}
                   </Badge>
+                  <button
+  onClick={() => setShowAddModal(true)}
+  style={{
+    height: 40,
+    padding: "0 18px",
+    borderRadius: 10,
+    border: "none",
+    background: "linear-gradient(135deg, #2563EB, #3B82F6)",
+    color: "#fff",
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: "pointer",
+    boxShadow: "0 8px 20px rgba(59,130,246,0.35)",
+  }}
+>
+  + Add
+</button>
+
                 </div>
 
                 {/* Info Grid */}
@@ -793,6 +900,122 @@ export default function Reports() {
                 </div>
               </div>
             )}
+{/* Medical History */}
+{!loading && (
+  <div
+    style={{
+      background:
+        "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+      backdropFilter: "blur(18px)",
+      WebkitBackdropFilter: "blur(18px)",
+      borderRadius: 16,
+      padding: 28,
+      marginBottom: 28,
+      boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+      border: "1px solid rgba(255,255,255,0.4)",
+    }}
+  >
+    {/* Header */}
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        marginBottom: 24,
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: "linear-gradient(135deg, #7C3AED, #A78BFA)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 8px 20px rgba(124,58,237,0.35)",
+        }}
+      >
+        <HeartPulse size={22} color="#fff" />
+      </div>
+
+      <h3
+        style={{
+          fontSize: 18,
+          fontWeight: 700,
+          margin: 0,
+          color: "#0F172A",
+          letterSpacing: "-0.3px",
+        }}
+      >
+        Medical History
+      </h3>
+    </div>
+
+    {/* Cards */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: 18,
+      }}
+    >
+      {medicalHistoryItems.map((item, idx) => (
+        <div
+          key={idx}
+          style={{
+            padding: 20,
+            borderRadius: 14,
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
+            backdropFilter: "blur(14px)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: item.color,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 8px 18px rgba(0,0,0,0.25)",
+              }}
+            >
+              <item.icon size={18} color="#fff" />
+            </div>
+
+            <div>
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  margin: 0,
+                  color: "#64748B",
+                }}
+              >
+                {item.label}
+              </p>
+              <p
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  marginTop: 4,
+                  color: "#0F172A",
+                }}
+              >
+                {item.value}
+              </p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
             {/* Loading State */}
             {loading && (
@@ -1897,9 +2120,616 @@ export default function Reports() {
                   Download PDF
                 </Button>
               </div>
+              
             </div>
           </div>
         )}
+        {/* Add/Edit Patient Details Modal */}
+{showAddModal && patient && (
+  <div
+    className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+    style={{
+      position: "fixed",
+      inset: 0,
+      backgroundColor: "#F9FAF9",
+      zIndex: 10000,
+      display: "flex",
+      flexDirection: "column",
+    }}
+    onClick={() => setShowAddModal(false)}
+  >
+    <div
+      className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Modal Header */}
+      <div
+        style={{
+          padding: "24px 32px",
+          borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
+          background: "linear-gradient(to left, var(--primary), var(--primary-end))",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              fontSize: "24px",
+              fontWeight: "700",
+              margin: 0,
+              color: "#ffffff",
+              letterSpacing: "0.5px",
+            }}
+          >
+            Update Patient Details
+          </h2>
+          <p
+            style={{
+              fontSize: "14px",
+              color: "rgba(255, 255, 255, 0.9)",
+              margin: "4px 0 0 0",
+              fontWeight: "500",
+            }}
+          >
+            {patient.name} - {patient.patientUniqueId}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(false)}
+          style={{
+            padding: "10px",
+            borderRadius: "8px",
+            border: "none",
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            color: "#ffffff",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
+          }}
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Modal Content */}
+    {/* Add/Edit Patient Details Modal */}
+{showAddModal && patient && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      backdropFilter: "blur(8px)",
+      WebkitBackdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "16px",
+      zIndex: 10000,
+    }}
+    onClick={() => setShowAddModal(false)}
+  >
+    <div
+      style={{
+        backgroundColor: "#fff",
+        borderRadius: "12px",
+        width: "100%",
+        maxWidth: "1024px",
+        maxHeight: "90vh",
+        overflow: "hidden",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Modal Header */}
+      <div
+        style={{
+          padding: "24px 32px",
+          borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
+          background: "linear-gradient(to left, var(--primary), var(--primary-end))",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              fontSize: "24px",
+              fontWeight: "700",
+              margin: 0,
+              color: "#ffffff",
+              letterSpacing: "0.5px",
+            }}
+          >
+            Update Patient Details
+          </h2>
+          <p
+            style={{
+              fontSize: "14px",
+              color: "rgba(255, 255, 255, 0.9)",
+              margin: "4px 0 0 0",
+              fontWeight: "500",
+            }}
+          >
+            {patient.name} - {patient.patientUniqueId}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(false)}
+          style={{
+            padding: "10px",
+            borderRadius: "8px",
+            border: "none",
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            color: "#ffffff",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
+          }}
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Modal Content */}
+      <div
+        style={{
+          overflowY: "auto",
+          padding: "32px",
+          backgroundColor: "#F9FAF9",
+          maxHeight: "calc(90vh - 160px)",
+        }}
+      >
+        {/* Basic Information */}
+        <div
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+            backdropFilter: "blur(18px)",
+            borderRadius: 16,
+            padding: 28,
+            marginBottom: 28,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+            border: "1px solid rgba(255,255,255,0.4)",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>
+            Basic Information
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Blood Group
+              </Label>
+              <Input
+                placeholder="e.g., O+, A+, B-, AB+"
+                value={patientDetails.bloodGroup}
+                onChange={(e) =>
+                  setPatientDetails({ ...patientDetails, bloodGroup: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Date of Birth
+              </Label>
+              <Input
+                type="date"
+                value={patientDetails.dateOfBirth}
+                onChange={(e) =>
+                  setPatientDetails({ ...patientDetails, dateOfBirth: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Height
+              </Label>
+              <Input
+                placeholder="e.g., 175cm or 5'9&quot;"
+                value={patientDetails.height}
+                onChange={(e) =>
+                  setPatientDetails({ ...patientDetails, height: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Weight
+              </Label>
+              <Input
+                placeholder="e.g., 70kg or 154lbs"
+                value={patientDetails.weight}
+                onChange={(e) =>
+                  setPatientDetails({ ...patientDetails, weight: e.target.value })
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Address */}
+        <div
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+            backdropFilter: "blur(18px)",
+            borderRadius: 16,
+            padding: 28,
+            marginBottom: 28,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+            border: "1px solid rgba(255,255,255,0.4)",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Address</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Address Line 1
+              </Label>
+              <Input
+                placeholder="Street address"
+                value={patientDetails.address.line1}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    address: { ...patientDetails.address, line1: e.target.value },
+                  })
+                }
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+              <div>
+                <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                  City
+                </Label>
+                <Input
+                  placeholder="City"
+                  value={patientDetails.address.city}
+                  onChange={(e) =>
+                    setPatientDetails({
+                      ...patientDetails,
+                      address: { ...patientDetails.address, city: e.target.value },
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                  State
+                </Label>
+                <Input
+                  placeholder="State"
+                  value={patientDetails.address.state}
+                  onChange={(e) =>
+                    setPatientDetails({
+                      ...patientDetails,
+                      address: { ...patientDetails.address, state: e.target.value },
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                  Pincode
+                </Label>
+                <Input
+                  placeholder="Pincode"
+                  value={patientDetails.address.pincode}
+                  onChange={(e) =>
+                    setPatientDetails({
+                      ...patientDetails,
+                      address: { ...patientDetails.address, pincode: e.target.value },
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Emergency Contact */}
+        <div
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+            backdropFilter: "blur(18px)",
+            borderRadius: 16,
+            padding: 28,
+            marginBottom: 28,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+            border: "1px solid rgba(255,255,255,0.4)",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>
+            Emergency Contact
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Name
+              </Label>
+              <Input
+                placeholder="Contact name"
+                value={patientDetails.emergencyContact.name}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    emergencyContact: {
+                      ...patientDetails.emergencyContact,
+                      name: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Relation
+              </Label>
+              <Input
+                placeholder="e.g., Spouse, Parent"
+                value={patientDetails.emergencyContact.relation}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    emergencyContact: {
+                      ...patientDetails.emergencyContact,
+                      relation: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Phone
+              </Label>
+              <Input
+                placeholder="Phone number"
+                value={patientDetails.emergencyContact.phone}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    emergencyContact: {
+                      ...patientDetails.emergencyContact,
+                      phone: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Medical History */}
+        <div
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+            backdropFilter: "blur(18px)",
+            borderRadius: 16,
+            padding: 28,
+            marginBottom: 28,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+            border: "1px solid rgba(255,255,255,0.4)",
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>
+            Medical History
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Existing Conditions
+              </Label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={2}
+                placeholder="e.g., Diabetes, Hypertension, Asthma"
+                value={patientDetails.medicalHistory.conditions}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    medicalHistory: {
+                      ...patientDetails.medicalHistory,
+                      conditions: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Allergies
+              </Label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={2}
+                placeholder="e.g., Penicillin, Peanuts, Dust"
+                value={patientDetails.medicalHistory.allergies}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    medicalHistory: {
+                      ...patientDetails.medicalHistory,
+                      allergies: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Past Surgeries
+              </Label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={2}
+                placeholder="List any previous surgeries"
+                value={patientDetails.medicalHistory.surgeries}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    medicalHistory: {
+                      ...patientDetails.medicalHistory,
+                      surgeries: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Current Medications
+              </Label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={2}
+                placeholder="List current medications"
+                value={patientDetails.medicalHistory.medications}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    medicalHistory: {
+                      ...patientDetails.medicalHistory,
+                      medications: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                Family History
+              </Label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={2}
+                placeholder="Notable family medical history"
+                value={patientDetails.medicalHistory.familyHistory}
+                onChange={(e) =>
+                  setPatientDetails({
+                    ...patientDetails,
+                    medicalHistory: {
+                      ...patientDetails.medicalHistory,
+                      familyHistory: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Footer */}
+      <div
+        style={{
+          padding: "16px 32px",
+          borderTop: "1px solid rgba(0,0,0,0.1)",
+          backgroundColor: "#F9FAF9",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 12,
+        }}
+      >
+        <Button variant="outline" onClick={() => setShowAddModal(false)}>
+          Cancel
+        </Button>
+        <Button
+          onClick={async () => {
+            try {
+              await axios.patch(
+                `${patientServiceBaseUrl}/api/v1/patient-service/patient/add/patient_details/${patient._id}`,
+                patientDetails
+              );
+              alert("Patient details updated successfully!");
+              setShowAddModal(false);
+              handlePatientSearch(patient.patientUniqueId);
+            } catch (error: any) {
+              console.error("Error updating patient:", error);
+              alert(error.response?.data?.message || "Failed to update patient details");
+            }
+          }}
+        >
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
+
+      {/* Modal Footer */}
+      <div
+        style={{
+          padding: "16px 32px",
+          borderTop: "1px solid rgba(0,0,0,0.1)",
+          backgroundColor: "#F9FAF9",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 12,
+        }}
+      >
+        <Button variant="outline" onClick={() => setShowAddModal(false)}>
+          Cancel
+        </Button>
+        <Button
+          onClick={async () => {
+            try {
+              // Make API call to update patient details
+              await axios.put(
+                `${patientServiceBaseUrl}/api/v1/patient-service/patient/update/${patient._id}`,
+                patientDetails
+              );
+              alert("Patient details updated successfully!");
+              setShowAddModal(false);
+              // Refresh patient data
+              handlePatientSearch(patient.patientUniqueId);
+            } catch (error: any) {
+              console.error("Error updating patient:", error);
+              alert(error.response?.data?.message || "Failed to update patient details");
+            }
+          }}
+        >
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );

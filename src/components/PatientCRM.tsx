@@ -364,7 +364,7 @@ const personalInfoItems: InfoItem[] = [
     >
       Personal Information
     </h3>
-    <button>Add</button>
+    {/* <button>Add</button> */}
   </div>
 
   {/* Grid */}
