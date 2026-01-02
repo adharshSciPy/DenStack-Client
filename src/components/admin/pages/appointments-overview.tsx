@@ -13,7 +13,16 @@ import {
   Building2,
   DollarSign,
   FileText,
-  // AlertCircleIcon
+   CalendarDays, 
+  List,
+  Loader2,
+    UserCog,
+  Mail,
+  UserCheck,
+  UserPlus,
+  Check,
+  MapPin
+  
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
@@ -35,6 +44,8 @@ import {
 } from "../../ui/select";
 import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
 import PatientCRMModal from "../../PatientCRM";
+import CalendarView, { CalendarAppointment } from "../../receptionist/component/CalenderView";
+import styles from "../../receptionist/styles/receptionist.module.css"
 
 interface Appointment {
   _id: string;
@@ -89,6 +100,43 @@ type ResDoctor = {
     isActive: boolean;
   }[];
 };
+type CalendarAppointmentType = {
+  id: string;
+  patientName?: string;
+  doctor?: string;
+  time: string;
+  date: string;
+  status?: string;
+  [key: string]: any;
+};
+
+interface MonthlyAppointmentResponse {
+  success: boolean;
+  message: string;
+  clinicId: string;
+  month: number;
+  year: number;
+  count: number;
+  data: {
+    date: string;
+    appointments: {
+      _id: string;
+      appointmentDate: string;
+      appointmentTime: string;
+      status: string;
+      opNumber: number;
+      doctorId: string;
+      patient: {
+        _id: string;
+        name: string;
+        phone: number;
+        age: number;
+        gender: string;
+        patientUniqueId: string;
+      };
+    }[];
+  }[];
+}
 
 export function AppointmentsOverview() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -180,6 +228,49 @@ export function AppointmentsOverview() {
   const [openMissingOps, setOpenMissingOps] = useState(false);
   const[viewOpen,setViewOpen]=useState(false);
   const[viewAppointment,setViewAppointment]=useState<any>(null)
+
+   // -------------------- CALENDAR VIEW STATES --------------------
+  const [showCalendarView, setShowCalendarView] = useState(false);
+  const [calendarAppointments, setCalendarAppointments] = useState<CalendarAppointmentType[]>([]);
+  const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth() + 1);
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  
+  // Calendar booking form states (separate from list booking)
+  const [calendarBookingForm, setCalendarBookingForm] = useState({
+    patientId: "",
+    patientName: "",
+    doctorId: "",
+    department: "",
+    date: new Date().toISOString().split("T")[0],
+    time: "09:00",
+    duration: 30,
+    type: "new" as "new" | "follow-up" | "emergency" | "procedure",
+    status: "scheduled" as "scheduled" | "confirmed" | "completed" | "cancelled" | "needs_reschedule",
+    reason: "",
+  });
+  
+  const [calendarPatientSearchQuery, setCalendarPatientSearchQuery] = useState("");
+  const [calendarFoundPatient, setCalendarFoundPatient] = useState<Patient | null>(null);
+  const [calendarIsNewPatient, setCalendarIsNewPatient] = useState(false);
+  const [calendarNewPatientForm, setCalendarNewPatientForm] = useState({
+    name: "",
+    age: "",
+    gender: "" as "Male" | "Female" | "Other" | "",
+    phone: "",
+    email: "",
+    address: "",
+    conditions: "",
+    surgeries: "",
+    allergies: "",
+    familyHistory: "",
+  });
+  
+  const [calendarSelectedDepartment, setCalendarSelectedDepartment] = useState("");
+  const [calendarDoctorAvailability, setCalendarDoctorAvailability] = useState<DoctorAvailability[]>([]);
+  const [calendarShowBookingForm, setCalendarShowBookingForm] = useState(false);
+  const [calendarRegistrationLoading, setCalendarRegistrationLoading] = useState(false);
+  const [calendarPatientSearchLoading, setCalendarPatientSearchLoading] = useState(false);
 
 const Info = ({ label, value }: { label: string; value?: string }) => (
   <div>
@@ -864,22 +955,537 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       }));
     }
   }, [appointment]);
+  // -------------------- CALENDAR VIEW FUNCTIONS --------------------
+  
+  // Fetch calendar appointments
+  const fetchCalendarAppointments = async (month?: number, year?: number) => {
+    if (!clinicId) return;
+
+    try {
+      setCalendarLoading(true);
+      const targetMonth = month || currentMonth;
+      const targetYear = year || currentYear;
+
+      const response = await axios.get<MonthlyAppointmentResponse>(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/monthly_appointmnets/${clinicId}`,
+        {
+          params: {
+            month: targetMonth,
+            year: targetYear,
+          },
+        }
+      );
+
+      const data = response.data;
+
+      if (data.success) {
+        const mappedAppointments: CalendarAppointmentType[] = [];
+
+        data.data.forEach((dayData) => {
+          dayData.appointments.forEach((apt) => {
+            mappedAppointments.push({
+              id: `OP${apt.opNumber}`,
+              _id: apt._id,
+              patientName: apt.patient.name || "Unknown Patient",
+              doctor: apt.doctorId,
+              time: apt.appointmentTime,
+              date: apt.appointmentDate,
+              status: apt.status,
+              opNumber: apt.opNumber,
+              patientId: apt.patient._id,
+              patientPhone: apt.patient.phone,
+              patientAge: apt.patient.age,
+              patientGender: apt.patient.gender,
+              patientUniqueId: apt.patient.patientUniqueId,
+            });
+          });
+        });
+
+        setCalendarAppointments(mappedAppointments);
+        console.log(`Fetched ${mappedAppointments.length} calendar appointments`);
+      }
+    } catch (error) {
+      console.error("Error fetching calendar appointments:", error);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  // Handle month change in calendar
+  const handleCalendarMonthChange = (month: number, year: number) => {
+    setCurrentMonth(month);
+    setCurrentYear(year);
+    fetchCalendarAppointments(month, year);
+  };
+
+  // Handle creating appointment from calendar
+  const handleCalendarCreateAppointment = (date: string) => {
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      alert("Cannot create appointments for past dates.");
+      return;
+    }
+
+    setCalendarBookingForm({
+      ...calendarBookingForm,
+      date: date,
+    });
+    
+    setCalendarFoundPatient(null);
+    setCalendarPatientSearchQuery("");
+    setCalendarIsNewPatient(false);
+    setCalendarNewPatientForm({
+      name: "",
+      age: "",
+      gender: "",
+      phone: "",
+      email: "",
+      address: "",
+      conditions: "",
+      surgeries: "",
+      allergies: "",
+      familyHistory: "",
+    });
+    
+    // Reset department and doctor selection
+    setCalendarSelectedDepartment("");
+    setCalendarDoctorAvailability([]);
+    
+    setCalendarShowBookingForm(true);
+  };
+
+  // Handle editing appointment from calendar
+  const handleCalendarEditAppointment = (appointment: CalendarAppointmentType) => {
+    const fullAppointment = calendarAppointments.find(apt => apt.id === appointment.id);
+    
+    if (!fullAppointment) return;
+
+    const appointmentDate = new Date(fullAppointment.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (appointmentDate < today) {
+      alert("Cannot edit past appointments.");
+      return;
+    }
+
+    // You can implement edit functionality here
+    alert(`Edit appointment ${appointment.id}`);
+  };
+
+  // Calendar patient search
+  const handleCalendarPatientSearch = async () => {
+    if (!calendarPatientSearchQuery.trim()) {
+      alert("Please enter a Patient ID");
+      return;
+    }
+
+    try {
+      setCalendarPatientSearchLoading(true);
+      const res = await axios.get(
+        `${patientServiceBaseUrl}/api/v1/patient-service/patient/single-patient`,
+        {
+          params: {
+            id: calendarPatientSearchQuery,
+            clinicId: clinicId,
+          },
+        }
+      );
+
+      const patient = res.data.data;
+      if (patient) {
+        setCalendarFoundPatient(patient);
+        setCalendarBookingForm(prev => ({
+          ...prev,
+          patientId: patient._id,
+          patientName: patient.name,
+        }));
+        alert(`Patient found: ${patient.name}`);
+      } else {
+        alert("No patient found with this ID");
+        setCalendarFoundPatient(null);
+      }
+    } catch (error: any) {
+      console.error("Error fetching patient:", error);
+      alert(error.response?.data?.message || "Error searching for patient");
+      setCalendarFoundPatient(null);
+    } finally {
+      setCalendarPatientSearchLoading(false);
+    }
+  };
+
+  // Calendar patient registration
+  const handleCalendarPatientRegistration = async () => {
+    try {
+      if (!calendarNewPatientForm.name || !calendarNewPatientForm.phone || 
+          !calendarNewPatientForm.age || !calendarNewPatientForm.gender) {
+        alert("Please fill all required fields");
+        return;
+      }
+
+      setCalendarRegistrationLoading(true);
+
+      const medicalHistory = {
+        conditions: calendarNewPatientForm.conditions
+          ?.split(",")
+          .map(c => c.trim())
+          .filter(Boolean) || [],
+        surgeries: calendarNewPatientForm.surgeries
+          ?.split(",")
+          .map(s => s.trim())
+          .filter(Boolean) || [],
+        allergies: calendarNewPatientForm.allergies
+          ?.split(",")
+          .map(a => a.trim())
+          .filter(Boolean) || [],
+        familyHistory: calendarNewPatientForm.familyHistory
+          ?.split(",")
+          .map(f => f.trim())
+          .filter(Boolean) || [],
+      };
+
+      const payload = {
+        userRole: "admin",
+        userId: clinicId,
+        name: calendarNewPatientForm.name,
+        phone: calendarNewPatientForm.phone,
+        email: calendarNewPatientForm.email || "",
+        age: Number(calendarNewPatientForm.age),
+        gender: calendarNewPatientForm.gender,
+        address: calendarNewPatientForm.address || "",
+        medicalHistory,
+      };
+
+      const response = await axios.post(
+        `${patientServiceBaseUrl}/api/v1/patient-service/patient/register/${clinicId}`,
+        payload
+      );
+
+      const data = response.data;
+      if (data.success || data.patient || data.data) {
+        const patient = data.data?.patient || data.patient || data.data;
+        alert("Patient registered successfully!");
+        setCalendarFoundPatient(patient);
+        setCalendarBookingForm(prev => ({
+          ...prev,
+          patientId: patient._id || patient.patientId,
+          patientName: patient.name,
+        }));
+      } else {
+        alert(data.message || "Failed to register patient");
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      alert(error.response?.data?.message || "Error registering patient");
+    } finally {
+      setCalendarRegistrationLoading(false);
+    }
+  };
+
+  // Calendar department selection
+  const handleCalendarDepartmentSelect = async (department: string) => {
+    setCalendarSelectedDepartment(department);
+    setCalendarBookingForm(prev => ({ ...prev, doctorId: "" }));
+
+    try {
+      const response = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
+        {
+          params: { clinicId, department },
+        }
+      );
+
+      const doctors = response.data?.doctors || [];
+      if (doctors.length > 0) {
+        setCalendarDoctorAvailability(
+          doctors.map((doc: any) => ({
+            doctorId: doc.doctorId || doc._id,
+            doctorName: doc.doctor?.name || doc.name || "Unnamed Doctor",
+            email: doc.doctor?.email || doc.email || "N/A",
+            phoneNumber: doc.doctor?.phoneNumber || doc.phoneNumber || "N/A",
+            specialization: Array.isArray(doc.specialization)
+              ? doc.specialization.join(", ")
+              : doc.specialization || "",
+            roleInClinic: doc.roleInClinic,
+            status: doc.status,
+            department: department,
+            availableSlots:
+              doc.availability
+                ?.filter((a: any) => a.isActive)
+                ?.map((a: any) => `${a.dayOfWeek}: ${a.startTime} - ${a.endTime}`) || [],
+          }))
+        );
+      } else {
+        alert("No doctors available for this department");
+        setCalendarDoctorAvailability([]);
+      }
+    } catch (error) {
+      console.error("Error fetching doctor availability:", error);
+      alert("Error fetching doctor availability");
+      setCalendarDoctorAvailability([]);
+    }
+  };
+
+  // Save calendar appointment
+  const handleSaveCalendarAppointment = async () => {
+    if (!calendarBookingForm.patientId || !calendarBookingForm.patientName) {
+      alert("Please fill in patient details");
+      return;
+    }
+
+    if (!calendarBookingForm.doctorId) {
+      alert("Please select a doctor");
+      return;
+    }
+
+    if (!calendarBookingForm.date || !calendarBookingForm.time) {
+      alert("Please select date and time");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const payload = {
+        userId: clinicId,
+        userRole: "admin",
+        patientId: calendarBookingForm.patientId,
+        doctorId: calendarBookingForm.doctorId,
+        department: calendarSelectedDepartment,
+        appointmentDate: calendarBookingForm.date,
+        appointmentTime: calendarBookingForm.time,
+        duration: calendarBookingForm.duration,
+        type: calendarBookingForm.type,
+        reason: calendarBookingForm.reason,
+      };
+
+      const res = await axios.post(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
+        payload
+      );
+
+      alert("Appointment booked successfully");
+      setCalendarShowBookingForm(false);
+      
+      // Refresh both views
+      fetchAppointments();
+      fetchCalendarAppointments(currentMonth, currentYear);
+      
+      // Reset form
+      setCalendarBookingForm({
+        patientId: "",
+        patientName: "",
+        doctorId: "",
+        department: "",
+        date: new Date().toISOString().split("T")[0],
+        time: "09:00",
+        duration: 30,
+        type: "new",
+        status: "scheduled",
+        reason: "",
+      });
+      setCalendarFoundPatient(null);
+      setCalendarPatientSearchQuery("");
+      setCalendarIsNewPatient(false);
+      setCalendarSelectedDepartment("");
+      setCalendarDoctorAvailability([]);
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        const confirmForce = window.confirm(
+          `${error.response.data.message}\n\nDo you want to force book with a different doctor?`
+        );
+        if (confirmForce) {
+          // Handle force booking
+          try {
+            const forcePayload = {
+              userId: clinicId,
+              userRole: "admin",
+              patientId: calendarBookingForm.patientId,
+              doctorId: calendarBookingForm.doctorId,
+              department: calendarSelectedDepartment,
+              appointmentDate: calendarBookingForm.date,
+              appointmentTime: calendarBookingForm.time,
+              forceBooking: true,
+            };
+            
+            const forceRes = await axios.post(
+              `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
+              forcePayload
+            );
+            
+            alert("Forced Appointment Booked Successfully");
+            setCalendarShowBookingForm(false);
+            fetchCalendarAppointments(currentMonth, currentYear);
+          } catch (forceError) {
+            alert("Force booking failed");
+          }
+        }
+        return;
+      }
+      
+      alert(error.response?.data?.message || "Failed to book appointment");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Custom sidebar card renderer for calendar
+  const renderCalendarSidebarCard = (apt: CalendarAppointmentType) => {
+    const appointmentDate = new Date(apt.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isPastAppointment = appointmentDate < today;
+    const isToday = appointmentDate.toDateString() === today.toDateString();
+
+    return (
+      <div
+        className={`border rounded-lg p-3 mb-2 cursor-pointer transition-all ${
+          isPastAppointment 
+            ? "bg-gray-50 border-gray-200" 
+            : "bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm"
+        }`}
+        onClick={() => !isPastAppointment && handleCalendarEditAppointment(apt)}
+        style={{
+          cursor: isPastAppointment ? "not-allowed" : "pointer",
+          opacity: isPastAppointment ? 0.7 : 1,
+        }}
+      >
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-500" />
+            <span className="font-medium">{apt.time}</span>
+            {isToday && (
+              <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">
+                Today
+              </span>
+            )}
+            {isPastAppointment && (
+              <span className="bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded-full">
+                Past
+              </span>
+            )}
+          </div>
+          <span className={`text-xs font-semibold px-2 py-1 rounded ${
+            apt.status === "confirmed" ? "bg-green-100 text-green-800" :
+            apt.status === "scheduled" ? "bg-blue-100 text-blue-800" :
+            apt.status === "cancelled" ? "bg-red-100 text-red-800" :
+            apt.status === "needs_reschedule" ? "bg-yellow-100 text-yellow-800" :
+            "bg-gray-100 text-gray-800"
+          }`}>
+            {apt.status?.replace("_", " ").toUpperCase() || "SCHEDULED"}
+          </span>
+        </div>
+        
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <User className="w-3 h-3 text-gray-400" />
+            <span className="text-sm">{apt.patientName}</span>
+          </div>
+          {apt.doctor && (
+            <div className="flex items-center gap-2">
+              <User className="w-3 h-3 text-gray-400" />
+              <span className="text-sm text-gray-600">Doctor: {apt.doctor}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-3 h-3 text-gray-400" />
+            <span className="text-sm text-gray-600">
+              {new Date(apt.date).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+        
+        {isPastAppointment && (
+          <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500 text-center">
+            Past appointments cannot be edited
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Fetch calendar appointments on mount and when view changes
+  useEffect(() => {
+    if (showCalendarView && clinicId) {
+      fetchCalendarAppointments();
+    }
+  }, [showCalendarView, clinicId]);
+
+  // Fetch departments for calendar booking
+  useEffect(() => {
+    const fetchCalendarDepartments = async () => {
+      if (!clinicId) return;
+      try {
+        const response = await axios.get(
+          `${clinicServiceBaseUrl}/api/v1/clinic-service/department/details/${clinicId}`
+        );
+        setDepartments(response.data?.departments || []);
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+      }
+    };
+    
+    if (calendarShowBookingForm) {
+      fetchCalendarDepartments();
+    }
+  }, [calendarShowBookingForm, clinicId]);
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Today's Appointments</h2>
-          <p className="text-muted-foreground">{todayFormatted}</p>
+          <h2 className="text-2xl font-semibold">
+            {showCalendarView ? "Appointment Calendar" : "Today's Appointments"}
+          </h2>
+          <p className="text-muted-foreground">
+            {showCalendarView ? "Monthly view of all appointments" : todayFormatted}
+          </p>
         </div>
 
-        <Button
-          className="bg-primary hover:bg-primary/90"
-          onClick={() => setOpen(true)}
-        >
-          <Calendar className="w-4 h-4 mr-2" />
-          Schedule New
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className="flex items-center bg-muted/60 rounded-lg p-1">
+            <Button
+              variant={showCalendarView ? "ghost" : "default"}
+              size="sm"
+              onClick={() => setShowCalendarView(false)}
+              className={`flex items-center gap-2 ${!showCalendarView ? "bg-white shadow-sm" : ""}`}
+            >
+              <List className="w-4 h-4" />
+              List View
+            </Button>
+            <Button
+              variant={showCalendarView ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setShowCalendarView(true)}
+              className={`flex items-center gap-2 ${showCalendarView ? "bg-white shadow-sm" : ""}`}
+            >
+              <CalendarDays className="w-4 h-4" />
+              Calendar View
+            </Button>
+          </div>
+
+          <Button
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => {
+              if (showCalendarView) {
+                // For calendar view, open booking for today
+                handleCalendarCreateAppointment(new Date().toISOString().split("T")[0]);
+              } else {
+                // For list view, use existing modal
+                setOpen(true);
+              }
+            }}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Schedule New
+          </Button>
+        </div>
       </div>
 
       {/* Full Screen Modal */}
@@ -1627,43 +2233,6 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
           )}
         </div>
       </div>
-      {/* {openMissingOps && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          style={{
-            backgroundColor: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(6px)",
-          }}
-          onClick={() => setOpenMissingOps(false)}
-        >
-          <div
-            className="bg-white rounded-xl p-6 w-full max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold mb-4 text-yellow-800 flex items-center gap-2">
-              ⚠ Missing OP Numbers
-            </h2>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {missingOps?.sort((a, b) => a - b).map((op) => (
-                <span
-                  key={op}
-                  className="px-3 py-1 bg-yellow-200 text-yellow-900 rounded-full text-sm font-medium"
-                >
-                  OP #{op}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-yellow-700">
-              These OP numbers are missing from today’s appointments.
-            </p>
-            <div className="flex justify-end mt-4">
-              <Button onClick={() => setOpenMissingOps(false)} variant="outline" size="sm">
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )} */}
 
       {/* Search Filters */}
       <div className="flex gap-3 items-center ">
@@ -1698,79 +2267,109 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
           Clear
         </Button>
       </div>
-      {/* ⚠ Missing OPs Section */}
-      {/* {missingOps && missingOps.length > 0 && (
-  <Card className="mb-4 bg-yellow-50 border-yellow-200 border">
-    <CardHeader>
-      <div className="flex items-center gap-2">
-        <span className="text-yellow-700 text-lg font-semibold">⚠ Missing OP Numbers</span>
-        <span className="text-sm text-yellow-800">
-          ({missingOps.length} missing)
-        </span>
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="flex flex-wrap gap-2">
-        {missingOps.sort((a, b) => a - b).map((op) => (
-          <span
-            key={op}
-            className="px-3 py-1 bg-yellow-200 text-yellow-900 rounded-full text-sm font-medium shadow-sm hover:bg-yellow-300 cursor-default transition-colors"
-            title={`OP #${op} is missing`}
-          >
-            OP #{op}
-          </span>
-        ))}
-      </div>
-      <p className="text-xs text-yellow-800 mt-2">
-        These OP numbers belong to appointments rescheduled to future dates or not yet assigned.
-      </p>
-    </CardContent>
-  </Card>
-)} */}
-
-      {/* Appointments List */}
-      <Card className="bg-muted/60">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              {/* show number of loaded vs total */}
-              {appointments.length > 0 ? (
-                <span>
-                  Appointments ({appointments.length}
-                  {totalAppointments ? `/${totalAppointments}` : ""})
-                </span>
-              ) : (
-                "No Appointments Found"
-              )}
-            </div>
-
-            {/* showing range like "1-15 of 47" */}
-            {showingRange && (
-              <span className="text-sm text-muted-foreground">
-                {showingRange}
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {appointments.length === 0 && !loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No appointments scheduled for the selected criteria</p>
+ 
+    {showCalendarView ? (
+        <div className="space-y-6">
+          {calendarLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <span className="ml-2">Loading calendar appointments...</span>
             </div>
           ) : (
-            <>
-              {appointments.map((appointment) => (
-                <div
-                  key={appointment._id}
-                  className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
-                    appointment.status === "cancelled"
-                      ? "bg-red-50 hover:bg-red-100 border border-red-200"
-                      : "bg-green-50 hover:bg-green-100 border border-green-200"
-                  }`}
-                >
-                  <div className="flex flex-col w-full">
+            <CalendarView
+              appointments={calendarAppointments}
+              onCreateAppointment={handleCalendarCreateAppointment}
+              onAppointmentClick={handleCalendarEditAppointment}
+              renderSidebarCard={renderCalendarSidebarCard}
+              initialDate={new Date(currentYear, currentMonth - 1, 1)}
+              headerTitle={`${new Date(currentYear, currentMonth - 1).toLocaleString('default', { month: 'long' })} ${currentYear} Appointments`}
+              headerSubtitle="Click any future date to schedule a new appointment"
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+              onMonthChange={handleCalendarMonthChange}
+              maxAppointmentsPerDay={3}
+              showCreateButton={true}
+              className="bg-white rounded-lg shadow"
+            />
+          )}
+        </div>
+      ) : (
+        /* LIST VIEW */
+        <div className="space-y-6">
+          {/* Search Filters */}
+          {/* <div className="flex gap-3 items-center">
+            <Input
+              placeholder="Enter Patient ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                }
+              }}
+              className="w-[250px] bg-muted/60"
+            />
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-[200px] bg-muted/60"
+            />
+            <Button
+              onClick={handleSearch}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Calendar className="w-4 h-4 mr-2" /> Search
+            </Button>
+            <Button
+              onClick={handleClearFilters}
+              variant="outline"
+              className="bg-muted/60"
+            >
+              Clear
+            </Button>
+          </div> */}
+
+          {/* Appointments List */}
+          <Card className="bg-muted/60">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  {appointments.length > 0 ? (
+                    <span>
+                      Appointments ({appointments.length}
+                      {totalAppointments ? `/${totalAppointments}` : ""})
+                    </span>
+                  ) : (
+                    "No Appointments Found"
+                  )}
+                </div>
+                {showingRange && (
+                  <span className="text-sm text-muted-foreground">
+                    {showingRange}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {appointments.length === 0 && !loading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>No appointments scheduled for the selected criteria</p>
+                </div>
+              ) : (
+                <>
+                  {appointments.map((appointment) => (
+                    <div
+                      key={appointment._id}
+                      className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
+                        appointment.status === "cancelled"
+                          ? "bg-red-50 hover:bg-red-100 border border-red-200"
+                          : "bg-green-50 hover:bg-green-100 border border-green-200"
+                      }`}
+                    >
+                                 <div className="flex flex-col w-full">
                     <div className="flex items-center gap-3 mb-2">
                       <User className="w-4 h-4 text-muted-foreground" />
                       <p className="font-semibold text-lg">
@@ -1880,7 +2479,7 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       size="sm"
       onClick={(e:any) => {
         e.stopPropagation();
-        setViewAppointment(appointment); // store full appointment
+        setViewAppointment(appointment);
         setViewOpen(true);
       }}
     >
@@ -1888,6 +2487,55 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
     </Button>
   </div>
 )}
+                    </div>
+                  ))}
+                  
+                  {nextCursor && (
+                    <div className="flex justify-center mt-4 gap-2">
+                      <Button
+                        onClick={handlePrevPage}
+                        disabled={currentPageIndex < 0 || loading}
+                        variant="outline"
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        onClick={handleNextPage}
+                        disabled={!nextCursor || loading}
+                        variant="outline"
+                      >
+                        {loading ? "Loading..." : "Next"}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {/* Appointments List */}
+   
+        {open && (
+       <CardContent className="space-y-4">
+          {appointments.length === 0 && !loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>No appointments scheduled for the selected criteria</p>
+            </div>
+          ) : (
+            <>
+              {appointments.map((appointment) => (
+                <div
+                  key={appointment._id}
+                  className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
+                    appointment.status === "cancelled"
+                      ? "bg-red-50 hover:bg-red-100 border border-red-200"
+                      : "bg-green-50 hover:bg-green-100 border border-green-200"
+                  }`}
+                >
+                
+      
 
                 </div>
               ))}
@@ -1913,7 +2561,667 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
             </>
           )}
         </CardContent>
-      </Card>
+      )}
+    {calendarShowBookingForm && (
+  <div className={styles.modalOverlay}>
+    <div className={styles.modal}>
+      {/* Header */}
+      <div className={styles.modalHeader}>
+        <div className={styles.headerContent}>
+          <h3 className={styles.modalTitle}>Book New Appointment</h3>
+          <span className={styles.modalSubtitle}>
+            {new Date(calendarBookingForm.date).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </span>
+        </div>
+        <button
+          className={styles.closeButton}
+          onClick={() => setCalendarShowBookingForm(false)}
+          aria-label="Close modal"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className={styles.modalBody}>
+        {/* Patient Type Toggle */}
+        <div className={styles.section}>
+          <label className={styles.sectionLabel}>Patient Type</label>
+          <div className={styles.patientToggle}>
+            <button
+              type="button"
+              className={`${styles.toggleButton} ${
+                !calendarIsNewPatient ? styles.activeToggle : ""
+              }`}
+              onClick={() => {
+                setCalendarIsNewPatient(false);
+                if (calendarFoundPatient && calendarBookingForm) {
+                  setCalendarBookingForm({
+                    ...calendarBookingForm,
+                    patientId: calendarFoundPatient.patientUniqueId || calendarFoundPatient._id,
+                    patientName: calendarFoundPatient.name,
+                  });
+                }
+              }}
+            >
+              <UserCheck size={16} />
+              <span>Existing Patient</span>
+              {!calendarIsNewPatient && (
+                <div className={styles.activeIndicator} />
+              )}
+            </button>
+            <button
+              type="button"
+              className={`${styles.toggleButton} ${
+                calendarIsNewPatient ? styles.activeToggle : ""
+              }`}
+              onClick={() => {
+                setCalendarIsNewPatient(true);
+                setCalendarBookingForm(prev => ({
+                  ...prev,
+                  patientId: "",
+                  patientName: "",
+                }));
+                setCalendarFoundPatient(null);
+                setCalendarPatientSearchQuery("");
+              }}
+            >
+              <UserPlus size={16} />
+              <span>New Patient</span>
+              {calendarIsNewPatient && <div className={styles.activeIndicator} />}
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.divider} />
+
+        {/* Date & Time */}
+        <div className={styles.section}>
+          <label className={styles.sectionLabel}>Date & Time</label>
+          <div className={styles.formGrid}>
+            <div className={styles.formGroup}>
+              <label className={styles.inputLabel}>
+                <Calendar size={14} />
+                <span>Date *</span>
+              </label>
+              <input
+                type="date"
+                className={styles.input}
+                value={calendarBookingForm.date}
+                onChange={(e) => setCalendarBookingForm({...calendarBookingForm, date: e.target.value})}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.inputLabel}>
+                <Clock size={14} />
+                <span>Time *</span>
+              </label>
+              <input
+                type="time"
+                className={styles.input}
+                value={calendarBookingForm.time}
+                onChange={(e) => setCalendarBookingForm({...calendarBookingForm, time: e.target.value})}
+              />
+            </div>
+          </div>
+          <p className={styles.hintText}>
+            Note: Past dates cannot be selected for appointments
+          </p>
+        </div>
+
+        <div className={styles.divider} />
+
+        {/* ================= EXISTING PATIENT ================= */}
+        {!calendarIsNewPatient && (
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>Patient Details</label>
+
+            {/* Patient Search */}
+            <div className={styles.formGroup}>
+              <label className={styles.inputLabel}>
+                <User size={14} />
+                <span>Search Patient by ID *</span>
+              </label>
+              <div className={styles.searchContainer}>
+                <div className={styles.searchInputWrapper}>
+                  <input
+                    className={styles.searchInput}
+                    placeholder="Enter Patient Unique ID (e.g., RKC-00001)"
+                    value={calendarPatientSearchQuery}
+                    onChange={(e) => setCalendarPatientSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCalendarPatientSearch()}
+                  />
+                  <button
+                    type="button"
+                    className={styles.searchButton}
+                    onClick={handleCalendarPatientSearch}
+                    disabled={calendarPatientSearchLoading || !calendarPatientSearchQuery.trim()}
+                  >
+                    {calendarPatientSearchLoading ? (
+                      <Loader2 size={16} className={styles.spinner} />
+                    ) : (
+                      "Search"
+                    )}
+                  </button>
+                </div>
+                <p className={styles.hintText}>
+                  Enter the patient's unique ID to autofill their details
+                </p>
+              </div>
+            </div>
+
+            {/* Display found patient or manual input */}
+            {calendarFoundPatient ? (
+              <div className={styles.patientFoundCard}>
+                <div className={styles.patientFoundHeader}>
+                  <Check className={styles.successIcon} size={18} />
+                  <span>Patient Found</span>
+                </div>
+                <div className={styles.patientInfoGrid}>
+                  <div className={styles.patientInfoItem}>
+                    <span className={styles.patientInfoLabel}>Name:</span>
+                    <span className={styles.patientInfoValue}>
+                      {calendarFoundPatient.name}
+                    </span>
+                  </div>
+                  <div className={styles.patientInfoItem}>
+                    <span className={styles.patientInfoLabel}>Patient ID:</span>
+                    <span className={styles.patientInfoValue}>
+                      {calendarFoundPatient.patientUniqueId}
+                    </span>
+                  </div>
+                  <div className={styles.patientInfoItem}>
+                    <span className={styles.patientInfoLabel}>Age:</span>
+                    <span className={styles.patientInfoValue}>
+                      {calendarFoundPatient.age}
+                    </span>
+                  </div>
+                  <div className={styles.patientInfoItem}>
+                    <span className={styles.patientInfoLabel}>Gender:</span>
+                    <span className={styles.patientInfoValue}>
+                      {/* {calendarFoundPatient.gender} */}
+                    </span>
+                  </div>
+                  <div className={styles.patientInfoItem}>
+                    <span className={styles.patientInfoLabel}>Phone:</span>
+                    <span className={styles.patientInfoValue}>
+                      {calendarFoundPatient.phone}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={styles.clearPatientButton}
+                  onClick={() => {
+                    setCalendarFoundPatient(null);
+                    setCalendarPatientSearchQuery("");
+                    setCalendarBookingForm(prev => ({
+                      ...prev,
+                      patientId: "",
+                      patientName: "",
+                    }));
+                  }}
+                >
+                  Clear & Search Another
+                </button>
+              </div>
+            ) : (
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>Patient ID *</label>
+                  <input
+                    className={styles.input}
+                    placeholder="RKC-00001"
+                    value={calendarBookingForm.patientId}
+                    onChange={(e) => setCalendarBookingForm({
+                      ...calendarBookingForm,
+                      patientId: e.target.value,
+                    })}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>Patient Name *</label>
+                  <input
+                    className={styles.input}
+                    placeholder="John Doe"
+                    value={calendarBookingForm.patientName}
+                    onChange={(e) => setCalendarBookingForm({
+                      ...calendarBookingForm,
+                      patientName: e.target.value,
+                    })}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= NEW PATIENT ================= */}
+        {calendarIsNewPatient && (
+          <>
+            {/* Basic Information Section */}
+            <div className={styles.section}>
+              <label className={styles.sectionLabel}>Basic Information *</label>
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>
+                    <User size={14} />
+                    <span>Full Name *</span>
+                  </label>
+                  <input
+                    className={styles.input}
+                    placeholder="John Doe"
+                    value={calendarNewPatientForm.name}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      name: e.target.value,
+                    })}
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>
+                    <Phone size={14} />
+                    <span>Phone Number *</span>
+                  </label>
+                  <input
+                    className={styles.input}
+                    placeholder="+1234567890"
+                    value={calendarNewPatientForm.phone}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      phone: e.target.value,
+                    })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>Age *</label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    placeholder="30"
+                    value={calendarNewPatientForm.age}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      age: e.target.value,
+                    })}
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>Gender *</label>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      className={styles.select}
+                      value={calendarNewPatientForm.gender}
+                      onChange={(e) => setCalendarNewPatientForm({
+                        ...calendarNewPatientForm,
+                        gender: e.target.value as "Male" | "Female" | "Other" | "",
+                      })}
+                      required
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>
+                    <Mail size={14} />
+                    <span>Email</span>
+                  </label>
+                  <input
+                    className={styles.input}
+                    type="email"
+                    placeholder="john@example.com"
+                    value={calendarNewPatientForm.email}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      email: e.target.value,
+                    })}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>
+                    <MapPin size={14} />
+                    <span>Address</span>
+                  </label>
+                  <input
+                    className={styles.input}
+                    placeholder="123 Main St, City"
+                    value={calendarNewPatientForm.address}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      address: e.target.value,
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Medical History Section */}
+            <div className={styles.section}>
+              <h4 className={styles.sectionSubtitle}>Medical History (Optional)</h4>
+              <p className={styles.hintText}>Comma-separated values</p>
+
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>Conditions</label>
+                  <input
+                    placeholder="Diabetes, Hypertension"
+                    value={calendarNewPatientForm.conditions}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      conditions: e.target.value,
+                    })}
+                    className={styles.input}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>Surgeries</label>
+                  <input
+                    placeholder="Appendectomy"
+                    value={calendarNewPatientForm.surgeries}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      surgeries: e.target.value,
+                    })}
+                    className={styles.input}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>Allergies</label>
+                  <input
+                    placeholder="Penicillin, Peanuts"
+                    value={calendarNewPatientForm.allergies}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      allergies: e.target.value,
+                    })}
+                    className={styles.input}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.inputLabel}>Family History</label>
+                  <input
+                    placeholder="Heart disease"
+                    value={calendarNewPatientForm.familyHistory}
+                    onChange={(e) => setCalendarNewPatientForm({
+                      ...calendarNewPatientForm,
+                      familyHistory: e.target.value,
+                    })}
+                    className={styles.input}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Register Patient Button */}
+            <div className={styles.section}>
+              <button
+                onClick={handleCalendarPatientRegistration}
+                disabled={
+                  calendarRegistrationLoading ||
+                  !calendarNewPatientForm.name ||
+                  !calendarNewPatientForm.phone ||
+                  !calendarNewPatientForm.age ||
+                  !calendarNewPatientForm.gender
+                }
+                className={styles.registerButton}
+              >
+                {calendarRegistrationLoading ? (
+                  <>
+                    <Loader2 size={16} className={styles.spinner} />
+                    <span>Registering Patient...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={16} />
+                    <span>Register Patient</span>
+                  </>
+                )}
+              </button>
+
+              {calendarFoundPatient && (
+                <div className={styles.successMessage}>
+                  ✓ Patient registered successfully! ID:{" "}
+                  {calendarFoundPatient.patientUniqueId || calendarFoundPatient._id}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Department Selection - For both new and existing patients */}
+        <div className={styles.section}>
+          <label className={styles.sectionLabel}>Select Department</label>
+          <div className={styles.departmentsGrid}>
+            {departments.map((dept) => (
+              <button
+                key={dept}
+                type="button"
+                className={`${styles.departmentButton} ${
+                  calendarSelectedDepartment === dept
+                    ? styles.departmentButtonActive
+                    : ""
+                }`}
+                onClick={() => handleCalendarDepartmentSelect(dept)}
+                disabled={availabilityLoading}
+              >
+                {dept}
+                {calendarSelectedDepartment === dept && (
+                  <div className={styles.activeIndicator} />
+                )}
+              </button>
+            ))}
+          </div>
+          {availabilityLoading && (
+            <div className={styles.loadingIndicator}>
+              <Loader2 size={16} className={styles.spinner} />
+              <span>Loading doctors...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Doctor Selection - For both new and existing patients */}
+        {calendarSelectedDepartment && (
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>Doctor Information</label>
+            <div className={styles.formGroup}>
+              <label className={styles.inputLabel}>
+                <UserCog size={14} />
+                <span>Select Doctor *</span>
+              </label>
+              <div className={styles.selectWrapper}>
+                <select
+                  className={styles.select}
+                  value={calendarBookingForm.doctorId}
+                  onChange={(e) => {
+                    const doctorId = e.target.value;
+                    setCalendarBookingForm({
+                      ...calendarBookingForm,
+                      doctorId: doctorId,
+                    });
+                  }}
+                  disabled={calendarDoctorAvailability.length === 0}
+                  required
+                >
+                  <option value="">Choose a doctor</option>
+                  {calendarDoctorAvailability.map((doc) => (
+                    <option key={doc.doctorId} value={doc.doctorId}>
+                      {doc.doctorName} 
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {calendarSelectedDepartment &&
+                calendarDoctorAvailability.length === 0 &&
+                !availabilityLoading && (
+                  <p className={styles.hintText}>
+                    No doctors available in this department
+                  </p>
+                )}
+            </div>
+
+            {/* Display selected doctor's availability */}
+            {calendarBookingForm.doctorId &&
+              calendarDoctorAvailability.length > 0 && (
+                <div className={styles.doctorAvailabilityCard}>
+                  <div className={styles.doctorAvailabilityHeader}>
+                    <Check className={styles.successIcon} size={18} />
+                    <span>Doctor Availability</span>
+                  </div>
+                  <div className={styles.doctorInfoGrid}>
+                    {(() => {
+                      const selectedDoctor = calendarDoctorAvailability.find(
+                        (doc) => doc.doctorId === calendarBookingForm.doctorId
+                      );
+                      if (!selectedDoctor) return null;
+
+                      return (
+                        <>
+                          <div className={styles.doctorInfoItem}>
+                            <span className={styles.doctorInfoLabel}>Name:</span>
+                            <span className={styles.doctorInfoValue}>
+                              {selectedDoctor.doctorName}
+                            </span>
+                          </div>
+                          {/* <div className={styles.doctorInfoItem}>
+                            <span className={styles.doctorInfoLabel}>Specialization:</span>
+                            <span className={styles.doctorInfoValue}>
+                              {selectedDoctor.specialization}
+                            </span>
+                          </div> */}
+                          {/* <div className={styles.doctorInfoItem}>
+                            <span className={styles.doctorInfoLabel}>Status:</span>
+                            <span className={styles.doctorInfoValue}>
+                              {selectedDoctor.status}
+                            </span>
+                          </div> */}
+                          <div className={styles.doctorInfoItem}>
+                            <span className={styles.doctorInfoLabel}>Available Slots:</span>
+                            <div className={styles.availabilitySlots}>
+                              {selectedDoctor.availableSlots.length > 0 ? (
+                                selectedDoctor.availableSlots.map((slot, index) => (
+                                  <div key={index} className={styles.slotBadge}>
+                                    {slot}
+                                  </div>
+                                ))
+                              ) : (
+                                <span className={styles.doctorInfoValue}>
+                                  No specific slots available
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+          </div>
+        )}
+
+        {/* Appointment Type - For both */}
+        <div className={styles.section}>
+          <label className={styles.sectionLabel}>Appointment Type</label>
+          <div className={styles.formGroup}>
+            <div className={styles.selectWrapper}>
+              <select
+                className={styles.select}
+                value={calendarBookingForm.type}
+                onChange={(e) => setCalendarBookingForm({
+                  ...calendarBookingForm,
+                  type: e.target.value as "new" | "follow-up" | "emergency" | "procedure",
+                })}
+              >
+                <option value="new">New Patient</option>
+                <option value="follow-up">Follow-up</option>
+                <option value="emergency">Emergency</option>
+                <option value="procedure">Procedure</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Reason for Appointment - For both */}
+        <div className={styles.section}>
+          <label className={styles.sectionLabel}>Reason for Appointment</label>
+          <div className={styles.formGroup}>
+            <textarea
+              className={styles.textarea}
+              placeholder="Describe the reason for the appointment..."
+              value={calendarBookingForm.reason}
+              onChange={(e) => setCalendarBookingForm({
+                ...calendarBookingForm,
+                reason: e.target.value,
+              })}
+              rows={3}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className={styles.modalFooter}>
+        <div className={styles.modalActions}>
+          <button
+            className={styles.cancelButton}
+            onClick={() => {
+              setCalendarShowBookingForm(false);
+              setCalendarIsNewPatient(false);
+              setCalendarFoundPatient(null);
+              setCalendarPatientSearchQuery("");
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            className={styles.saveButton}
+            onClick={handleSaveCalendarAppointment}
+            disabled={
+              !calendarBookingForm.patientId ||
+              !calendarBookingForm.patientName ||
+              !calendarBookingForm.doctorId ||
+              !calendarBookingForm.date ||
+              !calendarBookingForm.time ||
+              loading
+            }
+          >
+            {calendarBookingForm.patientId ? "Update Appointment" : "Create Appointment"}
+            <Check size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
         <PatientCRMModal
     viewOpen={viewOpen}
     setViewOpen={setViewOpen}
