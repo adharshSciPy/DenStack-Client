@@ -1527,6 +1527,7 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
 
   if (!isOpen) return null;
 
+
   return (
     <div
       style={{
@@ -1543,22 +1544,21 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
     >
       <div
         style={{
-          backgroundColor: "white",
+          backgroundColor: "var(--card)",
           borderRadius: "1.5rem",
           boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
           width: "100%",
-          maxWidth: "600px",
+          maxWidth: "800px",
           maxHeight: "90vh",
           overflowY: "auto",
-          transform: "scale(1)",
-          transition: "transform 0.3s ease-out",
+          border: "1px solid var(--border)",
         }}
       >
         {/* Header */}
         <div
           style={{
             padding: "1.5rem 2rem",
-            background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+            background: "var(--primary)",
             borderTopLeftRadius: "1.5rem",
             borderTopRightRadius: "1.5rem",
             position: "sticky",
@@ -1568,7 +1568,7 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "white", margin: 0 }}>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "var(--primary-foreground)", margin: 0 }}>
                 Approve Recall Appointment
               </h2>
               <p style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.9)", marginTop: "0.25rem" }}>
@@ -1594,7 +1594,7 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
                 e.currentTarget.style.backgroundColor = "transparent";
               }}
             >
-              <X size={20} color="white" />
+              <X size={20} color="var(--primary-foreground)" />
             </button>
           </div>
         </div>
@@ -1603,150 +1603,252 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
         <div style={{ padding: "2rem" }}>
           {loadingDetails ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3rem" }}>
-              <Loader2 size={32} className="animate-spin text-yellow-600" />
-              <p style={{ marginTop: "1rem", color: "#6b7280" }}>Loading appointment details...</p>
+              <Loader2 size={32} className="animate-spin" style={{ color: "var(--primary)" }} />
+              <p style={{ marginTop: "1rem", color: "var(--muted-foreground)" }}>Loading appointment details...</p>
             </div>
           ) : appointmentDetails ? (
             <form onSubmit={handleSubmit}>
-              {/* Current Appointment Info */}
-              <div
-                style={{
-                  padding: "1.25rem",
-                  backgroundColor: "#fffbeb",
-                  borderRadius: "0.75rem",
-                  border: "1px solid #fde68a",
-                  marginBottom: "1.5rem",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
-                  <CheckCircle size={20} color="#d97706" />
-                  <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#92400e" }}>Appointment Details</h3>
-                </div>
+              {/* Appointment Details Section */}
+              <div style={{ marginBottom: "2rem" }}>
+                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "var(--foreground)", marginBottom: "1rem" }}>
+                  Appointment Information
+                </h3>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div>
-                    <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Patient Name</p>
-                    <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
-                      {appointmentDetails.patientId.name}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Patient ID</p>
-                    <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
-                      {appointmentDetails.patientId.patientUniqueId}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Department</p>
-                    <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
-                      {appointmentDetails.department}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Status</p>
-                    <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
-                      {appointmentDetails.status}
-                    </p>
-                  </div>
-                  {appointmentDetails.opNumber && (
-                    <div>
-                      <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>OP Number</p>
-                      <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
-                        {appointmentDetails.opNumber}
-                      </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                  {/* Patient Details */}
+                  <div
+                    style={{
+                      padding: "1.25rem",
+                      backgroundColor: "var(--muted)",
+                      borderRadius: "0.75rem",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+                      <User style={{ color: "var(--primary)" }} size={20} />
+                      <h4 style={{ fontSize: "1rem", fontWeight: "600", color: "var(--foreground)", margin: 0 }}>
+                        Patient Details
+                      </h4>
                     </div>
-                  )}
-                  {appointmentDetails.rescheduledFromOp && (
-                    <div>
-                      <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Rescheduled From OP</p>
-                      <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
-                        {appointmentDetails.rescheduledFromOp}
-                      </p>
+
+                    <div style={{ display: "grid", gap: "0.75rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Name:</span>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                          {appointmentDetails.patientId.name}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Patient ID:</span>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                          {appointmentDetails.patientId.patientUniqueId}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Age:</span>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                          {appointmentDetails.patientId.age} years
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Phone:</span>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                          {appointmentDetails.patientId.phone}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Email:</span>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                          {appointmentDetails.patientId.email || "N/A"}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Appointment & Doctor Details */}
+                  <div
+                    style={{
+                      padding: "1.25rem",
+                      backgroundColor: "var(--muted)",
+                      borderRadius: "0.75rem",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+                      <Calendar style={{ color: "var(--primary)" }} size={20} />
+                      <h4 style={{ fontSize: "1rem", fontWeight: "600", color: "var(--foreground)", margin: 0 }}>
+                        Appointment & Doctor
+                      </h4>
+                    </div>
+
+                    <div style={{ display: "grid", gap: "0.75rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Department:</span>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                          {appointmentDetails.department}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Current Date:</span>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                          {appointmentDetails.appointmentDate}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Current Time:</span>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                          {appointmentDetails.appointmentTime}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Status:</span>
+                        <span style={{ 
+                          fontSize: "0.75rem", 
+                          fontWeight: "600", 
+                          padding: "0.25rem 0.75rem", 
+                          borderRadius: "9999px",
+                          backgroundColor: appointmentDetails.status === "recall" ? "var(--primary)/20" : "var(--muted)",
+                          color: appointmentDetails.status === "recall" ? "var(--primary)" : "var(--foreground)",
+                          textTransform: "uppercase"
+                        }}>
+                          {appointmentDetails.status}
+                        </span>
+                      </div>
+                      {/* {doctorInfo && (
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>Doctor:</span>
+                          <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                            {doctorInfo.name || "Dr. " + doctorInfo.doctor?.name || "N/A"}
+                          </span>
+                        </div>
+                      )} */}
+                      {appointmentDetails.opNumber && (
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>OP Number:</span>
+                          <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)" }}>
+                            {appointmentDetails.opNumber}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Schedule Update Section */}
               <div style={{ marginBottom: "2rem" }}>
-                <h3 style={{ fontSize: "1rem", fontWeight: "600", color: "#374151", marginBottom: "1rem" }}>
-                  Schedule Appointment
+                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "var(--foreground)", marginBottom: "1rem" }}>
+                  Schedule New Appointment
                 </h3>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   <div>
                     <label
-                      style={{ display: "block", fontSize: "0.875rem", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}
+                      style={{ display: "block", fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)", marginBottom: "0.5rem" }}
                     >
                       Appointment Date *
                     </label>
-                    <input
-                      type="date"
-                      value={appointmentDate}
-                      onChange={(e) => setAppointmentDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
-                      required
-                      style={{
-                        width: "100%",
-                        padding: "0.625rem 0.75rem",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "0.5rem",
-                        fontSize: "0.875rem",
-                        backgroundColor: "white",
-                        outline: "none",
-                        transition: "all 0.2s",
-                      }}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = "#f59e0b";
-                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(245, 158, 11, 0.1)";
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = "#d1d5db";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                    />
+                    <div style={{ position: "relative" }}>
+                      <Calendar 
+                        size={16} 
+                        style={{ 
+                          position: "absolute", 
+                          left: "12px", 
+                          top: "50%", 
+                          transform: "translateY(-50%)",
+                          color: "var(--muted-foreground)"
+                        }} 
+                      />
+                      <input
+                        type="date"
+                        value={appointmentDate}
+                        onChange={(e) => setAppointmentDate(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                        required
+                        style={{
+                          width: "100%",
+                          padding: "0.625rem 0.75rem 0.625rem 2.5rem",
+                          border: "1px solid var(--border)",
+                          borderRadius: "0.5rem",
+                          fontSize: "0.875rem",
+                          backgroundColor: "var(--input-background)",
+                          color: "var(--foreground)",
+                          outline: "none",
+                          transition: "all 0.2s",
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = "var(--primary)";
+                          e.currentTarget.style.boxShadow = "0 0 0 3px var(--primary)/0.1";
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = "var(--border)";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      />
+                    </div>
                   </div>
 
                   <div>
                     <label
-                      style={{ display: "block", fontSize: "0.875rem", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}
+                      style={{ display: "block", fontSize: "0.875rem", fontWeight: "500", color: "var(--foreground)", marginBottom: "0.5rem" }}
                     >
                       Appointment Time *
                     </label>
-                    <input
-                      type="time"
-                      value={appointmentTime}
-                      onChange={(e) => setAppointmentTime(e.target.value)}
-                      required
-                      style={{
-                        width: "100%",
-                        padding: "0.625rem 0.75rem",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "0.5rem",
-                        fontSize: "0.875rem",
-                        backgroundColor: "white",
-                        outline: "none",
-                        transition: "all 0.2s",
-                      }}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = "#f59e0b";
-                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(245, 158, 11, 0.1)";
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = "#d1d5db";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                    />
+                    <div style={{ position: "relative" }}>
+                      <Clock 
+                        size={16} 
+                        style={{ 
+                          position: "absolute", 
+                          left: "12px", 
+                          top: "50%", 
+                          transform: "translateY(-50%)",
+                          color: "var(--muted-foreground)"
+                        }} 
+                      />
+                      <input
+                        type="time"
+                        value={appointmentTime}
+                        onChange={(e) => setAppointmentTime(e.target.value)}
+                        required
+                        style={{
+                          width: "100%",
+                          padding: "0.625rem 0.75rem 0.625rem 2.5rem",
+                          border: "1px solid var(--border)",
+                          borderRadius: "0.5rem",
+                          fontSize: "0.875rem",
+                          backgroundColor: "var(--input-background)",
+                          color: "var(--foreground)",
+                          outline: "none",
+                          transition: "all 0.2s",
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = "var(--primary)";
+                          e.currentTarget.style.boxShadow = "0 0 0 3px var(--primary)/0.1";
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = "var(--border)";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.5rem" }}>
-                  Current schedule: {appointmentDetails.appointmentDate} at {appointmentDetails.appointmentTime}
-                </p>
+                <div style={{ 
+                  marginTop: "1rem", 
+                  padding: "0.75rem", 
+                  backgroundColor: "var(--muted)", 
+                  border: "1px solid var(--border)",
+                  borderRadius: "0.5rem"
+                }}>
+                  <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", margin: 0 }}>
+                    Current schedule: <strong>{appointmentDetails.appointmentDate}</strong> at <strong>{appointmentDetails.appointmentTime}</strong>
+                  </p>
+                </div>
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: "flex", gap: "1rem" }}>
+              <div style={{ display: "flex", gap: "1rem", paddingTop: "1.5rem", borderTop: "1px solid var(--border)" }}>
                 <button
                   type="button"
                   onClick={onClose}
@@ -1754,9 +1856,9 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
                   style={{
                     flex: 1,
                     padding: "0.75rem",
-                    backgroundColor: "white",
-                    border: "1px solid #d1d5db",
-                    color: "#374151",
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
+                    color: "var(--foreground)",
                     borderRadius: "0.5rem",
                     fontSize: "0.875rem",
                     fontWeight: "500",
@@ -1764,12 +1866,12 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f9fafb";
-                    e.currentTarget.style.borderColor = "#9ca3af";
+                    e.currentTarget.style.backgroundColor = "var(--muted)";
+                    e.currentTarget.style.borderColor = "var(--border)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "white";
-                    e.currentTarget.style.borderColor = "#d1d5db";
+                    e.currentTarget.style.backgroundColor = "var(--card)";
+                    e.currentTarget.style.borderColor = "var(--border)";
                   }}
                 >
                   Cancel
@@ -1781,8 +1883,8 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
                   style={{
                     flex: 1,
                     padding: "0.75rem",
-                    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                    color: "white",
+                    backgroundColor: "var(--primary)",
+                    color: "var(--primary-foreground)",
                     border: "none",
                     borderRadius: "0.5rem",
                     fontSize: "0.875rem",
@@ -1793,12 +1895,13 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
                     justifyContent: "center",
                     gap: "0.5rem",
                     transition: "all 0.2s",
-                    opacity: !appointmentDate || !appointmentTime ? 0.5 : 1,
+                    opacity: (!appointmentDate || !appointmentTime) ? 0.5 : 1,
                   }}
                   onMouseEnter={(e) => {
                     if (appointmentDate && appointmentTime && !isLoading) {
+                      e.currentTarget.style.backgroundColor = "var(--primary)/90";
                       e.currentTarget.style.transform = "translateY(-2px)";
-                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(245, 158, 11, 0.3)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px var(--primary)/0.3";
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -1813,7 +1916,7 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
                           width: "1rem",
                           height: "1rem",
                           border: "2px solid rgba(255,255,255,0.3)",
-                          borderTopColor: "white",
+                          borderTopColor: "var(--primary-foreground)",
                           borderRadius: "50%",
                           animation: "spin 1s linear infinite",
                         }}
@@ -1827,8 +1930,8 @@ const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
               </div>
             </form>
           ) : (
-            <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
-              <AlertCircle size={48} style={{ margin: "0 auto 1rem", color: "#9ca3af" }} />
+            <div style={{ textAlign: "center", padding: "3rem", color: "var(--muted-foreground)" }}>
+              <AlertCircle size={48} style={{ margin: "0 auto 1rem", color: "var(--muted-foreground)" }} />
               <p>Unable to load appointment details</p>
               <Button onClick={onClose} style={{ marginTop: "1rem" }}>Close</Button>
             </div>
