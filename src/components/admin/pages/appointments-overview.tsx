@@ -137,6 +137,34 @@ interface MonthlyAppointmentResponse {
     }[];
   }[];
 }
+interface AppointmentDetails {
+  _id: string;
+  patientId: {
+    _id: string;
+    name: string;
+    phone: number;
+    email: string;
+    patientUniqueId: string;
+    age: number;
+  };
+  clinicId: string;
+  doctorId: string;
+  department: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  status: string;
+  opNumber?: number;
+  rescheduledFromOp?: number;
+  approvedAt?: string;
+  approvedBy?: string;
+}
+interface RecallApprovalModalProps {
+  isOpen: boolean;
+  appointmentId: string;
+  onClose: () => void;
+  onApprove: (data: { appointmentTime: string; appointmentDate: string }) => void;
+  isLoading: boolean;
+}
 
 export function AppointmentsOverview() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -1432,7 +1460,444 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       fetchCalendarDepartments();
     }
   }, [calendarShowBookingForm, clinicId]);
+// Recall Approval Modal Component
+const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
+  isOpen,
+  appointmentId,
+  onClose,
+  onApprove,
+  isLoading,
+}) => {
+  const [appointmentDetails, setAppointmentDetails] = useState<AppointmentDetails | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState("");
 
+  // Fetch appointment details when modal opens
+  useEffect(() => {
+    if (isOpen && appointmentId) {
+      fetchAppointmentDetails();
+    }
+  }, [isOpen, appointmentId]);
+
+  const fetchAppointmentDetails = async () => {
+    try {
+      setLoadingDetails(true);
+      const response = await axios.get(
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/fetch/${appointmentId}`
+      );
+      
+      if (response.data.success) {
+        const appointment = response.data.appointment;
+        setAppointmentDetails(appointment);
+        setAppointmentTime(appointment.appointmentTime);
+        setAppointmentDate(appointment.appointmentDate);
+      } else {
+        alert("Failed to fetch appointment details");
+        onClose();
+      }
+    } catch (error: any) {
+      console.error("Error fetching appointment details:", error);
+      alert(error.response?.data?.message || "Failed to fetch appointment details");
+      onClose();
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!appointmentDate || !appointmentTime) {
+      alert("Please select date and time");
+      return;
+    }
+
+    // Validate date is not in the past
+    const selectedDate = new Date(appointmentDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      alert("Cannot schedule appointments in the past");
+      return;
+    }
+
+    onApprove({ appointmentTime, appointmentDate });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1rem",
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "white",
+          borderRadius: "1.5rem",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+          width: "100%",
+          maxWidth: "600px",
+          maxHeight: "90vh",
+          overflowY: "auto",
+          transform: "scale(1)",
+          transition: "transform 0.3s ease-out",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: "1.5rem 2rem",
+            background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+            borderTopLeftRadius: "1.5rem",
+            borderTopRightRadius: "1.5rem",
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "white", margin: 0 }}>
+                Approve Recall Appointment
+              </h2>
+              <p style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.9)", marginTop: "0.25rem" }}>
+                Review and confirm the recall appointment details
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "0.5rem",
+                borderRadius: "0.375rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              <X size={20} color="white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "2rem" }}>
+          {loadingDetails ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3rem" }}>
+              <Loader2 size={32} className="animate-spin text-yellow-600" />
+              <p style={{ marginTop: "1rem", color: "#6b7280" }}>Loading appointment details...</p>
+            </div>
+          ) : appointmentDetails ? (
+            <form onSubmit={handleSubmit}>
+              {/* Current Appointment Info */}
+              <div
+                style={{
+                  padding: "1.25rem",
+                  backgroundColor: "#fffbeb",
+                  borderRadius: "0.75rem",
+                  border: "1px solid #fde68a",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+                  <CheckCircle size={20} color="#d97706" />
+                  <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#92400e" }}>Appointment Details</h3>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div>
+                    <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Patient Name</p>
+                    <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
+                      {appointmentDetails.patientId.name}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Patient ID</p>
+                    <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
+                      {appointmentDetails.patientId.patientUniqueId}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Department</p>
+                    <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
+                      {appointmentDetails.department}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Status</p>
+                    <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
+                      {appointmentDetails.status}
+                    </p>
+                  </div>
+                  {appointmentDetails.opNumber && (
+                    <div>
+                      <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>OP Number</p>
+                      <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
+                        {appointmentDetails.opNumber}
+                      </p>
+                    </div>
+                  )}
+                  {appointmentDetails.rescheduledFromOp && (
+                    <div>
+                      <p style={{ fontSize: "0.75rem", color: "#92400e", marginBottom: "0.25rem" }}>Rescheduled From OP</p>
+                      <p style={{ fontSize: "0.875rem", fontWeight: "500", color: "#1f2937" }}>
+                        {appointmentDetails.rescheduledFromOp}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Schedule Update Section */}
+              <div style={{ marginBottom: "2rem" }}>
+                <h3 style={{ fontSize: "1rem", fontWeight: "600", color: "#374151", marginBottom: "1rem" }}>
+                  Schedule Appointment
+                </h3>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div>
+                    <label
+                      style={{ display: "block", fontSize: "0.875rem", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}
+                    >
+                      Appointment Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={appointmentDate}
+                      onChange={(e) => setAppointmentDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "0.625rem 0.75rem",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "0.5rem",
+                        fontSize: "0.875rem",
+                        backgroundColor: "white",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#f59e0b";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(245, 158, 11, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#d1d5db";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      style={{ display: "block", fontSize: "0.875rem", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}
+                    >
+                      Appointment Time *
+                    </label>
+                    <input
+                      type="time"
+                      value={appointmentTime}
+                      onChange={(e) => setAppointmentTime(e.target.value)}
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "0.625rem 0.75rem",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "0.5rem",
+                        fontSize: "0.875rem",
+                        backgroundColor: "white",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#f59e0b";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(245, 158, 11, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#d1d5db";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.5rem" }}>
+                  Current schedule: {appointmentDetails.appointmentDate} at {appointmentDetails.appointmentTime}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isLoading}
+                  style={{
+                    flex: 1,
+                    padding: "0.75rem",
+                    backgroundColor: "white",
+                    border: "1px solid #d1d5db",
+                    color: "#374151",
+                    borderRadius: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f9fafb";
+                    e.currentTarget.style.borderColor = "#9ca3af";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "white";
+                    e.currentTarget.style.borderColor = "#d1d5db";
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isLoading || !appointmentDate || !appointmentTime}
+                  style={{
+                    flex: 1,
+                    padding: "0.75rem",
+                    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    transition: "all 0.2s",
+                    opacity: !appointmentDate || !appointmentTime ? 0.5 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (appointmentDate && appointmentTime && !isLoading) {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(245, 158, 11, 0.3)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  {isLoading ? (
+                    <>
+                      <div
+                        style={{
+                          width: "1rem",
+                          height: "1rem",
+                          border: "2px solid rgba(255,255,255,0.3)",
+                          borderTopColor: "white",
+                          borderRadius: "50%",
+                          animation: "spin 1s linear infinite",
+                        }}
+                      />
+                      Approving...
+                    </>
+                  ) : (
+                    "Approve Recall"
+                  )}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
+              <AlertCircle size={48} style={{ margin: "0 auto 1rem", color: "#9ca3af" }} />
+              <p>Unable to load appointment details</p>
+              <Button onClick={onClose} style={{ marginTop: "1rem" }}>Close</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Add CSS for spinner animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(style);
+
+// Inside your AppointmentsOverview component, add these state variables
+
+const [recallApprovalModal, setRecallApprovalModal] = useState<{
+  isOpen: boolean;
+  appointmentId: string;
+}>({
+  isOpen: false,
+  appointmentId: "",
+});
+
+const [isApprovingRecall, setIsApprovingRecall] = useState(false);
+
+// Add this function to handle recall approval
+const handleRecallApproval = async (appointmentId: string) => {
+  setRecallApprovalModal({
+    isOpen: true,
+    appointmentId,
+  });
+};
+
+const handleApproveRecall = async (data: { appointmentTime: string; appointmentDate: string }) => {
+  try {
+    setIsApprovingRecall(true);
+    
+    const response = await axios.patch(
+      `${patientServiceBaseUrl}/api/v1/patient-service/appointment/recall-approval/${recallApprovalModal.appointmentId}`,
+      {
+        userId: clinicId, // Assuming clinicId is the admin user ID
+        userRole: "admin",
+        appointmentTime: data.appointmentTime,
+        appointmentDate: data.appointmentDate,
+      }
+    );
+
+    if (response.status === 200) {
+      alert("Recall appointment approved successfully!");
+      setRecallApprovalModal({ isOpen: false, appointmentId: "" });
+      // Refresh appointments list
+      fetchAppointments();
+    } else {
+      alert("Failed to approve recall appointment. Please try again.");
+    }
+  } catch (error: any) {
+    console.error("Error approving recall:", error);
+    alert(error.response?.data?.message || "An error occurred while approving recall.");
+  } finally {
+    setIsApprovingRecall(false);
+  }
+};
 
   return (
     <div className="space-y-6">
@@ -2360,136 +2825,166 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
                 </div>
               ) : (
                 <>
-                  {appointments.map((appointment) => (
-                    <div
-                      key={appointment._id}
-                      className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
-                        appointment.status === "cancelled"
-                          ? "bg-red-50 hover:bg-red-100 border border-red-200"
-                          : "bg-green-50 hover:bg-green-100 border border-green-200"
-                      }`}
-                    >
-                                 <div className="flex flex-col w-full">
-                    <div className="flex items-center gap-3 mb-2">
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      <p className="font-semibold text-lg">
-                        {appointment.patientId?.name}
-                      </p>
+                 {appointments.map((appointment) => (
+  <div
+    key={appointment._id}
+    className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
+      appointment.status === "cancelled"
+        ? "bg-red-50 hover:bg-red-100 border border-red-200"
+        : appointment.status === "recall"
+        ? "bg-yellow-50 hover:bg-yellow-100 border border-yellow-200"
+        : "bg-green-50 hover:bg-green-100 border border-green-200"
+    }`}
+  >
+    <div className="flex flex-col w-full">
+      <div className="flex items-center gap-3 mb-2">
+        <User className="w-4 h-4 text-muted-foreground" />
+        <p className="font-semibold text-lg">
+          {appointment.patientId?.name}
+        </p>
 
-                      {/* 🟡 Inline styled badge */}
-                      <span
-                        style={{
-                          backgroundColor:
-                            appointment.status === "confirmed"
-                              ? "#22c55e" // green
-                              : appointment.status === "cancelled"
-                              ? "#ef4444" // red
-                              : appointment.status === "rescheduled" ||
-                                appointment.status === "needs_reschedule"
-                              ? "#facc15" // yellow
-                              : "#9ca3af", // gray
-                          color:
-                            appointment.status === "rescheduled" ||
-                            appointment.status === "needs_reschedule"
-                              ? "#000"
-                              : "#fff",
-                          fontWeight: "bold",
-                          borderRadius: "8px",
-                          padding: "4px 10px",
-                          fontSize: "0.75rem",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {appointment.status === "rescheduled" ||
-                        appointment.status === "needs_reschedule"
-                          ? "NEED RESCHEDULE"
-                          : appointment.status.toUpperCase()}
-                      </span>
-                    </div>
+        {/* Status Badge - Updated for recall */}
+        <span
+          style={{
+            backgroundColor:
+              appointment.status === "confirmed"
+                ? "#22c55e"
+                : appointment.status === "cancelled"
+                ? "#ef4444"
+                : appointment.status === "recall"
+                ? "#f59e0b"
+                : appointment.status === "rescheduled" ||
+                  appointment.status === "needs_reschedule"
+                ? "#facc15"
+                : "#9ca3af",
+            color:
+              appointment.status === "rescheduled" ||
+              appointment.status === "needs_reschedule" ||
+              appointment.status === "recall"
+                ? "#000"
+                : "#fff",
+            fontWeight: "bold",
+            borderRadius: "8px",
+            padding: "4px 10px",
+            fontSize: "0.75rem",
+            textTransform: "uppercase",
+          }}
+        >
+          {appointment.status === "rescheduled" ||
+          appointment.status === "needs_reschedule"
+            ? "NEED RESCHEDULE"
+            : appointment.status === "recall"
+            ? "RECALL"
+            : appointment.status.toUpperCase()}
+        </span>
+      </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-6">
-                        <span className="text-sm font-medium">
-                          OP No:{" "}
-                          <span
-                            style={{
-                              backgroundColor: "#facc15",
-                              color: "#000",
-                              fontWeight: "bold",
-                              borderRadius: "8px",
-                              padding: "4px 10px",
-                              fontSize: "0.75rem",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            {appointment.opNumber
-                              ? `OP #${appointment.opNumber}`
-                              : appointment.rescheduledFromOp
-                              ? `Rescheduled OP #${appointment.rescheduledFromOp}`
-                              : "Pending OP"}
-                          </span>
-                        </span>
-                        <span className="text-sm font-medium">
-                          Patient ID:{" "}
-                          <span className="font-bold">
-                            {appointment.patientId?.patientUniqueId}
-                          </span>
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">
-                            {appointment.patientId?.phone}
-                          </span>
-                        </div>
-                      </div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-6">
+          <span className="text-sm font-medium">
+            OP No:{" "}
+            <span
+              style={{
+                backgroundColor: appointment.status === "recall" ? "#f59e0b" : "#facc15",
+                color: "#000",
+                fontWeight: "bold",
+                borderRadius: "8px",
+                padding: "4px 10px",
+                fontSize: "0.75rem",
+                textTransform: "uppercase",
+              }}
+            >
+              {appointment.opNumber
+                ? `OP #${appointment.opNumber}`
+                : appointment.rescheduledFromOp
+                ? `Rescheduled OP #${appointment.rescheduledFromOp}`
+                : "Pending OP"}
+            </span>
+          </span>
+          <span className="text-sm font-medium">
+            Patient ID:{" "}
+            <span className="font-bold">
+              {appointment.patientId?.patientUniqueId}
+            </span>
+          </span>
+          <div className="flex items-center gap-2">
+            <Phone className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm">
+              {appointment.patientId?.phone}
+            </span>
+          </div>
+        </div>
 
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-primary">
-                          {appointment.appointmentTime}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {appointment.appointmentDate}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+        <div className="text-right">
+          <p className="text-sm font-semibold text-primary">
+            {appointment.appointmentTime}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {appointment.appointmentDate}
+          </p>
+        </div>
+      </div>
+    </div>
 
-                  {/* ✅ Dynamic button rendering */}
-                {appointment.status !== "cancelled" && (
-  <div className="flex items-start gap-2 ml-4">
-    {/* Reschedule button */}
-    {appointment.status === "needs_reschedule" && (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={(e:any) => {
-          e.stopPropagation();
-          setRescheduleAppointmentId(appointment._id);
-          setRescheduleOpen(true);
-          fetchRescheduleDepartments();
-        }}
-      >
-        Reschedule
-      </Button>
+    {/* Action Buttons - Updated for recall */}
+    {appointment.status !== "cancelled" && (
+      <div className="flex items-start gap-2 ml-4 flex-shrink-0 flex-col">
+        {/* Recall Approval Button - Only for recall appointments */}
+        {appointment.status === "recall" && (
+          <Button
+            variant="outline"
+            size="sm"
+            style={{
+              backgroundColor: "#fef3c7",
+              color: "#92400e",
+              borderColor: "#f59e0b",
+              minWidth: "120px",
+            }}
+            onClick={(e: any) => {
+              e.stopPropagation();
+              handleRecallApproval(appointment._id);
+            }}
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Approve Recall
+          </Button>
+        )}
+
+        {/* Reschedule button */}
+        {appointment.status === "needs_reschedule" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e: any) => {
+              e.stopPropagation();
+              setRescheduleAppointmentId(appointment._id);
+              setRescheduleOpen(true);
+              fetchRescheduleDepartments();
+            }}
+            style={{ minWidth: "120px" }}
+          >
+            Reschedule
+          </Button>
+        )}
+
+        {/* View button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e: any) => {
+            e.stopPropagation();
+            setViewAppointment(appointment);
+            setViewOpen(true);
+          }}
+          style={{ minWidth: "120px" }}
+        >
+          View
+        </Button>
+      </div>
     )}
-
-    {/* View button */}
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={(e:any) => {
-        e.stopPropagation();
-        setViewAppointment(appointment);
-        setViewOpen(true);
-      }}
-    >
-      View
-    </Button>
   </div>
-)}
-                    </div>
-                  ))}
-                  
+))}
+
                   {nextCursor && (
                     <div className="flex justify-center mt-4 gap-2">
                       <Button
@@ -4053,6 +4548,13 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
           </div>
         </div>
       )}
+      <RecallApprovalModal
+  isOpen={recallApprovalModal.isOpen}
+  appointmentId={recallApprovalModal.appointmentId}
+  onClose={() => setRecallApprovalModal({ isOpen: false, appointmentId: "" })}
+  onApprove={handleApproveRecall}
+  isLoading={isApprovingRecall}
+/>
     </div>
   );
 }
