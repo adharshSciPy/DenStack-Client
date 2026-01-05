@@ -29,11 +29,6 @@ interface RoleOption {
   label: string;
 }
 
-interface DoctorSlot {
-  startTime: string;
-  endTime: string;
-}
-
 interface DoctorAvailability {
   _id: string;
   dayOfWeek: string;
@@ -81,12 +76,22 @@ interface RemoveModalProps {
   onConfirm: () => void;
   isLoading: boolean;
 }
+
+interface AvailabilityModalProps {
+  isOpen: boolean;
+  doctorUniqueId: string;
+  doctorName: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
 interface EditModalState {
   isOpen: boolean;
   doctor: Doctor | null;
   slotIndex: number | null;
   availabilityId?: string;
 }
+
 interface AuthUser {
   name?: string;
   email?: string;
@@ -164,7 +169,6 @@ const RemoveModal: React.FC<RemoveModalProps> = ({
         </p>
 
         <div className="flex gap-3">
-          {/* Cancel Button */}
           <button
             onClick={onClose}
             disabled={isLoading}
@@ -173,7 +177,6 @@ const RemoveModal: React.FC<RemoveModalProps> = ({
             Cancel
           </button>
 
-          {/* Confirm Remove Button */}
           <button
             onClick={onConfirm}
             disabled={isLoading}
@@ -204,6 +207,626 @@ const RemoveModal: React.FC<RemoveModalProps> = ({
               </>
             ) : (
               "Remove Doctor"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AddAvailabilityModal: React.FC<AvailabilityModalProps> = ({
+  isOpen,
+  doctorUniqueId,
+  doctorName,
+  onClose,
+  onSuccess,
+}) => {
+  const { clinicId } = useParams<{ clinicId: string }>();
+  const { user } = useAppSelector((state: { auth: AuthState }) => state.auth);
+  
+  const [availabilityForm, setAvailabilityForm] = useState<DoctorAvailability[]>([
+    {
+      _id: "",
+      dayOfWeek: "",
+      startTime: "",
+      endTime: "",
+      isActive: true,
+      clinic: clinicId || "",
+    }
+  ]);
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleAddSlot = () => {
+    setAvailabilityForm([
+      ...availabilityForm,
+      {
+        _id: "",
+        dayOfWeek: "",
+        startTime: "",
+        endTime: "",
+        isActive: true,
+        clinic: clinicId || "",
+      }
+    ]);
+  };
+
+  const handleRemoveSlot = (index: number) => {
+    if (availabilityForm.length > 1) {
+      const newForm = [...availabilityForm];
+      newForm.splice(index, 1);
+      setAvailabilityForm(newForm);
+    }
+  };
+
+  const handleSlotChange = (index: number, field: keyof DoctorAvailability, value: string) => {
+    const newForm = [...availabilityForm];
+    newForm[index] = { ...newForm[index], [field]: value };
+    setAvailabilityForm(newForm);
+  };
+
+  const validateForm = (): boolean => {
+    for (const slot of availabilityForm) {
+      if (!slot.dayOfWeek.trim() || !slot.startTime.trim() || !slot.endTime.trim()) {
+        setError("All fields are required for each time slot");
+        return false;
+      }
+      
+      if (slot.startTime >= slot.endTime) {
+        setError("End time must be after start time");
+        return false;
+      }
+    }
+    setError("");
+    return true;
+  };
+
+  const handleSaveAvailability = async () => {
+    if (!validateForm()) return;
+    
+    try {
+      setIsSaving(true);
+      setError("");
+
+      const availabilityData = availabilityForm.map(slot => ({
+        dayOfWeek: slot.dayOfWeek,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        isActive: slot.isActive,
+      }));
+
+      const payload = {
+        clinicId: clinicId,
+        createdBy: user?._id || clinicId,
+        availability: availabilityData
+      };
+
+      const response = await axios.post(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/availability-doctor/${doctorUniqueId}`,
+        payload
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        alert("Availability added successfully!");
+        onSuccess();
+        onClose();
+      }
+    } catch (error: any) {
+      console.error("Error adding availability:", error);
+      setError(
+        error.response?.data?.message || 
+        "Failed to add availability. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        backdropFilter: "blur(4px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        padding: "20px",
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "white",
+          borderRadius: "16px",
+          width: "100%",
+          maxWidth: "700px",
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="p-6"
+          style={{
+            background: "var(--primary-gradient)",
+            borderBottom: "1px solid #e5e7eb",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "700",
+                  color: "white",
+                  margin: "0 0 8px 0",
+                }}
+              >
+                Add Doctor Availability
+              </h2>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "rgba(255, 255, 255, 0.9)",
+                  margin: 0,
+                }}
+              >
+                Set schedule for {doctorName} (ID: {doctorUniqueId})
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                backgroundColor: "white",
+                color: "var(--primary)",
+                border: "none",
+                borderRadius: "8px",
+                padding: "8px 16px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "white";
+              }}
+            >
+              <svg
+                style={{ width: "20px", height: "20px" }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Close
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "24px 28px",
+          }}
+        >
+          {error && (
+            <div
+              style={{
+                backgroundColor: "#fee2e2",
+                border: "1px solid #ef4444",
+                color: "#dc2626",
+                padding: "12px 16px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                fontSize: "14px",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <div style={{ marginBottom: "28px" }}>
+            <h3
+              style={{
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#374151",
+                marginBottom: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  backgroundColor: "#3b82f6",
+                  borderRadius: "50%",
+                }}
+              ></span>
+              TIME SLOTS
+            </h3>
+            
+            {availabilityForm.map((slot, index) => (
+              <div
+                key={index}
+                style={{
+                  marginBottom: "16px",
+                  padding: "16px",
+                  backgroundColor: "#dbeafe",
+                  borderRadius: "10px",
+                  border: "2px solid #60a5fa",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "12px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#1e40af",
+                    }}
+                  >
+                    Slot {index + 1}
+                  </span>
+                  {availabilityForm.length > 1 && (
+                    <button
+                      onClick={() => handleRemoveSlot(index)}
+                      style={{
+                        padding: "6px 10px",
+                        backgroundColor: "#ef4444",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        fontWeight: "500",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        transition: "background-color 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#dc2626";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#ef4444";
+                      }}
+                    >
+                      <svg
+                        style={{ width: "14px", height: "14px" }}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: "12px",
+                  }}
+                >
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "12px",
+                        fontWeight: "500",
+                        color: "#374151",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      Day of Week
+                    </label>
+                    <select
+                      value={slot.dayOfWeek}
+                      onChange={(e) => handleSlotChange(index, "dayOfWeek", e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1px solid #60a5fa",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        backgroundColor: "white",
+                        cursor: "pointer",
+                        outline: "none",
+                      }}
+                    >
+                      <option value="">Select Day</option>
+                      {[
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                        "Sunday",
+                      ].map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "12px",
+                        fontWeight: "500",
+                        color: "#374151",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      Start Time
+                    </label>
+                    <input
+                      type="time"
+                      value={slot.startTime}
+                      onChange={(e) => handleSlotChange(index, "startTime", e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1px solid #60a5fa",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        backgroundColor: "white",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "12px",
+                        fontWeight: "500",
+                        color: "#374151",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      End Time
+                    </label>
+                    <input
+                      type="time"
+                      value={slot.endTime}
+                      onChange={(e) => handleSlotChange(index, "endTime", e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1px solid #60a5fa",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        backgroundColor: "white",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button
+              onClick={handleAddSlot}
+              style={{
+                width: "100%",
+                padding: "12px",
+                backgroundColor: "#e0e7ff",
+                color: "#4f46e5",
+                border: "2px dashed #6366f1",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#c7d2fe";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#e0e7ff";
+              }}
+            >
+              <svg
+                style={{ width: "20px", height: "20px" }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Add Another Time Slot
+            </button>
+          </div>
+
+          <div
+            style={{
+              padding: "16px",
+              backgroundColor: "#f0f9ff",
+              borderRadius: "10px",
+              border: "1px solid #bae6fd",
+            }}
+          >
+            <h4
+              style={{
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#0369a1",
+                marginBottom: "8px",
+              }}
+            >
+              📝 Instructions
+            </h4>
+            <ul
+              style={{
+                fontSize: "12px",
+                color: "#0c4a6e",
+                margin: 0,
+                paddingLeft: "20px",
+              }}
+            >
+              <li>Select the day of week for each time slot</li>
+              <li>Set start and end times for doctor's availability</li>
+              <li>You can add multiple time slots for different days</li>
+              <li>End time must be after start time</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div
+          style={{
+            padding: "20px 28px",
+            borderTop: "1px solid #e5e7eb",
+            backgroundColor: "#f9fafb",
+            display: "flex",
+            gap: "12px",
+          }}
+        >
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: "12px",
+              backgroundColor: "white",
+              border: "2px solid #d1d5db",
+              color: "#374151",
+              borderRadius: "8px",
+              fontSize: "15px",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#f3f4f6";
+              e.currentTarget.style.borderColor = "#9ca3af";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "white";
+              e.currentTarget.style.borderColor = "#d1d5db";
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveAvailability}
+            disabled={isSaving}
+            style={{
+              flex: 1,
+              padding: "12px",
+              background: "var(--primary-gradient)",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "15px",
+              fontWeight: "600",
+              cursor: isSaving ? "not-allowed" : "pointer",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+              transition: "all 0.2s",
+              opacity: isSaving ? 0.7 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1)";
+              }
+            }}
+          >
+            {isSaving ? (
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                <svg
+                  className="animate-spin"
+                  style={{ width: "18px", height: "18px" }}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Saving...
+              </span>
+            ) : (
+              "Save Availability"
             )}
           </button>
         </div>
@@ -247,6 +870,17 @@ const DoctorRegistrationForm: React.FC = () => {
     doctor: Doctor | null;
   }>({ isOpen: false, doctor: null });
   const [isRemoving, setIsRemoving] = useState<boolean>(false);
+
+  // Add availability modal state
+  const [availabilityModal, setAvailabilityModal] = useState<{
+    isOpen: boolean;
+    doctorUniqueId: string;
+    doctorName: string;
+  }>({
+    isOpen: false,
+    doctorUniqueId: "",
+    doctorName: "",
+  });
 
   const roleOptions: RoleOption[] = [
     { value: "consultant", label: "Consulting" },
@@ -336,32 +970,57 @@ const DoctorRegistrationForm: React.FC = () => {
   const handleSubmit = async (
     e: React.MouseEvent<HTMLButtonElement>
   ): Promise<void> => {
-    if (validateForm()) {
-      try {
-        const response = await axios.post(
-          `${clinicServiceBaseUrl}/api/v1/clinic-service/onboard-doctor`,
-          formData
-        );
+    e.preventDefault();
+    
+    if (!validateForm()) return;
 
-        if (response.status === 201) {
-          setFormData({
-            doctorUniqueId: "",
-            roleInClinic: "",
-            clinicEmail: "",
-            clinicPassword: "",
-            standardConsultationFee: "",
-            specialization: [],
-            clinicId: clinicId || "",
-          });
+    try {
+      // First, register the doctor
+      const response = await axios.post(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/onboard-doctor`,
+        formData
+      );
 
-          alert("Doctor registered successfully!");
-        } else {
-          alert("Registration failed. Please try again.");
-        }
-      } catch (error) {
-        console.log(error);
-        alert("An error occurred during registration.");
+      if (response.status === 201) {
+        const doctorData = response.data.data || response.data;
+        const doctorUniqueId = doctorData.doctorUniqueId || formData.doctorUniqueId;
+        const doctorName = doctorData.doctorName || "Doctor";
+
+        alert("Doctor registered successfully!");
+        
+        // Clear form
+        setFormData({
+          doctorUniqueId: "",
+          roleInClinic: "",
+          clinicEmail: "",
+          clinicPassword: "",
+          standardConsultationFee: "",
+          specialization: [],
+          clinicId: clinicId || "",
+        });
+
+        // Open availability modal
+        setAvailabilityModal({
+          isOpen: true,
+          doctorUniqueId,
+          doctorName,
+        });
+      } else {
+        alert("Registration failed. Please try again.");
       }
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      alert(
+        error.response?.data?.message || 
+        "An error occurred during registration. Please try again."
+      );
+    }
+  };
+
+  const handleAvailabilitySuccess = () => {
+    // Refresh doctors list if on doctors view
+    if (currentView === "doctors") {
+      fetchDoctors();
     }
   };
 
@@ -374,15 +1033,14 @@ const DoctorRegistrationForm: React.FC = () => {
         {
           params: {
             clinicId,
-            search: searchTerm || undefined, // Send search term to backend
-            role: filterRole !== "all" ? filterRole : undefined, // Send role filter to backend
+            search: searchTerm || undefined,
+            role: filterRole !== "all" ? filterRole : undefined,
           },
         }
       );
 
       console.log("Fetched doctors response:", response.data);
 
-      // Normalize API response structure
       let doctorsList: any[] = [];
 
       if (Array.isArray(response.data)) {
@@ -398,7 +1056,6 @@ const DoctorRegistrationForm: React.FC = () => {
         doctorsList = response.data.results;
       }
 
-      // Validate and normalize each doctor entry
       const validDoctors = doctorsList
         .filter((doc: any) => doc && (doc._id || doc.doctorId))
         .map((doc: any) => ({
@@ -420,7 +1077,6 @@ const DoctorRegistrationForm: React.FC = () => {
     }
   };
 
-  // Add useEffect to refetch when search or filter changes
   useEffect(() => {
     if (currentView === "doctors") {
       if (searchTerm === "" || searchTerm.length >= 3) {
@@ -446,7 +1102,6 @@ const DoctorRegistrationForm: React.FC = () => {
     try {
       setIsRemoving(true);
 
-      // Get the correct doctorId
       const doctorIdToRemove =
         removeModal.doctor.doctorId || removeModal.doctor._id;
 
@@ -487,31 +1142,17 @@ const DoctorRegistrationForm: React.FC = () => {
     }
   };
 
-  // Derived filtered list (client-side filtering)
-  const filteredDoctors = doctors;
-  const getRoleBadgeColor = (role: string): string => {
-    switch (role.toLowerCase()) {
-      case "consultant":
-        return "bg-blue-100 text-blue-700";
-      case "visiting":
-        return "bg-purple-100 text-purple-700";
-      case "permanent":
-        return "bg-green-100 text-green-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
   const [editModal, setEditModal] = useState<EditModalState>({
     isOpen: false,
     doctor: null,
     slotIndex: null,
   });
 
-  const [availabilityForm, setAvailabilityForm] = useState<
+  const [editAvailabilityForm, setEditAvailabilityForm] = useState<
     DoctorAvailability[]
   >([]);
 
-  const [editForm, setEditForm] = useState({
+  const [newSlotForm, setNewSlotForm] = useState({
     dayOfWeek: "",
     startTime: "",
     endTime: "",
@@ -521,7 +1162,7 @@ const DoctorRegistrationForm: React.FC = () => {
     const firstSlotAvailabilityId =
       doctor?.availability?.[0]?.availabilityId || undefined;
 
-    setAvailabilityForm(doctor.availability || []);
+    setEditAvailabilityForm(doctor.availability || []);
 
     setEditModal({
       isOpen: true,
@@ -531,37 +1172,35 @@ const DoctorRegistrationForm: React.FC = () => {
     });
   };
 
-  const addSlot = () => {
-    if (!editForm.dayOfWeek || !editForm.startTime || !editForm.endTime) return;
+  const addEditSlot = () => {
+    if (!newSlotForm.dayOfWeek || !newSlotForm.startTime || !newSlotForm.endTime) return;
 
-    setAvailabilityForm((prev) => [
+    setEditAvailabilityForm((prev) => [
       ...prev,
       {
-        dayOfWeek: editForm.dayOfWeek,
-        startTime: editForm.startTime,
-        endTime: editForm.endTime,
+        dayOfWeek: newSlotForm.dayOfWeek,
+        startTime: newSlotForm.startTime,
+        endTime: newSlotForm.endTime,
         isActive: true,
         _id: "",
         clinic: clinicId!,
       },
     ]);
 
-    // CLEAR FORM after adding
-    setEditForm({
+    setNewSlotForm({
       dayOfWeek: "",
       startTime: "",
       endTime: "",
     });
 
-    // Scroll to bottom after update
     setTimeout(() => {
       const container = document.getElementById("availability-scroll");
       container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
     }, 100);
   };
 
-  const removeSlot = (index: number) => {
-    setAvailabilityForm((prev) => prev.filter((_, i) => i !== index));
+  const removeEditSlot = (index: number) => {
+    setEditAvailabilityForm((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveAllAvailability = async () => {
@@ -575,8 +1214,7 @@ const DoctorRegistrationForm: React.FC = () => {
     try {
       await axios.patch(
         `${clinicServiceBaseUrl}/api/v1/clinic-service/update-availability/${availabilityId}`,
-
-        { clinicId, availability: availabilityForm }
+        { clinicId, availability: editAvailabilityForm }
       );
 
       alert("Availability updated successfully!");
@@ -588,25 +1226,40 @@ const DoctorRegistrationForm: React.FC = () => {
         availabilityId: undefined,
       });
 
-      fetchDoctors(); // refresh UI
+      fetchDoctors();
     } catch (error) {
       console.error("❌ Failed to update availability:", error);
       alert("Error updating availability");
     }
   };
 
+  const filteredDoctors = doctors;
+  
+  const getRoleBadgeColor = (role: string): string => {
+    switch (role.toLowerCase()) {
+      case "consultant":
+        return "bg-blue-100 text-blue-700";
+      case "visiting":
+        return "bg-purple-100 text-purple-700";
+      case "permanent":
+        return "bg-green-100 text-green-700";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
+
   return (
     <div
       slot="card"
-      className="min-h-screen bg-muted/60  rounded-xl from-green-50  to-blue-50 py-12 px-4 "
+      className="min-h-screen bg-muted/60 rounded-xl from-green-50 to-blue-50 py-12 px-4"
     >
       <div className="max-w-7xl mx-auto">
         {currentView === "registration" && (
           <div className="max-w-2xl mx-auto">
-            <div className=" rounded-2xl shadow-xl overflow-hidden">
+            <div className="rounded-2xl shadow-xl overflow-hidden">
               <div
                 slot="card"
-                className=" p-8 text-var(--secondary) rounded-xl "
+                className="p-8 text-var(--secondary) rounded-xl"
               >
                 <div className="flex justify-between items-start">
                   <div>
@@ -675,7 +1328,7 @@ const DoctorRegistrationForm: React.FC = () => {
                     name="roleInClinic"
                     value={formData.roleInClinic}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer "
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Select a role</option>
                     {roleOptions.map((option: RoleOption) => (
@@ -1058,7 +1711,6 @@ const DoctorRegistrationForm: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredDoctors.map((doctorItem, index) => {
-                    // Safety check
                     if (!doctorItem) return null;
 
                     const doctorData = doctorItem || {};
@@ -1241,15 +1893,54 @@ const DoctorRegistrationForm: React.FC = () => {
                           </div>
                         </div>
                         <div className="px-4 pb-4 flex gap-2">
-                          {/* EDIT BUTTON */}
-                          <button
-                            onClick={() => openEditModal(doctorItem)}
-                            className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg w-full"
-                          >
-                            ✏️ Edit Availability
-                          </button>
+                          {availability.length === 0 ? (
+                            <button
+                              onClick={() => {
+                                setAvailabilityModal({
+                                  isOpen: true,
+                                  doctorUniqueId: doctorData.doctorUniqueId || doctorData.doctor?.uniqueId || "",
+                                  doctorName: doctorData.doctorName || doctorData.doctor?.name || "Doctor",
+                                });
+                              }}
+                              className="w-full px-3 py-2 bg-yellow-50 text-yellow-600 rounded-lg text-sm font-medium hover:bg-yellow-100 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                />
+                              </svg>
+                              Add Availability
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => openEditModal(doctorItem)}
+                              className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg w-full flex items-center justify-center gap-2"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                              Edit Availability
+                            </button>
+                          )}
 
-                          {/* REMOVE BUTTON */}
                           <button
                             onClick={() =>
                               setRemoveModal({
@@ -1257,9 +1948,22 @@ const DoctorRegistrationForm: React.FC = () => {
                                 doctor: doctorItem,
                               })
                             }
-                            className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                            className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
                           >
-                            🗑 Remove Doctor
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                            Remove
                           </button>
                         </div>
                       </div>
@@ -1279,6 +1983,17 @@ const DoctorRegistrationForm: React.FC = () => {
         onConfirm={handleRemoveDoctor}
         isLoading={isRemoving}
       />
+
+      {/* Add Availability Modal for new doctors */}
+      <AddAvailabilityModal
+        isOpen={availabilityModal.isOpen}
+        doctorUniqueId={availabilityModal.doctorUniqueId}
+        doctorName={availabilityModal.doctorName}
+        onClose={() => setAvailabilityModal({ isOpen: false, doctorUniqueId: "", doctorName: "" })}
+        onSuccess={handleAvailabilitySuccess}
+      />
+
+      {/* Edit Availability Modal for existing doctors */}
       {editModal.isOpen && (
         <div
           style={{
@@ -1333,7 +2048,7 @@ const DoctorRegistrationForm: React.FC = () => {
                       margin: "0 0 8px 0",
                     }}
                   >
-                    Doctor Availability
+                    Edit Doctor Availability
                   </h2>
                   <p
                     style={{
@@ -1355,7 +2070,7 @@ const DoctorRegistrationForm: React.FC = () => {
                       doctor: null,
                       slotIndex: null,
                     });
-                    setEditForm({ dayOfWeek: "", startTime: "", endTime: "" });
+                    setNewSlotForm({ dayOfWeek: "", startTime: "", endTime: "" });
                   }}
                   style={{
                     backgroundColor: "white",
@@ -1408,7 +2123,7 @@ const DoctorRegistrationForm: React.FC = () => {
               }}
             >
               {/* Existing Slots */}
-              {availabilityForm.length > 0 && (
+              {editAvailabilityForm.length > 0 && (
                 <div style={{ marginBottom: "28px" }}>
                   <h3
                     style={{
@@ -1429,7 +2144,7 @@ const DoctorRegistrationForm: React.FC = () => {
                         borderRadius: "50%",
                       }}
                     ></span>
-                    CURRENT SCHEDULE ({availabilityForm.length} slots)
+                    CURRENT SCHEDULE ({editAvailabilityForm.length} slots)
                   </h3>
                   <div
                     style={{
@@ -1438,7 +2153,7 @@ const DoctorRegistrationForm: React.FC = () => {
                       gap: "10px",
                     }}
                   >
-                    {availabilityForm.map((slot, index) => (
+                    {editAvailabilityForm.map((slot, index) => (
                       <div
                         key={index}
                         style={{
@@ -1463,9 +2178,9 @@ const DoctorRegistrationForm: React.FC = () => {
                           <select
                             value={slot.dayOfWeek}
                             onChange={(e) => {
-                              const updated = [...availabilityForm];
+                              const updated = [...editAvailabilityForm];
                               updated[index].dayOfWeek = e.target.value;
-                              setAvailabilityForm(updated);
+                              setEditAvailabilityForm(updated);
                             }}
                             style={{
                               padding: "10px 12px",
@@ -1497,9 +2212,9 @@ const DoctorRegistrationForm: React.FC = () => {
                             type="time"
                             value={slot.startTime}
                             onChange={(e) => {
-                              const updated = [...availabilityForm];
+                              const updated = [...editAvailabilityForm];
                               updated[index].startTime = e.target.value;
-                              setAvailabilityForm(updated);
+                              setEditAvailabilityForm(updated);
                             }}
                             style={{
                               padding: "10px 12px",
@@ -1515,9 +2230,9 @@ const DoctorRegistrationForm: React.FC = () => {
                             type="time"
                             value={slot.endTime}
                             onChange={(e) => {
-                              const updated = [...availabilityForm];
+                              const updated = [...editAvailabilityForm];
                               updated[index].endTime = e.target.value;
-                              setAvailabilityForm(updated);
+                              setEditAvailabilityForm(updated);
                             }}
                             style={{
                               padding: "10px 12px",
@@ -1531,7 +2246,7 @@ const DoctorRegistrationForm: React.FC = () => {
                         </div>
 
                         <button
-                          onClick={() => removeSlot(index)}
+                          onClick={() => removeEditSlot(index)}
                           style={{
                             padding: "8px",
                             color: "#ef4444",
@@ -1625,10 +2340,10 @@ const DoctorRegistrationForm: React.FC = () => {
                         Day of Week
                       </label>
                       <select
-                        value={editForm.dayOfWeek}
+                        value={newSlotForm.dayOfWeek}
                         onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
+                          setNewSlotForm({
+                            ...newSlotForm,
                             dayOfWeek: e.target.value,
                           })
                         }
@@ -1674,10 +2389,10 @@ const DoctorRegistrationForm: React.FC = () => {
                       </label>
                       <input
                         type="time"
-                        value={editForm.startTime}
+                        value={newSlotForm.startTime}
                         onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
+                          setNewSlotForm({
+                            ...newSlotForm,
                             startTime: e.target.value,
                           })
                         }
@@ -1707,9 +2422,9 @@ const DoctorRegistrationForm: React.FC = () => {
                       </label>
                       <input
                         type="time"
-                        value={editForm.endTime}
+                        value={newSlotForm.endTime}
                         onChange={(e) =>
-                          setEditForm({ ...editForm, endTime: e.target.value })
+                          setNewSlotForm({ ...newSlotForm, endTime: e.target.value })
                         }
                         style={{
                           width: "100%",
@@ -1725,19 +2440,19 @@ const DoctorRegistrationForm: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={addSlot}
+                    onClick={addEditSlot}
                     disabled={
-                      !editForm.dayOfWeek ||
-                      !editForm.startTime ||
-                      !editForm.endTime
+                      !newSlotForm.dayOfWeek ||
+                      !newSlotForm.startTime ||
+                      !newSlotForm.endTime
                     }
                     style={{
                       width: "100%",
                       padding: "12px",
                       backgroundColor:
-                        !editForm.dayOfWeek ||
-                        !editForm.startTime ||
-                        !editForm.endTime
+                        !newSlotForm.dayOfWeek ||
+                        !newSlotForm.startTime ||
+                        !newSlotForm.endTime
                           ? "#d1d5db"
                           : "#3b82f6",
                       color: "white",
@@ -1746,9 +2461,9 @@ const DoctorRegistrationForm: React.FC = () => {
                       fontSize: "14px",
                       fontWeight: "600",
                       cursor:
-                        !editForm.dayOfWeek ||
-                        !editForm.startTime ||
-                        !editForm.endTime
+                        !newSlotForm.dayOfWeek ||
+                        !newSlotForm.startTime ||
+                        !newSlotForm.endTime
                           ? "not-allowed"
                           : "pointer",
                       display: "flex",
@@ -1759,18 +2474,18 @@ const DoctorRegistrationForm: React.FC = () => {
                     }}
                     onMouseEnter={(e) => {
                       if (
-                        editForm.dayOfWeek &&
-                        editForm.startTime &&
-                        editForm.endTime
+                        newSlotForm.dayOfWeek &&
+                        newSlotForm.startTime &&
+                        newSlotForm.endTime
                       ) {
                         e.currentTarget.style.backgroundColor = "#2563eb";
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (
-                        editForm.dayOfWeek &&
-                        editForm.startTime &&
-                        editForm.endTime
+                        newSlotForm.dayOfWeek &&
+                        newSlotForm.startTime &&
+                        newSlotForm.endTime
                       ) {
                         e.currentTarget.style.backgroundColor = "#3b82f6";
                       }
@@ -1813,7 +2528,7 @@ const DoctorRegistrationForm: React.FC = () => {
                     doctor: null,
                     slotIndex: null,
                   });
-                  setEditForm({ dayOfWeek: "", startTime: "", endTime: "" });
+                  setNewSlotForm({ dayOfWeek: "", startTime: "", endTime: "" });
                 }}
                 className="border border-gray-300 text-gray-700 hover:bg-gray-50"
                 style={{
