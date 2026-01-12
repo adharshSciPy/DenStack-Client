@@ -46,6 +46,7 @@ import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
 import PatientCRMModal from "../../PatientCRM";
 import CalendarView, { CalendarAppointment } from "../../receptionist/component/CalenderView";
 import styles from "../../receptionist/styles/receptionist.module.css"
+import { useAppSelector } from "../../../redux/hook";
 
 interface Appointment {
   _id: string;
@@ -299,7 +300,7 @@ export function AppointmentsOverview() {
   const [calendarShowBookingForm, setCalendarShowBookingForm] = useState(false);
   const [calendarRegistrationLoading, setCalendarRegistrationLoading] = useState(false);
   const [calendarPatientSearchLoading, setCalendarPatientSearchLoading] = useState(false);
-
+  const token=useAppSelector((state)=>state.auth.token)
 const Info = ({ label, value }: { label: string; value?: string }) => (
   <div>
     <p style={{ fontSize: 12, color: "#6b7280" }}>{label}</p>
@@ -320,7 +321,7 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
   };
 
   const todayFormatted = today.toLocaleDateString("en-US", options);
-
+  
   // const departments = [
   //   "Cardiology",
   //   "Neurology",
@@ -354,7 +355,12 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
             lastId: cursor || undefined,
             limit,
           },
-        }
+          headers:{
+            Authorization:`Bearer ${token}`
+          }
+        },
+        
+        
       );
 
       const data = response.data || {};
@@ -893,7 +899,11 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
 
       const res = await axios.post(
         `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
-        payload
+        payload,{
+          headers:{
+            Authorization:`Bearer ${token}`
+          }
+        }
       );
 
       alert(res.data.message);
@@ -1001,6 +1011,9 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
             month: targetMonth,
             year: targetYear,
           },
+          headers:{
+            Authorization:`Bearer ${token}`
+          }
         }
       );
 
@@ -1291,7 +1304,11 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
 
       const res = await axios.post(
         `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
-        payload
+        payload,{
+          headers:{
+            Authorization:`Bearer ${token}`
+          }
+        }
       );
 
       alert("Appointment booked successfully");

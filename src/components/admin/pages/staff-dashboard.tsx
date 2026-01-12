@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import baseUrl from "../../../baseUrl";
 import {
@@ -15,10 +15,11 @@ import {
   Trash2,
   Edit,
   Clock,
+  Shield,
 } from "lucide-react";
 import axios from "axios";
 import { Button } from "../../ui/button";
-
+import { useAppSelector } from "../../../redux/hook";
 interface StaffMember {
   id: string;
   name: string;
@@ -26,6 +27,7 @@ interface StaffMember {
   phoneNumber: string;
   role: string;
   joinedDate?: string;
+  userRole?: string;
   shifts?: {
     startDate?: string;
     endDate?: string;
@@ -61,7 +63,13 @@ interface ClinicStaffResponse {
   total: number;
   staffCounts: StaffCounts;
 }
-
+interface Staff {
+  name: string;
+  email: string;
+  id: string;
+  role: string;
+  userRole: string;
+}
 const StaffRegistration: React.FC = () => {
   const [formData, setFormData] = useState<StaffFormData>({
     name: "",
@@ -70,6 +78,8 @@ const StaffRegistration: React.FC = () => {
     password: "",
   });
   const { clinicId } = useParams();
+  const { token } = useAppSelector((state) => state.auth);
+
   const [selectedRole, setSelectedRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [staffData, setStaffData] = useState<ClinicStaffResponse>();
@@ -92,7 +102,13 @@ const StaffRegistration: React.FC = () => {
     startTime: "",
     endTime: "",
   });
-
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
+  const [selectedStaffForPermissions, setSelectedStaffForPermissions] =
+    useState<StaffMember | null>(null);
+  const [permissions, setPermissions] = useState({
+    appointments: { read: false, write: false },
+    billing: { read: false, write: false },
+  });
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -147,9 +163,13 @@ const StaffRegistration: React.FC = () => {
       };
 
       if (
-        ["nurse", "pharmacist", "technician", "receptionist","accountant"].includes(
-          selectedRole
-        )
+        [
+          "nurse",
+          "pharmacist",
+          "technician",
+          "receptionist",
+          "accountant",
+        ].includes(selectedRole)
       ) {
         formattedData = {
           ...formattedData,
@@ -190,9 +210,11 @@ const StaffRegistration: React.FC = () => {
       setLoading(false);
     }
   };
+  console.log("Sd", staffList);
 
   const handleStaffCardClick = async (role: string) => {
     setSelectedStaffRole(role);
+
     setViewMode("details");
     setLoadingStaff(true);
 
@@ -228,6 +250,7 @@ const StaffRegistration: React.FC = () => {
         role,
         shifts: staff.shifts || [],
         joinedDate: staff.createdAt || undefined,
+        userRole: staff.role || "",
       }));
 
       setStaffList(formattedStaff);
@@ -248,8 +271,8 @@ const StaffRegistration: React.FC = () => {
         {
           data: {
             staffId: staffId,
-            role: selectedStaffRole
-          }
+            role: selectedStaffRole,
+          },
         }
       );
       setStaffList((prev) => prev.filter((s) => s.id !== staffId));
@@ -258,7 +281,9 @@ const StaffRegistration: React.FC = () => {
       fetchStaffData(); // Refresh staff counts
     } catch (error: any) {
       console.error("Remove staff error:", error);
-      setMessage(error.response?.data?.message || "❌ Failed to remove staff member");
+      setMessage(
+        error.response?.data?.message || "❌ Failed to remove staff member"
+      );
       setMessageType("error");
     }
   };
@@ -323,6 +348,66 @@ const StaffRegistration: React.FC = () => {
         error.response?.data || error.message
       );
       setMessage("❌ Failed to reschedule shift");
+      setMessageType("error");
+    }
+  };
+
+  // Handler for opening permission modal
+  const handleOpenPermissionModal = async (staff: StaffMember) => {
+    setSelectedStaffForPermissions(staff);
+
+    try {
+      // Fetch existing permissions
+      const response = await axios.get(
+        `${baseUrl}api/v1/auth/roles/permissions?role=${staff.userRole}&staffId=${staff.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log(response.data);
+
+      if (response.data?.success === true) {
+        const data = response.data?.permissions;
+        console.log("SX", data);
+        setPermissions(data);
+      }
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
+    }
+
+    setIsPermissionModalOpen(true);
+  };
+
+  // Handler for updating permissions
+  const handleUpdatePermissions = async () => {
+    if (!selectedStaffForPermissions) return;
+    console.log(selectedStaffForPermissions);
+    const payload = {
+      staffId: selectedStaffForPermissions.id,
+      role: selectedStaffForPermissions.userRole,
+      permissions,
+    };
+    try {
+      const response = await axios.patch(
+        `${baseUrl}api/v1/auth/roles/permissions-update`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setMessage("Permissions updated successfully");
+        setMessageType("success");
+        setIsPermissionModalOpen(false);
+      }
+    } catch (error) {
+      console.error("Error updating permissions:", error);
+      setMessage("Error updating permissions");
       setMessageType("error");
     }
   };
@@ -451,6 +536,7 @@ const StaffRegistration: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 ml-4">
+                        {/* Existing buttons */}
                         <Button
                           variant="default"
                           onClick={() => handleOpenRescheduleModal(staff)}
@@ -458,6 +544,16 @@ const StaffRegistration: React.FC = () => {
                         >
                           <Edit className="w-4 h-4" />
                           Reschedule
+                        </Button>
+
+                        {/* NEW: Permission Button */}
+                        <Button
+                          variant="outline"
+                          onClick={() => handleOpenPermissionModal(staff)}
+                          className="flex items-center gap-2 border-gray-300 hover:bg-gray-50 cursor-pointer"
+                        >
+                          <Shield className="w-4 h-4" />
+                          Permissions
                         </Button>
 
                         <Button
@@ -490,7 +586,9 @@ const StaffRegistration: React.FC = () => {
                   className="flex flex-col gap-3"
                 >
                   <div>
-                    <label className="block text-gray-700 mb-1">Start Date</label>
+                    <label className="block text-gray-700 mb-1">
+                      Start Date
+                    </label>
                     <input
                       type="date"
                       value={newShift.startDate}
@@ -516,7 +614,9 @@ const StaffRegistration: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 mb-1">Start Time</label>
+                    <label className="block text-gray-700 mb-1">
+                      Start Time
+                    </label>
                     <input
                       type="time"
                       value={newShift.startTime}
@@ -560,7 +660,169 @@ const StaffRegistration: React.FC = () => {
               </div>
             </div>
           )}
+          {/* Permission Modal */}
+          {isPermissionModalOpen && selectedStaffForPermissions && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Manage Permissions
+                  </h2>
+                  <button
+                    onClick={() => setIsPermissionModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
 
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-1">Staff Member:</p>
+                  <p className="font-medium">
+                    {selectedStaffForPermissions.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {selectedStaffForPermissions.email}
+                  </p>
+                </div>
+
+                {/* Permissions Table */}
+                <div className="mb-6">
+                  <h3 className="font-medium text-gray-700 mb-3">
+                    Module Permissions
+                  </h3>
+
+                  <div className="overflow-hidden border border-gray-200 rounded-lg mb-4">
+                    <table className="min-w-full divide-y divide-gray-200" style={{width:"100%"}}>
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Module
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Read
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Write
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {/* Appointment Permissions */}
+                        <tr>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                            Appointment
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <label className="inline-flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  permissions.appointments?.read || false
+                                }
+                                onChange={(e) =>
+                                  setPermissions({
+                                    ...permissions,
+                                    appointments: {
+                                      ...permissions.appointments,
+                                      read: e.target.checked,
+                                    },
+                                  })
+                                }
+                                className="rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                            </label>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <label className="inline-flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  permissions.appointments?.write || false
+                                }
+                                onChange={(e) =>
+                                  setPermissions({
+                                    ...permissions,
+                                    appointments: {
+                                      ...permissions.appointments,
+                                      write: e.target.checked,
+                                    },
+                                  })
+                                }
+                                className="rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                            </label>
+                          </td>
+                        </tr>
+
+                        {/* Billing Permissions */}
+                        <tr>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                            Billing
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <label className="inline-flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={permissions.billing?.read || false}
+                                onChange={(e) =>
+                                  setPermissions({
+                                    ...permissions,
+                                    billing: {
+                                      ...permissions.billing,
+                                      read: e.target.checked,
+                                    },
+                                  })
+                                }
+                                className="rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                            </label>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <label className="inline-flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={permissions.billing?.write || false}
+                                onChange={(e) =>
+                                  setPermissions({
+                                    ...permissions,
+                                    billing: {
+                                      ...permissions.billing,
+                                      write: e.target.checked,
+                                    },
+                                  })
+                                }
+                                className="rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                            </label>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Permission Help Text */}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPermissionModalOpen(false)}
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdatePermissions}
+                    className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+                  >
+                    Save Permissions
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {message && (
             <div
               className={`mt-4 p-4 rounded-xl text-center ${

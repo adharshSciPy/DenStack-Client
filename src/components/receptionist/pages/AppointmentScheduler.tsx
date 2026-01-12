@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { Button } from "../../ui/button";
 import {
   Calendar,
   Clock,
@@ -192,7 +191,7 @@ export default function AppointmentScheduler() {
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
-
+  const token=useAppSelector((state)=>state.auth.token)
   // State for current month/year
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState<number>(
@@ -262,7 +261,8 @@ export default function AppointmentScheduler() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
+  console.log(token);
+  
   // Fetch appointments using the new API
   const fetchAppointments = async (month?: number, year?: number) => {
     if (!clinicId) return;
@@ -280,6 +280,9 @@ export default function AppointmentScheduler() {
             month: targetMonth,
             year: targetYear,
           },
+          headers:{
+            Authorization:`Bearer ${token}`
+          }
         }
       );
 
@@ -327,6 +330,7 @@ export default function AppointmentScheduler() {
     } catch (error: any) {
       console.error("Error fetching appointments:", error);
       alert("Failed to fetch appointments. Please try again.");
+      
     } finally {
       setLoading(false);
     }
@@ -506,7 +510,10 @@ export default function AppointmentScheduler() {
       else {
         await axios.post(
           `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
-          payload
+          payload,
+          {headers:{
+            Authorization:`Bearer ${token}`
+          }}
         );
         alert("Appointment booked successfully");
       }
@@ -532,6 +539,8 @@ export default function AppointmentScheduler() {
       setFoundPatient(null);
       setPatientSearchQuery("");
     } catch (error: any) {
+      console.log(error);
+      
       // Conflict handling
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         const confirmForce = window.confirm(
