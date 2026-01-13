@@ -77,7 +77,7 @@ export default function SettingsGrid() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
+    <div className="min-h-screen  p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-xl font-bold text-gray-800 mb-2">Settings</h1>
         <p className="text-gray-600 mb-4">Manage your account preferences and settings</p>

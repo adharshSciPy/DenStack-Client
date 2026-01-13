@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import labBaseUrl from "../../../labBaseUrl";
 import { useAppSelector } from "../../../redux/hook";
+import { log } from "util";
 
 // Types
 interface Test {
@@ -48,6 +49,7 @@ interface LabOrder {
   dentist: string;
   patientId: string;
   patientname: string;
+  patientName: string;
   doctorName: string;
   deliveryDate: string;
   appointmentId: string;
@@ -84,7 +86,7 @@ interface StatusConfig {
 interface UploadModalProps {
   order: LabOrder;
   onClose: () => void;
-  onUpload: (files: File[], notes: string) => Promise<void>;
+  onUpload: (files: File[], notes: string,patientId:string) => Promise<void>;
 }
 
 interface OrderDetailsModalProps {
@@ -200,17 +202,19 @@ const OrdersTable: React.FC = () => {
     setCursorHistory([null]);
   };
 
-  const handleUpload = async (files: File[], notes: string) => {
+  const handleUpload = async (files: File[], notes: string,patientId:string) => {
     setUploading(true);
-    console.log(files);
-    
+    console.log("ss",patientId);
+      console.log(files);
+      console.log(uploadModalOpen!._id);
+      
     try {
       const formData = new FormData();
       files.forEach((file) => formData.append("resultFiles", file));
-      formData.append("orderId", uploadModalOpen!._id);
+      formData.append("labOrderId", uploadModalOpen!._id);
 
-      const response=await axios.post(
-        `${labBaseUrl}api/v1/lab-orders/dental-orders/upload-results/${uploadModalOpen!._id}`,
+      const response=await axios.patch(
+        `${labBaseUrl}api/v1/lab-orders/dental-orders/upload-results/${patientId}`,
         formData
       );
       console.log(response);
@@ -229,8 +233,10 @@ const OrdersTable: React.FC = () => {
         { params }
       );
       setLabData(refresh);
-    } catch {
+    } catch(error) {
+      console.log("Ds",error);
       setError("Failed to upload files. Please try again.");
+      
     } finally {
       setUploading(false);
     }
@@ -302,12 +308,13 @@ const OrdersTable: React.FC = () => {
   const UploadModal: React.FC<UploadModalProps> = ({ order, onClose, onUpload }) => {
     const [files, setFiles] = useState<File[]>([]);
     const [notes, setNotes] = useState("");
-
+    const patientId=order?.patientName
+    
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
       const selected = Array.from(e.target.files || []);
       setFiles([...files, ...selected]);
     };
-    const handleUploadFiles = async () => await onUpload(files, notes);
+    const handleUploadFiles = async () => await onUpload(files, notes,patientId);
     const removeFile = (idx: number) => setFiles(files.filter((_, i) => i !== idx));
 
     return (

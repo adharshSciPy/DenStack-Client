@@ -438,7 +438,7 @@ const StaffRegistration: React.FC = () => {
 
   if (viewMode === "details") {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <button
             onClick={() => {
@@ -840,7 +840,7 @@ const StaffRegistration: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen  py-8 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <div className="inline-flex bg-muted/60 items-center gap-3 px-6 py-3 rounded-full border border-gray-200 mb-6 shadow-sm">

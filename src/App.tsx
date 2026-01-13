@@ -32,6 +32,7 @@ import DoctorAllocation from "./components/receptionist/pages/DoctorAllocation";
 import DentalLabLayout from "./components/dental-lab/DentalLabModule";
 import LabDashboardPage from "./components/dental-lab/pages/DashboardPage";
 import LabRevenuePage from "./components/dental-lab/pages/RevenuePage";
+import SubClinic from "./components/admin/pages/SubClinic";
 import { useAppSelector } from "./redux/hook";
 
 interface PrivateRouteProps {
@@ -87,6 +88,8 @@ export default function App() {
               <Route path="doctoronboard" element={<DoctorPage />} />
               <Route path="cart" element={<Cart />} />
               <Route path="staff" element={<StaffRegistration />} />
+              <Route path="subclinic" element={<SubClinic />} />
+
             </Route>
 
             {/* Admin (without clinicId) */}
@@ -111,6 +114,7 @@ export default function App() {
               <Route path="doctoronboard" element={<DoctorPage />} />
               <Route path="cart" element={<Cart />} />
               <Route path="staff" element={<StaffRegistration />} />
+              
             </Route>
 
             {/* ---- RECEPTIONIST ROUTES ---- */}

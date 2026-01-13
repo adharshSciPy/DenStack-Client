@@ -93,7 +93,9 @@ export function DashboardSidebar() {
     { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
     { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
     { id: "cart", label: "Cart", icon: ShoppingCart, badge: cartItem.length },
+    { id: "subclinic", label: "SubClinic", icon: Home },
     { id: "settings", label: "Settings", icon: Settings },
+
   ];
 
   return (
@@ -127,7 +129,7 @@ export function DashboardSidebar() {
       </div>
 
       {/* NAVIGATION */}
-      <nav className="flex-1 p-2 space-y-1">
+      <nav className="flex-1 p-2 space-y-1" style={{overflow:"scroll",scrollbarWidth:"none"}}>
         {menuItems.map(({ id, label, icon: Icon, badge }) => (
           <NavLink
             key={id}
