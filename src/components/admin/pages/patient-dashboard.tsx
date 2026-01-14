@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import ThreeDCBCTViewer from "./nifti/NiftiViewer";
+import labBaseUrl from "../../../labBaseUrl";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
@@ -10,6 +12,7 @@ import {
   Calendar,
   FileText,
   Pill,
+  Home,
   DollarSign,
   Activity,
   Eye,
@@ -24,10 +27,8 @@ import {
   HeartPulse,
   CalendarDays,
   Stethoscope,
-  
   AlertTriangle,
   Scissors,
- 
   Users,
 } from "lucide-react";
 import axios from "axios";
@@ -35,6 +36,7 @@ import { useParams } from "react-router-dom";
 import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
 import jsPDF from "jspdf";
 import baseUrl from "../../../baseUrl";
+import react from "@vitejs/plugin-react-swc";
 
 interface Prescription {
   _id: string;
@@ -125,13 +127,15 @@ interface Patient {
   weight?: string;
   address?: Address;
   visitHistory?: string[];
-  medicalHistory?: {  // Change from string[] to object
+  medicalHistory?: {
+    // Change from string[] to object
     conditions?: string[];
     allergies?: string[];
     surgeries?: string[];
     medications?: string[];
     familyHistory?: string[];
   };
+  labHistory?: [];
 }
 
 interface ClinicDetails {
@@ -147,6 +151,31 @@ interface InfoItemProps {
   color: string;
 }
 
+interface FileMeta {
+  fileName: string;
+  fileUrl: string;
+  uploadedAt?: string;
+}
+interface ResultFile {
+  _id: string;
+  fileName: string;
+  fileUrl: string;
+  uploadedAt: string;
+}
+
+interface LabOrder {
+  order: any;
+  _id: string;
+  status: string;
+  price: number;
+  attachments: FileMeta[];
+  resultFiles: ResultFile[];
+  vendor: string;
+  dentist: string;
+  appointmentId: string;
+  note: string;
+}
+
 export default function Reports() {
   const { clinicId } = useParams();
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
@@ -154,37 +183,46 @@ export default function Reports() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [history, setHistory] = useState<PatientHistory[]>([]);
-  const [selectedVisit, setSelectedVisit] = useState<PatientHistory | null>(null);
-  const [clinicDetails, setClinicDetails] = useState<ClinicDetails | null>(null);
+  const [selectedVisit, setSelectedVisit] = useState<PatientHistory | null>(
+    null
+  );
+  const [clinicDetails, setClinicDetails] = useState<ClinicDetails | null>(
+    null
+  );
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [patientsLoading, setPatientsLoading] = useState(false);
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-const [patientDetails, setPatientDetails] = useState({
-  bloodGroup: "",
-  dateOfBirth: "",
-  height: "",
-  weight: "",
-  address: {
-    line1: "",
-    city: "",
-    state: "",
-    pincode: "",
-  },
-  emergencyContact: {
-    name: "",
-    relation: "",
-    phone: "",
-  },
-  medicalHistory: {
-    conditions: "",
-    allergies: "",
-    surgeries: "",
-    medications: "",
-    familyHistory: "",
-  },
-});
+  const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
+  const [labDetails, setLabDetails] = useState<ResultFile | undefined>();
+  const [ishandleResult, setHandleResult] = useState(false);
+  const [labResult, setLabResult] = useState<LabOrder>();
+  const [patientDetails, setPatientDetails] = useState({
+    bloodGroup: "",
+    dateOfBirth: "",
+    height: "",
+    weight: "",
+    address: {
+      line1: "",
+      city: "",
+      state: "",
+      pincode: "",
+    },
+    emergencyContact: {
+      name: "",
+      relation: "",
+      phone: "",
+    },
+    medicalHistory: {
+      conditions: "",
+      allergies: "",
+      surgeries: "",
+      medications: "",
+      familyHistory: "",
+    },
+  });
 
+  console.log("ddEW", patient);
 
   useEffect(() => {
     if (!clinicId) return;
@@ -228,6 +266,23 @@ const [patientDetails, setPatientDetails] = useState({
     fetchAllPatients();
   }, []);
 
+  const handleResult = (item: any) => {
+    setHandleResult(true);
+    if (item) {
+      setLabResult(item.order);
+    }
+  };
+  const handleViewResult = (resultFile: ResultFile) => {
+    console.log("Viewing result file:", resultFile);
+    if (resultFile) {
+      setLabDetails(resultFile);
+    }
+    setHandleResult(true);
+  };
+  console.log("ssaS", labDetails);
+  const closeModal = () => {
+    setHandleResult(false);
+  };
   // to download pdf
   const downloadReport = (
     patient: Patient,
@@ -463,8 +518,40 @@ const [patientDetails, setPatientDetails] = useState({
     });
   };
 
+  useEffect(() => {
+    getLabData();
+  }, [patient]);
+
+  const getLabData = async () => {
+    try {
+      if (!patient?.labHistory || patient.labHistory.length === 0) {
+        console.log("No lab history found");
+        return;
+      }
+
+      const urls = patient.labHistory.map(
+        (id) => `${labBaseUrl}api/v1/lab-orders/dental-orders/${id}`
+      );
+
+      const responses = await Promise.all(urls.map((url) => axios.get(url)));
+
+      const labData = responses.map((res) => res.data);
+      setLabOrders(labData);
+      console.log("Lab Data:", labData);
+
+      return labData;
+    } catch (error) {
+      console.error("Error fetching lab data", error);
+    }
+  };
+
   // Info Item Component
-  const InfoItem: React.FC<InfoItemProps> = ({ label, value, icon: Icon, color }) => (
+  const InfoItem: React.FC<InfoItemProps> = ({
+    label,
+    value,
+    icon: Icon,
+    color,
+  }) => (
     <div
       style={{
         padding: 18,
@@ -580,55 +667,58 @@ const [patientDetails, setPatientDetails] = useState({
         },
       ]
     : [];
-const medicalHistoryItems = [
-  {
-    label: "Conditions",
-    value:
-      patient?.medicalHistory?.conditions?.length
+  const medicalHistoryItems = [
+    {
+      label: "Conditions",
+      value: patient?.medicalHistory?.conditions?.length
         ? patient.medicalHistory.conditions.join(", ")
         : "None",
-    icon: HeartPulse,
-    color: "#8B5CF6",
-  },
-  {
-    label: "Allergies",
-    value:
-      patient?.medicalHistory?.allergies?.length
+      icon: HeartPulse,
+      color: "#8B5CF6",
+    },
+    {
+      label: "Allergies",
+      value: patient?.medicalHistory?.allergies?.length
         ? patient.medicalHistory.allergies.join(", ")
         : "None",
-    icon: AlertTriangle,
-    color: "#EF4444",
-  },
-  {
-    label: "Surgeries",
-    value:
-      patient?.medicalHistory?.surgeries?.length
+      icon: AlertTriangle,
+      color: "#EF4444",
+    },
+    {
+      label: "Surgeries",
+      value: patient?.medicalHistory?.surgeries?.length
         ? patient.medicalHistory.surgeries.join(", ")
         : "None",
-    icon: Scissors,
-    color: "#0EA5E9",
-  },
-  {
-    label: "Medications",
-    value:
-      patient?.medicalHistory?.medications?.length
+      icon: Scissors,
+      color: "#0EA5E9",
+    },
+    {
+      label: "Medications",
+      value: patient?.medicalHistory?.medications?.length
         ? patient.medicalHistory.medications.join(", ")
         : "None",
-    icon: Pill,
-    color: "#22C55E",
-  },
-  {
-    label: "Family History",
-    value:
-      patient?.medicalHistory?.familyHistory?.length
+      icon: Pill,
+      color: "#22C55E",
+    },
+    {
+      label: "Family History",
+      value: patient?.medicalHistory?.familyHistory?.length
         ? patient.medicalHistory.familyHistory.join(", ")
         : "None",
-    icon: Users,
-    color: "#F97316",
-  },
-];
+      icon: Users,
+      color: "#F97316",
+    },
+  ];
+  const labHistory = [
+    {
+      label: "LabResults",
+      value: patient?.labHistory?.length
+        ? patient.labHistory.join(",")
+        : "None",
 
-
+      icon: HeartPulse,
+    },
+  ];
 
   return (
     <div style={{ backgroundColor: "#F9FAF9", minHeight: "100vh" }}>
@@ -638,7 +728,8 @@ const medicalHistoryItems = [
           padding: "24px 32px",
           borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
           backgroundColor: "#ffffff",
-          background: "linear-gradient(to left, var(--primary), var(--primary-end))",
+          background:
+            "linear-gradient(to left, var(--primary), var(--primary-end))",
         }}
       >
         <h2
@@ -801,23 +892,22 @@ const medicalHistoryItems = [
                     {history.length} Visit{history.length !== 1 ? "s" : ""}
                   </Badge>
                   <button
-  onClick={() => setShowAddModal(true)}
-  style={{
-    height: 40,
-    padding: "0 18px",
-    borderRadius: 10,
-    border: "none",
-    background: "linear-gradient(135deg, #2563EB, #3B82F6)",
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: 13,
-    cursor: "pointer",
-    boxShadow: "0 8px 20px rgba(59,130,246,0.35)",
-  }}
->
-  + Add
-</button>
-
+                    onClick={() => setShowAddModal(true)}
+                    style={{
+                      height: 40,
+                      padding: "0 18px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "linear-gradient(135deg, #2563EB, #3B82F6)",
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      boxShadow: "0 8px 20px rgba(59,130,246,0.35)",
+                    }}
+                  >
+                    + Add
+                  </button>
                 </div>
 
                 {/* Info Grid */}
@@ -850,13 +940,16 @@ const medicalHistoryItems = [
                       boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 12 }}
+                    >
                       <div
                         style={{
                           width: 36,
                           height: 36,
                           borderRadius: 10,
-                          background: "linear-gradient(135deg, #F97316, #FB923C)",
+                          background:
+                            "linear-gradient(135deg, #F97316, #FB923C)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -900,123 +993,321 @@ const medicalHistoryItems = [
                 </div>
               </div>
             )}
-{/* Medical History */}
-{!loading && (
-  <div
-    style={{
-      background:
-        "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-      backdropFilter: "blur(18px)",
-      WebkitBackdropFilter: "blur(18px)",
-      borderRadius: 16,
-      padding: 28,
-      marginBottom: 28,
-      boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-      border: "1px solid rgba(255,255,255,0.4)",
-    }}
-  >
-    {/* Header */}
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        marginBottom: 24,
-      }}
-    >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          background: "linear-gradient(135deg, #7C3AED, #A78BFA)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 8px 20px rgba(124,58,237,0.35)",
-        }}
-      >
-        <HeartPulse size={22} color="#fff" />
-      </div>
-
-      <h3
-        style={{
-          fontSize: 18,
-          fontWeight: 700,
-          margin: 0,
-          color: "#0F172A",
-          letterSpacing: "-0.3px",
-        }}
-      >
-        Medical History
-      </h3>
-    </div>
-
-    {/* Cards */}
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 18,
-      }}
-    >
-      {medicalHistoryItems.map((item, idx) => (
-        <div
-          key={idx}
-          style={{
-            padding: 20,
-            borderRadius: 14,
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
-            backdropFilter: "blur(14px)",
-            boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: item.color,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 8px 18px rgba(0,0,0,0.25)",
-              }}
-            >
-              <item.icon size={18} color="#fff" />
-            </div>
-
-            <div>
-              <p
+            {/* Medical History */}
+            {!loading && (
+              <div
                 style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  margin: 0,
-                  color: "#64748B",
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                  backdropFilter: "blur(18px)",
+                  WebkitBackdropFilter: "blur(18px)",
+                  borderRadius: 16,
+                  padding: 28,
+                  marginBottom: 28,
+                  boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                  border: "1px solid rgba(255,255,255,0.4)",
                 }}
               >
-                {item.label}
-              </p>
-              <p
+                {/* Header */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    marginBottom: 24,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, #7C3AED, #A78BFA)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 8px 20px rgba(124,58,237,0.35)",
+                    }}
+                  >
+                    <HeartPulse size={22} color="#fff" />
+                  </div>
+
+                  <h3
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 700,
+                      margin: 0,
+                      color: "#0F172A",
+                      letterSpacing: "-0.3px",
+                    }}
+                  >
+                    Medical History
+                  </h3>
+                </div>
+
+                {/* Cards */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 18,
+                  }}
+                >
+                  {medicalHistoryItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: 20,
+                        borderRadius: 14,
+                        background:
+                          "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
+                        backdropFilter: "blur(14px)",
+                        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 10,
+                            background: item.color,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: "0 8px 18px rgba(0,0,0,0.25)",
+                          }}
+                        >
+                          <item.icon size={18} color="#fff" />
+                        </div>
+
+                        <div>
+                          <p
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              margin: 0,
+                              color: "#64748B",
+                            }}
+                          >
+                            {item.label}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 600,
+                              marginTop: 4,
+                              color: "#0F172A",
+                            }}
+                          >
+                            {item.value}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!loading && (
+              <div
                 style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  marginTop: 4,
-                  color: "#0F172A",
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                  backdropFilter: "blur(18px)",
+                  WebkitBackdropFilter: "blur(18px)",
+                  borderRadius: 16,
+                  padding: 28,
+                  marginBottom: 28,
+                  boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                  border: "1px solid rgba(255,255,255,0.4)",
                 }}
               >
-                {item.value}
-              </p>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+                {/* Header */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    marginBottom: 24,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, #7C3AED, #A78BFA)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 8px 20px rgba(124,58,237,0.35)",
+                    }}
+                  >
+                    <Home size={22} color="#fff" />
+                  </div>
 
+                  <h3
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 700,
+                      margin: 0,
+                      color: "#0F172A",
+                      letterSpacing: "-0.3px",
+                    }}
+                  >
+                    Lab Details
+                  </h3>
+                </div>
+
+                {/* Cards */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 18,
+                  }}
+                >
+                  {labOrders.map((item, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: 20,
+                        borderRadius: 14,
+                        background:
+                          "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
+                        backdropFilter: "blur(14px)",
+                        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        {/* ... existing icon div ... */}
+
+                        <div style={{ flex: 1 }}>
+                          <p
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 600,
+                              marginTop: 4,
+                              color: "#0F172A",
+                            }}
+                          >
+                            {item.order.note}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              margin: 0,
+                              color: "#64748B",
+                            }}
+                          >
+                            ${item.order?.price?.toFixed(2) || "0.00"}
+                          </p>
+
+                          {item.order.resultFiles &&
+                            item.order.resultFiles.length > 0 && (
+                              <div style={{ marginTop: 12 }}>
+                                <p
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    color: "#475569",
+                                    marginBottom: 8,
+                                  }}
+                                >
+                                  Result Files:
+                                </p>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 8,
+                                  }}
+                                >
+                                  {item.order.resultFiles.map(
+                                    (
+                                      resultFile: ResultFile,
+                                      fileIdx: number
+                                    ) => (
+                                      <div
+                                        key={resultFile._id || fileIdx}
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "space-between",
+                                          padding: "8px 12px",
+                                          backgroundColor: "#f8fafc",
+                                          borderRadius: 8,
+                                          border: "1px solid #e2e8f0",
+                                        }}
+                                      >
+                                        <div>
+                                          <p
+                                            style={{
+                                              fontSize: 12,
+                                              fontWeight: 500,
+                                              margin: 0,
+                                              color: "#334155",
+                                            }}
+                                          >
+                                            {resultFile.fileName}
+                                          </p>
+                                          <p
+                                            style={{
+                                              fontSize: 10,
+                                              color: "#64748B",
+                                              margin: "2px 0 0 0",
+                                            }}
+                                          >
+                                            {new Date(
+                                              resultFile.uploadedAt
+                                            ).toLocaleDateString()}
+                                          </p>
+                                        </div>
+                                        <button
+                                          style={{
+                                            backgroundColor: "#16a34a",
+                                            color: "#fff",
+                                            padding: "6px 12px",
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            borderRadius: "6px",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            whiteSpace: "nowrap",
+                                          }}
+                                          onClick={() =>
+                                            handleViewResult(resultFile)
+                                          }
+                                        >
+                                          View
+                                        </button>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Loading State */}
             {loading && (
               <div className="text-center py-12">
@@ -1090,138 +1381,159 @@ const medicalHistoryItems = [
                     paddingRight: 4,
                   }}
                 >
-                {history.map((visit) => (
-  <div
-    key={visit._id}
-    onClick={() => setSelectedVisit(visit)}
-    style={{
-      padding: 22,
-      borderRadius: 16,
-      cursor: "pointer",
-      background:
-        "linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0.9))",
-      backdropFilter: "blur(16px)",
-      WebkitBackdropFilter: "blur(16px)",
-      boxShadow: "0 14px 32px rgba(0,0,0,0.08)",
-      border: "1px solid rgba(255,255,255,0.45)",
-      transition: "all 0.25s ease",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = "translateY(-4px)";
-      e.currentTarget.style.boxShadow =
-        "0 22px 45px rgba(0,0,0,0.12)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = "translateY(0)";
-      e.currentTarget.style.boxShadow =
-        "0 14px 32px rgba(0,0,0,0.08)";
-    }}
-  >
-    {/* Header */}
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Calendar className="w-5 h-5 text-primary" />
-        <span style={{ fontSize: 16, fontWeight: 700 }}>
-          {formatDate(visit.visitDate)}
-        </span>
-      </div>
+                  {history.map((visit) => (
+                    <div
+                      key={visit._id}
+                      onClick={() => setSelectedVisit(visit)}
+                      style={{
+                        padding: 22,
+                        borderRadius: 16,
+                        cursor: "pointer",
+                        background:
+                          "linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0.9))",
+                        backdropFilter: "blur(16px)",
+                        WebkitBackdropFilter: "blur(16px)",
+                        boxShadow: "0 14px 32px rgba(0,0,0,0.08)",
+                        border: "1px solid rgba(255,255,255,0.45)",
+                        transition: "all 0.25s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow =
+                          "0 22px 45px rgba(0,0,0,0.12)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow =
+                          "0 14px 32px rgba(0,0,0,0.08)";
+                      }}
+                    >
+                      {/* Header */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: 14,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <Calendar className="w-5 h-5 text-primary" />
+                          <span style={{ fontSize: 16, fontWeight: 700 }}>
+                            {formatDate(visit.visitDate)}
+                          </span>
+                        </div>
 
-      <span
-        style={{
-          padding: "6px 14px",
-          borderRadius: 999,
-          fontSize: 12,
-          fontWeight: 700,
-          backgroundColor:
-            visit.status === "completed" ? "#16a34a" : "#64748b",
-          color: "#fff",
-        }}
-      >
-        {visit.status}
-      </span>
-    </div>
+                        <span
+                          style={{
+                            padding: "6px 14px",
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            backgroundColor:
+                              visit.status === "completed"
+                                ? "#16a34a"
+                                : "#64748b",
+                            color: "#fff",
+                          }}
+                        >
+                          {visit.status}
+                        </span>
+                      </div>
 
-    {/* Info Grid */}
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: 14,
-      }}
-    >
-      <div className="flex items-center gap-2 text-sm">
-        <User className="w-4 h-4 text-gray-500" />
-        <span>
-          <strong>Doctor:</strong> {visit.doctor?.name || "N/A"}
-        </span>
-      </div>
+                      {/* Info Grid */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(200px, 1fr))",
+                          gap: 14,
+                        }}
+                      >
+                        <div className="flex items-center gap-2 text-sm">
+                          <User className="w-4 h-4 text-gray-500" />
+                          <span>
+                            <strong>Doctor:</strong>{" "}
+                            {visit.doctor?.name || "N/A"}
+                          </span>
+                        </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        <Activity className="w-4 h-4 text-gray-500" />
-        <span>
-          <strong>Specialization:</strong>{" "}
-          {visit.doctor?.specialization || "N/A"}
-        </span>
-      </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Activity className="w-4 h-4 text-gray-500" />
+                          <span>
+                            <strong>Specialization:</strong>{" "}
+                            {visit.doctor?.specialization || "N/A"}
+                          </span>
+                        </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        <FileText className="w-4 h-4 text-gray-500" />
-        <span>
-          <strong>Symptoms:</strong> {visit.symptoms.length}
-        </span>
-      </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <FileText className="w-4 h-4 text-gray-500" />
+                          <span>
+                            <strong>Symptoms:</strong> {visit.symptoms.length}
+                          </span>
+                        </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        <Pill className="w-4 h-4 text-gray-500" />
-        <span>
-          <strong>Prescriptions:</strong>{" "}
-          {visit.prescriptions.length}
-        </span>
-      </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Pill className="w-4 h-4 text-gray-500" />
+                          <span>
+                            <strong>Prescriptions:</strong>{" "}
+                            {visit.prescriptions.length}
+                          </span>
+                        </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        <DollarSign className="w-4 h-4 text-gray-500" />
-        <span>
-          <strong>Total:</strong> ₹{visit.totalAmount}
-        </span>
-      </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <DollarSign className="w-4 h-4 text-gray-500" />
+                          <span>
+                            <strong>Total:</strong> ₹{visit.totalAmount}
+                          </span>
+                        </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        {visit.isPaid ? (
-          <CheckCircle className="w-4 h-4 text-green-600" />
-        ) : (
-          <AlertCircle className="w-4 h-4 text-orange-600" />
-        )}
-        <span>
-          <strong>Payment:</strong>{" "}
-          {visit.isPaid ? "Paid" : "Pending"}
-        </span>
-      </div>
-    </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          {visit.isPaid ? (
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-orange-600" />
+                          )}
+                          <span>
+                            <strong>Payment:</strong>{" "}
+                            {visit.isPaid ? "Paid" : "Pending"}
+                          </span>
+                        </div>
+                      </div>
 
-    {/* Treatment Plan */}
-    {visit.treatmentPlan && (
-      <div
-        style={{
-          marginTop: 14,
-          padding: 12,
-          borderRadius: 12,
-          background: "rgba(37, 99, 235, 0.08)",
-          border: "1px solid rgba(37, 99, 235, 0.2)",
-        }}
-      >
-        <p style={{ fontSize: 13, fontWeight: 700, color: "#1d4ed8" }}>
-          Treatment Plan: {visit.treatmentPlan.planName}
-        </p>
-        <p style={{ fontSize: 12, color: "#2563eb" }}>
-          {visit.treatmentPlan.stages.length} stage(s) •{" "}
-          {visit.treatmentPlan.status}
-        </p>
-      </div>
-    )}
-  </div>
-))}
-
+                      {/* Treatment Plan */}
+                      {visit.treatmentPlan && (
+                        <div
+                          style={{
+                            marginTop: 14,
+                            padding: 12,
+                            borderRadius: 12,
+                            background: "rgba(37, 99, 235, 0.08)",
+                            border: "1px solid rgba(37, 99, 235, 0.2)",
+                          }}
+                        >
+                          <p
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: "#1d4ed8",
+                            }}
+                          >
+                            Treatment Plan: {visit.treatmentPlan.planName}
+                          </p>
+                          <p style={{ fontSize: 12, color: "#2563eb" }}>
+                            {visit.treatmentPlan.stages.length} stage(s) •{" "}
+                            {visit.treatmentPlan.status}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -1244,7 +1556,9 @@ const medicalHistoryItems = [
             {patientsLoading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-4 text-muted-foreground">Loading patients...</p>
+                <p className="mt-4 text-muted-foreground">
+                  Loading patients...
+                </p>
               </div>
             ) : (
               <div
@@ -1330,13 +1644,20 @@ const medicalHistoryItems = [
                           "0 12px 30px rgba(0,0,0,0.08)";
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 16,
+                        }}
+                      >
                         <div
                           style={{
                             width: 48,
                             height: 48,
                             borderRadius: 12,
-                            background: "linear-gradient(135deg, #0F766E, #14B8A6)",
+                            background:
+                              "linear-gradient(135deg, #0F766E, #14B8A6)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -1356,7 +1677,9 @@ const medicalHistoryItems = [
                           >
                             {p.name}
                           </p>
-                          <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
+                          <div
+                            style={{ display: "flex", gap: 16, marginTop: 4 }}
+                          >
                             <p
                               style={{
                                 fontSize: 12,
@@ -1374,7 +1697,9 @@ const medicalHistoryItems = [
                                 margin: 0,
                               }}
                             >
-                              <span style={{ fontWeight: 600 }}>Random ID:</span>{" "}
+                              <span style={{ fontWeight: 600 }}>
+                                Random ID:
+                              </span>{" "}
                               {p.patientRandomId}
                             </p>
                             <p
@@ -1391,7 +1716,13 @@ const medicalHistoryItems = [
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
                         <span
                           style={{
                             padding: "8px 16px",
@@ -1405,10 +1736,7 @@ const medicalHistoryItems = [
                         >
                           {p.visitHistory?.length || 0} Visits
                         </span>
-                        <Button
-                          size="sm"
-                          onClick={() => handlePatientClick(p)}
-                        >
+                        <Button size="sm" onClick={() => handlePatientClick(p)}>
                           View Records
                         </Button>
                       </div>
@@ -1441,7 +1769,8 @@ const medicalHistoryItems = [
                   padding: "24px 32px",
                   borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
                   backgroundColor: "#ffffff",
-                  background: "linear-gradient(to left, var(--primary), var(--primary-end))",
+                  background:
+                    "linear-gradient(to left, var(--primary), var(--primary-end))",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -1484,10 +1813,12 @@ const medicalHistoryItems = [
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
+                    e.currentTarget.style.backgroundColor =
+                      "rgba(255, 255, 255, 0.3)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
+                    e.currentTarget.style.backgroundColor =
+                      "rgba(255, 255, 255, 0.2)";
                   }}
                 >
                   <X size={20} />
@@ -1517,7 +1848,14 @@ const medicalHistoryItems = [
                     border: "1px solid rgba(255,255,255,0.4)",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      marginBottom: 24,
+                    }}
+                  >
                     <div
                       style={{
                         width: 44,
@@ -1548,13 +1886,29 @@ const medicalHistoryItems = [
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(200px, 1fr))",
                       gap: 18,
                     }}
                   >
-                    <InfoItem label="Name" value={selectedVisit.doctor?.name || "N/A"} icon={User} color="#2563EB" />
-                    <InfoItem label="Specialization" value={selectedVisit.doctor?.specialization || "N/A"} icon={Stethoscope} color="#7C3AED" />
-                    <InfoItem label="Phone" value={selectedVisit.doctor?.phoneNumber || "N/A"} icon={Phone} color="#EA580C" />
+                    <InfoItem
+                      label="Name"
+                      value={selectedVisit.doctor?.name || "N/A"}
+                      icon={User}
+                      color="#2563EB"
+                    />
+                    <InfoItem
+                      label="Specialization"
+                      value={selectedVisit.doctor?.specialization || "N/A"}
+                      icon={Stethoscope}
+                      color="#7C3AED"
+                    />
+                    <InfoItem
+                      label="Phone"
+                      value={selectedVisit.doctor?.phoneNumber || "N/A"}
+                      icon={Phone}
+                      color="#EA580C"
+                    />
                     <div
                       style={{
                         padding: 18,
@@ -1565,21 +1919,29 @@ const medicalHistoryItems = [
                         boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
                         <div
                           style={{
                             width: 36,
                             height: 36,
                             borderRadius: 10,
-                            background: selectedVisit.status === "completed" 
-                              ? "linear-gradient(135deg, #16A34A, #22C55E)" 
-                              : "linear-gradient(135deg, #64748B, #94A3B8)",
+                            background:
+                              selectedVisit.status === "completed"
+                                ? "linear-gradient(135deg, #16A34A, #22C55E)"
+                                : "linear-gradient(135deg, #64748B, #94A3B8)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            boxShadow: selectedVisit.status === "completed" 
-                              ? "0 8px 18px rgba(22,163,74,0.4)" 
-                              : "0 8px 18px rgba(100,116,139,0.4)",
+                            boxShadow:
+                              selectedVisit.status === "completed"
+                                ? "0 8px 18px rgba(22,163,74,0.4)"
+                                : "0 8px 18px rgba(100,116,139,0.4)",
                           }}
                         >
                           <Activity size={18} color="#fff" />
@@ -1634,13 +1996,21 @@ const medicalHistoryItems = [
                       border: "1px solid rgba(255,255,255,0.4)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        marginBottom: 16,
+                      }}
+                    >
                       <div
                         style={{
                           width: 44,
                           height: 44,
                           borderRadius: 12,
-                          background: "linear-gradient(135deg, #F59E0B, #FBBF24)",
+                          background:
+                            "linear-gradient(135deg, #F59E0B, #FBBF24)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -1668,7 +2038,10 @@ const medicalHistoryItems = [
                             fontSize: 14,
                             color: "#475569",
                             padding: "8px 0",
-                            borderBottom: idx < selectedVisit.symptoms.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none",
+                            borderBottom:
+                              idx < selectedVisit.symptoms.length - 1
+                                ? "1px solid rgba(0,0,0,0.05)"
+                                : "none",
                           }}
                         >
                           • {symptom}
@@ -1690,13 +2063,21 @@ const medicalHistoryItems = [
                       border: "1px solid rgba(255,255,255,0.4)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        marginBottom: 16,
+                      }}
+                    >
                       <div
                         style={{
                           width: 44,
                           height: 44,
                           borderRadius: 12,
-                          background: "linear-gradient(135deg, #EC4899, #F472B6)",
+                          background:
+                            "linear-gradient(135deg, #EC4899, #F472B6)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -1724,7 +2105,10 @@ const medicalHistoryItems = [
                             fontSize: 14,
                             color: "#475569",
                             padding: "8px 0",
-                            borderBottom: idx < selectedVisit.diagnosis.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none",
+                            borderBottom:
+                              idx < selectedVisit.diagnosis.length - 1
+                                ? "1px solid rgba(0,0,0,0.05)"
+                                : "none",
                           }}
                         >
                           • {diag}
@@ -1749,13 +2133,21 @@ const medicalHistoryItems = [
                       border: "1px solid rgba(255,255,255,0.4)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        marginBottom: 24,
+                      }}
+                    >
                       <div
                         style={{
                           width: 44,
                           height: 44,
                           borderRadius: 12,
-                          background: "linear-gradient(135deg, #8B5CF6, #A78BFA)",
+                          background:
+                            "linear-gradient(135deg, #8B5CF6, #A78BFA)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -1777,7 +2169,13 @@ const medicalHistoryItems = [
                       </h3>
                     </div>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 16,
+                      }}
+                    >
                       {selectedVisit.prescriptions.map((prescription) => (
                         <div
                           key={prescription._id}
@@ -1790,31 +2188,89 @@ const medicalHistoryItems = [
                             boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
                           }}
                         >
-                          <p style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px 0", color: "#0F172A" }}>
+                          <p
+                            style={{
+                              fontSize: 16,
+                              fontWeight: 700,
+                              margin: "0 0 12px 0",
+                              color: "#0F172A",
+                            }}
+                          >
                             {prescription.medicineName}
                           </p>
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "repeat(3, 1fr)",
+                              gap: 16,
+                            }}
+                          >
                             <div>
-                              <p style={{ fontSize: 11, fontWeight: 600, margin: 0, color: "#64748B", textTransform: "uppercase" }}>
+                              <p
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  margin: 0,
+                                  color: "#64748B",
+                                  textTransform: "uppercase",
+                                }}
+                              >
                                 Dosage
                               </p>
-                              <p style={{ fontSize: 14, fontWeight: 600, marginTop: 4, color: "#0F172A" }}>
+                              <p
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  marginTop: 4,
+                                  color: "#0F172A",
+                                }}
+                              >
                                 {prescription.dosage}
                               </p>
                             </div>
                             <div>
-                              <p style={{ fontSize: 11, fontWeight: 600, margin: 0, color: "#64748B", textTransform: "uppercase" }}>
+                              <p
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  margin: 0,
+                                  color: "#64748B",
+                                  textTransform: "uppercase",
+                                }}
+                              >
                                 Frequency
                               </p>
-                              <p style={{ fontSize: 14, fontWeight: 600, marginTop: 4, color: "#0F172A" }}>
+                              <p
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  marginTop: 4,
+                                  color: "#0F172A",
+                                }}
+                              >
                                 {prescription.frequency}/day
                               </p>
                             </div>
                             <div>
-                              <p style={{ fontSize: 11, fontWeight: 600, margin: 0, color: "#64748B", textTransform: "uppercase" }}>
+                              <p
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  margin: 0,
+                                  color: "#64748B",
+                                  textTransform: "uppercase",
+                                }}
+                              >
                                 Duration
                               </p>
-                              <p style={{ fontSize: 14, fontWeight: 600, marginTop: 4, color: "#0F172A" }}>
+                              <p
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  marginTop: 4,
+                                  color: "#0F172A",
+                                }}
+                              >
                                 {prescription.duration} days
                               </p>
                             </div>
@@ -1840,13 +2296,21 @@ const medicalHistoryItems = [
                       border: "1px solid rgba(255,255,255,0.4)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        marginBottom: 16,
+                      }}
+                    >
                       <div
                         style={{
                           width: 44,
                           height: 44,
                           borderRadius: 12,
-                          background: "linear-gradient(135deg, #06B6D4, #22D3EE)",
+                          background:
+                            "linear-gradient(135deg, #06B6D4, #22D3EE)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -1867,107 +2331,154 @@ const medicalHistoryItems = [
                         Clinical Notes
                       </h3>
                     </div>
-                    <p style={{ fontSize: 14, color: "#475569", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                    <p
+                      style={{
+                        fontSize: 14,
+                        color: "#475569",
+                        lineHeight: 1.6,
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
                       {selectedVisit.notes}
                     </p>
                   </div>
                 )}
-{/* Treatment Plan */}
-{selectedVisit.treatmentPlan && (
-  <div
-    style={{
-      background:
-        "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-      backdropFilter: "blur(18px)",
-      borderRadius: 16,
-      padding: 28,
-      marginBottom: 28,
-      boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-      border: "1px solid rgba(255,255,255,0.4)",
-    }}
-  >
-    {/* Header */}
-    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          background: "linear-gradient(135deg, #2563EB, #60A5FA)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <FileText size={22} color="#fff" />
-      </div>
-      <div>
-        <h3 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>
-          Treatment Plan
-        </h3>
-        <p style={{ fontSize: 13, color: "#475569", marginTop: 4 }}>
-          {selectedVisit.treatmentPlan.stages?.length || 0} stages •{" "}
-          {selectedVisit.treatmentPlan.status}
-        </p>
-      </div>
-    </div>
+                {/* Treatment Plan */}
+                {selectedVisit.treatmentPlan && (
+                  <div
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                      backdropFilter: "blur(18px)",
+                      borderRadius: 16,
+                      padding: 28,
+                      marginBottom: 28,
+                      boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                      border: "1px solid rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    {/* Header */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        marginBottom: 16,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 12,
+                          background:
+                            "linear-gradient(135deg, #2563EB, #60A5FA)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <FileText size={22} color="#fff" />
+                      </div>
+                      <div>
+                        <h3
+                          style={{ fontSize: 19, fontWeight: 700, margin: 0 }}
+                        >
+                          Treatment Plan
+                        </h3>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "#475569",
+                            marginTop: 4,
+                          }}
+                        >
+                          {selectedVisit.treatmentPlan.stages?.length || 0}{" "}
+                          stages • {selectedVisit.treatmentPlan.status}
+                        </p>
+                      </div>
+                    </div>
 
-    {/* Plan Name */}
-    <p style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
-      {selectedVisit.treatmentPlan.planName}
-    </p>
+                    {/* Plan Name */}
+                    <p
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {selectedVisit.treatmentPlan.planName}
+                    </p>
 
-    {/* Stages List */}
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {selectedVisit.treatmentPlan.stages?.map((stage, idx) => (
-        <div
-          key={idx}
-          style={{
-            padding: 14,
-            borderRadius: 12,
-            background: "rgba(37, 99, 235, 0.08)",
-            border: "1px solid rgba(37, 99, 235, 0.2)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 6,
-            }}
-          >
-            <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
-              {stage.stageName}
-            </p>
+                    {/* Stages List */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 12,
+                      }}
+                    >
+                      {selectedVisit.treatmentPlan.stages?.map((stage, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: 14,
+                            borderRadius: 12,
+                            background: "rgba(37, 99, 235, 0.08)",
+                            border: "1px solid rgba(37, 99, 235, 0.2)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 6,
+                            }}
+                          >
+                            <p
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 700,
+                                margin: 0,
+                              }}
+                            >
+                              {stage.stageName}
+                            </p>
 
-            <span
-              style={{
-                padding: "4px 10px",
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 700,
-                backgroundColor:
-                  stage.status === "completed" ? "#16a34a" : "#64748b",
-                color: "#fff",
-              }}
-            >
-              {stage.status}
-            </span>
-          </div>
+                            <span
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: 999,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                backgroundColor:
+                                  stage.status === "completed"
+                                    ? "#16a34a"
+                                    : "#64748b",
+                                color: "#fff",
+                              }}
+                            >
+                              {stage.status}
+                            </span>
+                          </div>
 
-          {stage.description && (
-            <p style={{ fontSize: 13, color: "#475569", margin: 0 }}>
-              {stage.description}
-            </p>
-          )}
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
-
+                          {stage.description && (
+                            <p
+                              style={{
+                                fontSize: 13,
+                                color: "#475569",
+                                margin: 0,
+                              }}
+                            >
+                              {stage.description}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Billing */}
                 <div
@@ -1983,7 +2494,14 @@ const medicalHistoryItems = [
                     border: "1px solid rgba(255,255,255,0.4)",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      marginBottom: 24,
+                    }}
+                  >
                     <div
                       style={{
                         width: 44,
@@ -2014,7 +2532,8 @@ const medicalHistoryItems = [
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(200px, 1fr))",
                       gap: 18,
                     }}
                   >
@@ -2040,7 +2559,13 @@ const medicalHistoryItems = [
                         boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
                         <div
                           style={{
                             width: 36,
@@ -2103,7 +2628,10 @@ const medicalHistoryItems = [
                   gap: 12,
                 }}
               >
-                <Button variant="outline" onClick={() => setSelectedVisit(null)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedVisit(null)}
+                >
                   Close
                 </Button>
                 <Button
@@ -2120,616 +2648,830 @@ const medicalHistoryItems = [
                   Download PDF
                 </Button>
               </div>
-              
             </div>
           </div>
         )}
         {/* Add/Edit Patient Details Modal */}
-{showAddModal && patient && (
-  <div
-    className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-    style={{
-      position: "fixed",
-      inset: 0,
-      backgroundColor: "#F9FAF9",
-      zIndex: 10000,
-      display: "flex",
-      flexDirection: "column",
-    }}
-    onClick={() => setShowAddModal(false)}
-  >
-    <div
-      className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Modal Header */}
-      <div
-        style={{
-          padding: "24px 32px",
-          borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
-          background: "linear-gradient(to left, var(--primary), var(--primary-end))",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div>
-          <h2
+        {showAddModal && patient && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
             style={{
-              fontSize: "24px",
-              fontWeight: "700",
-              margin: 0,
-              color: "#ffffff",
-              letterSpacing: "0.5px",
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "#F9FAF9",
+              zIndex: 10000,
+              display: "flex",
+              flexDirection: "column",
             }}
+            onClick={() => setShowAddModal(false)}
           >
-            Update Patient Details
-          </h2>
-          <p
-            style={{
-              fontSize: "14px",
-              color: "rgba(255, 255, 255, 0.9)",
-              margin: "4px 0 0 0",
-              fontWeight: "500",
-            }}
-          >
-            {patient.name} - {patient.patientUniqueId}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAddModal(false)}
-          style={{
-            padding: "10px",
-            borderRadius: "8px",
-            border: "none",
-            backgroundColor: "rgba(255, 255, 255, 0.2)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            color: "#ffffff",
-            transition: "all 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
-          }}
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      {/* Modal Content */}
-    {/* Add/Edit Patient Details Modal */}
-{showAddModal && patient && (
-  <div
-    style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-      backdropFilter: "blur(8px)",
-      WebkitBackdropFilter: "blur(8px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "16px",
-      zIndex: 10000,
-    }}
-    onClick={() => setShowAddModal(false)}
-  >
-    <div
-      style={{
-        backgroundColor: "#fff",
-        borderRadius: "12px",
-        width: "100%",
-        maxWidth: "1024px",
-        maxHeight: "90vh",
-        overflow: "hidden",
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Modal Header */}
-      <div
-        style={{
-          padding: "24px 32px",
-          borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
-          background: "linear-gradient(to left, var(--primary), var(--primary-end))",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              fontSize: "24px",
-              fontWeight: "700",
-              margin: 0,
-              color: "#ffffff",
-              letterSpacing: "0.5px",
-            }}
-          >
-            Update Patient Details
-          </h2>
-          <p
-            style={{
-              fontSize: "14px",
-              color: "rgba(255, 255, 255, 0.9)",
-              margin: "4px 0 0 0",
-              fontWeight: "500",
-            }}
-          >
-            {patient.name} - {patient.patientUniqueId}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAddModal(false)}
-          style={{
-            padding: "10px",
-            borderRadius: "8px",
-            border: "none",
-            backgroundColor: "rgba(255, 255, 255, 0.2)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            color: "#ffffff",
-            transition: "all 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
-          }}
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      {/* Modal Content */}
-      <div
-        style={{
-          overflowY: "auto",
-          padding: "32px",
-          backgroundColor: "#F9FAF9",
-          maxHeight: "calc(90vh - 160px)",
-        }}
-      >
-        {/* Basic Information */}
-        <div
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-            backdropFilter: "blur(18px)",
-            borderRadius: 16,
-            padding: 28,
-            marginBottom: 28,
-            boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-            border: "1px solid rgba(255,255,255,0.4)",
-          }}
-        >
-          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>
-            Basic Information
-          </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Blood Group
-              </Label>
-              <Input
-                placeholder="e.g., O+, A+, B-, AB+"
-                value={patientDetails.bloodGroup}
-                onChange={(e) =>
-                  setPatientDetails({ ...patientDetails, bloodGroup: e.target.value })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Date of Birth
-              </Label>
-              <Input
-                type="date"
-                value={patientDetails.dateOfBirth}
-                onChange={(e) =>
-                  setPatientDetails({ ...patientDetails, dateOfBirth: e.target.value })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Height
-              </Label>
-              <Input
-                placeholder="e.g., 175cm or 5'9&quot;"
-                value={patientDetails.height}
-                onChange={(e) =>
-                  setPatientDetails({ ...patientDetails, height: e.target.value })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Weight
-              </Label>
-              <Input
-                placeholder="e.g., 70kg or 154lbs"
-                value={patientDetails.weight}
-                onChange={(e) =>
-                  setPatientDetails({ ...patientDetails, weight: e.target.value })
-                }
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Address */}
-        <div
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-            backdropFilter: "blur(18px)",
-            borderRadius: 16,
-            padding: 28,
-            marginBottom: 28,
-            boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-            border: "1px solid rgba(255,255,255,0.4)",
-          }}
-        >
-          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Address</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Address Line 1
-              </Label>
-              <Input
-                placeholder="Street address"
-                value={patientDetails.address.line1}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    address: { ...patientDetails.address, line1: e.target.value },
-                  })
-                }
-              />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-              <div>
-                <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                  City
-                </Label>
-                <Input
-                  placeholder="City"
-                  value={patientDetails.address.city}
-                  onChange={(e) =>
-                    setPatientDetails({
-                      ...patientDetails,
-                      address: { ...patientDetails.address, city: e.target.value },
-                    })
-                  }
-                />
+            <div
+              className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: "24px 32px",
+                  borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
+                  background:
+                    "linear-gradient(to left, var(--primary), var(--primary-end))",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <h2
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "700",
+                      margin: 0,
+                      color: "#ffffff",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Update Patient Details
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: "rgba(255, 255, 255, 0.9)",
+                      margin: "4px 0 0 0",
+                      fontWeight: "500",
+                    }}
+                  >
+                    {patient.name} - {patient.patientUniqueId}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  style={{
+                    padding: "10px",
+                    borderRadius: "8px",
+                    border: "none",
+                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    color: "#ffffff",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor =
+                      "rgba(255, 255, 255, 0.3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor =
+                      "rgba(255, 255, 255, 0.2)";
+                  }}
+                >
+                  <X size={20} />
+                </button>
               </div>
 
-              <div>
-                <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                  State
-                </Label>
-                <Input
-                  placeholder="State"
-                  value={patientDetails.address.state}
-                  onChange={(e) =>
-                    setPatientDetails({
-                      ...patientDetails,
-                      address: { ...patientDetails.address, state: e.target.value },
-                    })
-                  }
-                />
+              {/* Modal Content */}
+              {/* Add/Edit Patient Details Modal */}
+              {showAddModal && patient && (
+                <div
+                  style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(0, 0, 0, 0.5)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "16px",
+                    zIndex: 10000,
+                  }}
+                  onClick={() => setShowAddModal(false)}
+                >
+                  <div
+                    style={{
+                      backgroundColor: "#fff",
+                      borderRadius: "12px",
+                      width: "100%",
+                      maxWidth: "1024px",
+                      maxHeight: "90vh",
+                      overflow: "hidden",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Modal Header */}
+                    <div
+                      style={{
+                        padding: "24px 32px",
+                        borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
+                        background:
+                          "linear-gradient(to left, var(--primary), var(--primary-end))",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div>
+                        <h2
+                          style={{
+                            fontSize: "24px",
+                            fontWeight: "700",
+                            margin: 0,
+                            color: "#ffffff",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
+                          Update Patient Details
+                        </h2>
+                        <p
+                          style={{
+                            fontSize: "14px",
+                            color: "rgba(255, 255, 255, 0.9)",
+                            margin: "4px 0 0 0",
+                            fontWeight: "500",
+                          }}
+                        >
+                          {patient.name} - {patient.patientUniqueId}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowAddModal(false)}
+                        style={{
+                          padding: "10px",
+                          borderRadius: "8px",
+                          border: "none",
+                          backgroundColor: "rgba(255, 255, 255, 0.2)",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          color: "#ffffff",
+                          transition: "all 0.2s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            "rgba(255, 255, 255, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            "rgba(255, 255, 255, 0.2)";
+                        }}
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+
+                    {/* Modal Content */}
+                    <div
+                      style={{
+                        overflowY: "auto",
+                        padding: "32px",
+                        backgroundColor: "#F9FAF9",
+                        maxHeight: "calc(90vh - 160px)",
+                      }}
+                    >
+                      {/* Basic Information */}
+                      <div
+                        style={{
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                          backdropFilter: "blur(18px)",
+                          borderRadius: 16,
+                          padding: 28,
+                          marginBottom: 28,
+                          boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                          border: "1px solid rgba(255,255,255,0.4)",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            fontSize: 18,
+                            fontWeight: 700,
+                            marginBottom: 20,
+                          }}
+                        >
+                          Basic Information
+                        </h3>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(2, 1fr)",
+                            gap: 20,
+                          }}
+                        >
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Blood Group
+                            </Label>
+                            <Input
+                              placeholder="e.g., O+, A+, B-, AB+"
+                              value={patientDetails.bloodGroup}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  bloodGroup: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Date of Birth
+                            </Label>
+                            <Input
+                              type="date"
+                              value={patientDetails.dateOfBirth}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  dateOfBirth: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Height
+                            </Label>
+                            <Input
+                              placeholder="e.g., 175cm or 5'9&quot;"
+                              value={patientDetails.height}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  height: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Weight
+                            </Label>
+                            <Input
+                              placeholder="e.g., 70kg or 154lbs"
+                              value={patientDetails.weight}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  weight: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Address */}
+                      <div
+                        style={{
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                          backdropFilter: "blur(18px)",
+                          borderRadius: 16,
+                          padding: 28,
+                          marginBottom: 28,
+                          boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                          border: "1px solid rgba(255,255,255,0.4)",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            fontSize: 18,
+                            fontWeight: 700,
+                            marginBottom: 20,
+                          }}
+                        >
+                          Address
+                        </h3>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr",
+                            gap: 20,
+                          }}
+                        >
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Address Line 1
+                            </Label>
+                            <Input
+                              placeholder="Street address"
+                              value={patientDetails.address.line1}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  address: {
+                                    ...patientDetails.address,
+                                    line1: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "repeat(3, 1fr)",
+                              gap: 20,
+                            }}
+                          >
+                            <div>
+                              <Label
+                                style={{
+                                  display: "block",
+                                  marginBottom: 8,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                City
+                              </Label>
+                              <Input
+                                placeholder="City"
+                                value={patientDetails.address.city}
+                                onChange={(e) =>
+                                  setPatientDetails({
+                                    ...patientDetails,
+                                    address: {
+                                      ...patientDetails.address,
+                                      city: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+
+                            <div>
+                              <Label
+                                style={{
+                                  display: "block",
+                                  marginBottom: 8,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                State
+                              </Label>
+                              <Input
+                                placeholder="State"
+                                value={patientDetails.address.state}
+                                onChange={(e) =>
+                                  setPatientDetails({
+                                    ...patientDetails,
+                                    address: {
+                                      ...patientDetails.address,
+                                      state: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+
+                            <div>
+                              <Label
+                                style={{
+                                  display: "block",
+                                  marginBottom: 8,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Pincode
+                              </Label>
+                              <Input
+                                placeholder="Pincode"
+                                value={patientDetails.address.pincode}
+                                onChange={(e) =>
+                                  setPatientDetails({
+                                    ...patientDetails,
+                                    address: {
+                                      ...patientDetails.address,
+                                      pincode: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Emergency Contact */}
+                      <div
+                        style={{
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                          backdropFilter: "blur(18px)",
+                          borderRadius: 16,
+                          padding: 28,
+                          marginBottom: 28,
+                          boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                          border: "1px solid rgba(255,255,255,0.4)",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            fontSize: 18,
+                            fontWeight: 700,
+                            marginBottom: 20,
+                          }}
+                        >
+                          Emergency Contact
+                        </h3>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(3, 1fr)",
+                            gap: 20,
+                          }}
+                        >
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Name
+                            </Label>
+                            <Input
+                              placeholder="Contact name"
+                              value={patientDetails.emergencyContact.name}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  emergencyContact: {
+                                    ...patientDetails.emergencyContact,
+                                    name: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Relation
+                            </Label>
+                            <Input
+                              placeholder="e.g., Spouse, Parent"
+                              value={patientDetails.emergencyContact.relation}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  emergencyContact: {
+                                    ...patientDetails.emergencyContact,
+                                    relation: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Phone
+                            </Label>
+                            <Input
+                              placeholder="Phone number"
+                              value={patientDetails.emergencyContact.phone}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  emergencyContact: {
+                                    ...patientDetails.emergencyContact,
+                                    phone: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Medical History */}
+                      <div
+                        style={{
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                          backdropFilter: "blur(18px)",
+                          borderRadius: 16,
+                          padding: 28,
+                          marginBottom: 28,
+                          boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                          border: "1px solid rgba(255,255,255,0.4)",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            fontSize: 18,
+                            fontWeight: 700,
+                            marginBottom: 20,
+                          }}
+                        >
+                          Medical History
+                        </h3>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr",
+                            gap: 20,
+                          }}
+                        >
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Existing Conditions
+                            </Label>
+                            <textarea
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              rows={2}
+                              placeholder="e.g., Diabetes, Hypertension, Asthma"
+                              value={patientDetails.medicalHistory.conditions}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  medicalHistory: {
+                                    ...patientDetails.medicalHistory,
+                                    conditions: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Allergies
+                            </Label>
+                            <textarea
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              rows={2}
+                              placeholder="e.g., Penicillin, Peanuts, Dust"
+                              value={patientDetails.medicalHistory.allergies}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  medicalHistory: {
+                                    ...patientDetails.medicalHistory,
+                                    allergies: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Past Surgeries
+                            </Label>
+                            <textarea
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              rows={2}
+                              placeholder="List any previous surgeries"
+                              value={patientDetails.medicalHistory.surgeries}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  medicalHistory: {
+                                    ...patientDetails.medicalHistory,
+                                    surgeries: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Current Medications
+                            </Label>
+                            <textarea
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              rows={2}
+                              placeholder="List current medications"
+                              value={patientDetails.medicalHistory.medications}
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  medicalHistory: {
+                                    ...patientDetails.medicalHistory,
+                                    medications: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              style={{
+                                display: "block",
+                                marginBottom: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Family History
+                            </Label>
+                            <textarea
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              rows={2}
+                              placeholder="Notable family medical history"
+                              value={
+                                patientDetails.medicalHistory.familyHistory
+                              }
+                              onChange={(e) =>
+                                setPatientDetails({
+                                  ...patientDetails,
+                                  medicalHistory: {
+                                    ...patientDetails.medicalHistory,
+                                    familyHistory: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div
+                      style={{
+                        padding: "16px 32px",
+                        borderTop: "1px solid rgba(0,0,0,0.1)",
+                        backgroundColor: "#F9FAF9",
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: 12,
+                      }}
+                    >
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowAddModal(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          try {
+                            await axios.patch(
+                              `${patientServiceBaseUrl}/api/v1/patient-service/patient/add/patient_details/${patient._id}`,
+                              patientDetails
+                            );
+                            alert("Patient details updated successfully!");
+                            setShowAddModal(false);
+                            handlePatientSearch(patient.patientUniqueId);
+                          } catch (error: any) {
+                            console.error("Error updating patient:", error);
+                            alert(
+                              error.response?.data?.message ||
+                                "Failed to update patient details"
+                            );
+                          }
+                        }}
+                      >
+                        Save Changes
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  padding: "16px 32px",
+                  borderTop: "1px solid rgba(0,0,0,0.1)",
+                  backgroundColor: "#F9FAF9",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 12,
+                }}
+              >
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      // Make API call to update patient details
+                      await axios.put(
+                        `${patientServiceBaseUrl}/api/v1/patient-service/patient/update/${patient._id}`,
+                        patientDetails
+                      );
+                      alert("Patient details updated successfully!");
+                      setShowAddModal(false);
+                      // Refresh patient data
+                      handlePatientSearch(patient.patientUniqueId);
+                    } catch (error: any) {
+                      console.error("Error updating patient:", error);
+                      alert(
+                        error.response?.data?.message ||
+                          "Failed to update patient details"
+                      );
+                    }
+                  }}
+                >
+                  Save Changes
+                </Button>
               </div>
-
-              <div>
-                <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                  Pincode
-                </Label>
-                <Input
-                  placeholder="Pincode"
-                  value={patientDetails.address.pincode}
-                  onChange={(e) =>
-                    setPatientDetails({
-                      ...patientDetails,
-                      address: { ...patientDetails.address, pincode: e.target.value },
-                    })
-                  }
-                />
-              </div>
             </div>
           </div>
-        </div>
+        )}
+        {ishandleResult && (
+          <div
+            className="fixed inset-0 z-[9999] p-4"
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "#F9FAF9",
+              zIndex: 10000,
+              overflow:"scroll"
+            }}
+          >
+            <button onClick={closeModal}>close</button>
 
-        {/* Emergency Contact */}
-        <div
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-            backdropFilter: "blur(18px)",
-            borderRadius: 16,
-            padding: 28,
-            marginBottom: 28,
-            boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-            border: "1px solid rgba(255,255,255,0.4)",
-          }}
-        >
-          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>
-            Emergency Contact
-          </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Name
-              </Label>
-              <Input
-                placeholder="Contact name"
-                value={patientDetails.emergencyContact.name}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    emergencyContact: {
-                      ...patientDetails.emergencyContact,
-                      name: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Relation
-              </Label>
-              <Input
-                placeholder="e.g., Spouse, Parent"
-                value={patientDetails.emergencyContact.relation}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    emergencyContact: {
-                      ...patientDetails.emergencyContact,
-                      relation: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Phone
-              </Label>
-              <Input
-                placeholder="Phone number"
-                value={patientDetails.emergencyContact.phone}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    emergencyContact: {
-                      ...patientDetails.emergencyContact,
-                      phone: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
+            <ThreeDCBCTViewer
+              fileUrl={labDetails?.fileUrl}
+              fileName={labDetails?.fileName}
+            />
           </div>
-        </div>
-
-        {/* Medical History */}
-        <div
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-            backdropFilter: "blur(18px)",
-            borderRadius: 16,
-            padding: 28,
-            marginBottom: 28,
-            boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-            border: "1px solid rgba(255,255,255,0.4)",
-          }}
-        >
-          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>
-            Medical History
-          </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Existing Conditions
-              </Label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={2}
-                placeholder="e.g., Diabetes, Hypertension, Asthma"
-                value={patientDetails.medicalHistory.conditions}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    medicalHistory: {
-                      ...patientDetails.medicalHistory,
-                      conditions: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Allergies
-              </Label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={2}
-                placeholder="e.g., Penicillin, Peanuts, Dust"
-                value={patientDetails.medicalHistory.allergies}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    medicalHistory: {
-                      ...patientDetails.medicalHistory,
-                      allergies: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Past Surgeries
-              </Label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={2}
-                placeholder="List any previous surgeries"
-                value={patientDetails.medicalHistory.surgeries}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    medicalHistory: {
-                      ...patientDetails.medicalHistory,
-                      surgeries: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Current Medications
-              </Label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={2}
-                placeholder="List current medications"
-                value={patientDetails.medicalHistory.medications}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    medicalHistory: {
-                      ...patientDetails.medicalHistory,
-                      medications: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <Label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
-                Family History
-              </Label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={2}
-                placeholder="Notable family medical history"
-                value={patientDetails.medicalHistory.familyHistory}
-                onChange={(e) =>
-                  setPatientDetails({
-                    ...patientDetails,
-                    medicalHistory: {
-                      ...patientDetails.medicalHistory,
-                      familyHistory: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Modal Footer */}
-      <div
-        style={{
-          padding: "16px 32px",
-          borderTop: "1px solid rgba(0,0,0,0.1)",
-          backgroundColor: "#F9FAF9",
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 12,
-        }}
-      >
-        <Button variant="outline" onClick={() => setShowAddModal(false)}>
-          Cancel
-        </Button>
-        <Button
-          onClick={async () => {
-            try {
-              await axios.patch(
-                `${patientServiceBaseUrl}/api/v1/patient-service/patient/add/patient_details/${patient._id}`,
-                patientDetails
-              );
-              alert("Patient details updated successfully!");
-              setShowAddModal(false);
-              handlePatientSearch(patient.patientUniqueId);
-            } catch (error: any) {
-              console.error("Error updating patient:", error);
-              alert(error.response?.data?.message || "Failed to update patient details");
-            }
-          }}
-        >
-          Save Changes
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
-
-      {/* Modal Footer */}
-      <div
-        style={{
-          padding: "16px 32px",
-          borderTop: "1px solid rgba(0,0,0,0.1)",
-          backgroundColor: "#F9FAF9",
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 12,
-        }}
-      >
-        <Button variant="outline" onClick={() => setShowAddModal(false)}>
-          Cancel
-        </Button>
-        <Button
-          onClick={async () => {
-            try {
-              // Make API call to update patient details
-              await axios.put(
-                `${patientServiceBaseUrl}/api/v1/patient-service/patient/update/${patient._id}`,
-                patientDetails
-              );
-              alert("Patient details updated successfully!");
-              setShowAddModal(false);
-              // Refresh patient data
-              handlePatientSearch(patient.patientUniqueId);
-            } catch (error: any) {
-              console.error("Error updating patient:", error);
-              alert(error.response?.data?.message || "Failed to update patient details");
-            }
-          }}
-        >
-          Save Changes
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
+        )}
       </div>
     </div>
   );

@@ -1369,7 +1369,7 @@
   background-color: rgb(249 250 251 / 0.5);
 }
 
-.fixed {
+/* .fixed {
   position: fixed;
 }
 
@@ -1378,7 +1378,7 @@
   right: 0;
   bottom: 0;
   left: 0;
-}
+} */
 .bg-black\/50 {
   background-color: rgba(0, 0, 0, 0.5);
 }
