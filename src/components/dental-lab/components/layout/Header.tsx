@@ -8,8 +8,17 @@ interface HeaderProps {
 
 const Header = ({ onCreateOrder }: HeaderProps) => {
   return (
-    <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 py-5">
+    <header 
+      className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-40 shadow-sm"
+      style={{
+        padding: "20px",
+        position: "fixed", 
+        width: "100%",
+        zIndex: "999",
+        top: 0,
+        left: 0
+      }}
+    > <div className="max-w-7xl ">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg">
@@ -25,13 +34,13 @@ const Header = ({ onCreateOrder }: HeaderProps) => {
               </p>
             </div>
           </div>
-          <button
+          {/* <button
             onClick={onCreateOrder}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
           >
             <Plus className="w-5 h-5" />
             New Order
-          </button>
+          </button> */}
         </div>
       </div>
     </header>

@@ -18,23 +18,36 @@ interface LabUploadPayload {
 }
 interface LabOrder {
   _id: string;
+  vendor: string;
+  dentist: string;
+  patientId: string;
   patientname: string;
-  patientId?: string;
-  clinicId?: string;
-
-  // Order Info
-  status: "pending" | "processing" | "completed" | "delivered";
+  patientName: string;
+  doctorName: string;
+  deliveryDate: string;
+  appointmentId: string;
+  note: string;
+  status: "pending" | "in-progress" | "completed" | "ready" | "cancelled";
+  totalLabAmount: number;
+  tests: Test[];
+  attachments: Attachment[];
+  resultFiles: Attachment[];
   createdAt: string;
-  dueDate?: string;
-
-  // Files uploaded by clinic (optional)
-  attachments?: string[];
-
-  // Files uploaded by lab after completion
-  results?: string[];
-  notes?: string;
+  updatedAt: string;
+  __v: number;
 }
-
+interface Attachment {
+  _id: string;
+  url: string;
+  filename: string;
+  mimetype: string;
+}
+interface Test {
+  testId: string;
+  price: number;
+  _id: string;
+  testName?: string;
+}
 const DentalLabModule = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -65,7 +78,7 @@ const DentalLabModule = () => {
 
       {activeTab === "orders" && (
         <OrdersPage
-          onUploadResults={(order:LabOrder) => {
+          onUploadResults={(order: LabOrder) => {
             setSelectedOrder(order);
             setShowUploadModal(true);
           }}

@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity,
   Package,
@@ -28,6 +28,10 @@ interface NavigationProps {
 }
 
 const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    navigate("/");
+  };
   const location = useLocation();
 
   const navItems: NavItem[] = [
@@ -42,49 +46,22 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
       icon: Package,
       label: "Orders",
       path: "orders",
-      badge: 12,
-    },
-    {
-      id: "revenue",
-      icon: TrendingUp,
-      label: "Revenue",
-      path: "/labadmin/revenue",
-    },
-    {
-      id: "vendors",
-      icon: Building2,
-      label: "Vendors",
-      path: "/labadmin/vendors",
-    },
-    {
-      id: "calendar",
-      icon: Calendar,
-      label: "Calendar",
-      path: "/labadmin/calendar",
-    },
-    {
-      id: "reports",
-      icon: FileText,
-      label: "Reports",
-      path: "/labadmin/reports",
-    },
-    {
-      id: "marketplace",
-      icon: ShoppingCart,
-      label: "Marketplace",
-      path: "/labadmin/marketplace",
-    },
-    {
-      id: "settings",
-      icon: Settings,
-      label: "Settings",
-      path: "/labadmin/settings",
     },
   ];
 
   return (
-    <aside className="w-64 border-r bg-white/80 backdrop-blur-sm h-[calc(100vh-76px)] sticky top-16">
-      <nav className="p-4 space-y-1">
+    <aside
+      className="border-r bg-white/80 backdrop-blur-sm h-full"
+      style={{
+        position: "fixed",
+        width: "20%",
+        height: "calc(100vh - 80px)",
+      }}
+    >
+      <nav
+        className="p-4 space-y-1 h-full overflow-y-auto"
+        style={{ marginTop: "20px" }}
+      >
         {navItems.map((item) => {
           const active = activeTab === item.id;
 
@@ -119,7 +96,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
         })}
 
         {/* Notifications */}
-        <button className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-left text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all">
+        {/* <button className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-left text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all">
           <div className="flex items-center gap-3">
             <Bell className="w-5 h-5" />
             <span className="font-medium">Notifications</span>
@@ -127,11 +104,14 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
           <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
             3
           </span>
-        </button>
+        </button> */}
 
         {/* Logout */}
         <div className="pt-4 mt-4 border-t">
-          <button className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all">
+          <button
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all"
+            onClick={handleLogout}
+          >
             <LogOut className="w-5 h-5" />
             <span className="font-medium">Logout</span>
           </button>

@@ -42,6 +42,9 @@ interface Attachment {
   filename: string;
   mimetype: string;
 }
+interface OrdersTableProps {
+  onUploadResults?: (order: LabOrder) => void;
+}
 
 interface LabOrder {
   _id: string;
@@ -96,7 +99,7 @@ interface OrderDetailsModalProps {
 
 const PAGE_SIZE = 10;
 
-const OrdersTable: React.FC = () => {
+const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   const clinicId = useAppSelector((state) => state.auth.clinicId);
   const fileUrl='http://localhost:8006'
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -261,7 +264,7 @@ const OrdersTable: React.FC = () => {
   const currentPage = currentPageIndex + 1;
 
   const renderPagination = () => (
-    <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-6 rounded-2xl border shadow">
+    <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-6 rounded-2xl border shadow" >
       <p className="text-gray-600 mb-4 sm:mb-0">
         Showing <b>{count}</b> orders on page <b>{currentPage}</b>
         {hasNextPage && <span className="text-sm text-gray-400"> (More pages available)</span>}
@@ -438,7 +441,7 @@ const OrdersTable: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-slate-50 to-white">
+    <div className="min-h-screen p-6 " style={{height:"maxContent"}}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-white rounded-3xl shadow-lg p-8">
@@ -570,7 +573,7 @@ const OrdersTable: React.FC = () => {
 
         {/* Empty State */}
         {!isPaginationLoading && orders.length === 0 && (
-          <div className="bg-white rounded-3xl shadow-lg p-16 text-center">
+          <div className="bg-white rounded-3xl shadow-lg p-16 text-center" style={{padding:"20px"}}>
             <FileText className="w-20 h-20 text-gray-300 mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-gray-700 mb-2">No Orders Found</h3>
             <p className="text-gray-500">Try adjusting your search or filter criteria</p>

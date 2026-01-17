@@ -75,7 +75,7 @@ const statusConfig: Record<
     badge: "bg-blue-100 text-blue-700 border border-blue-300",
     icon: <Loader className="w-3 h-3 animate-spin-slow" />,
   },
-  completed: {
+  ready: {
     label: "Completed",
     badge: "bg-green-100 text-green-700 border border-green-300",
     icon: <CheckCircle className="w-3 h-3" />,
@@ -138,7 +138,7 @@ const DashboardPage = () => {
       if (searchQuery.trim()) params.search = searchQuery.trim();
 
       const response = await axios.get(
-        `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
+        `${labBaseUrl}api/v1/lab-orders/getLatest/clinic-dental-orders/${clinicId}`,
         { params }
       );
       console.log(response);
@@ -168,6 +168,8 @@ const DashboardPage = () => {
   useEffect(() => {
     fetchOrders();
   }, [clinicId, currentCursorIndex, selectedStatus, searchQuery]);
+
+  
 
   return (
     <div className="space-y-8">
@@ -216,10 +218,10 @@ const DashboardPage = () => {
                 Latest lab order activity
               </p>
             </div>
-            <button className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1">
+            {/* <button className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1">
               View All
               <ChevronRight className="w-4 h-4" />
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -242,9 +244,9 @@ const DashboardPage = () => {
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Price
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                {/* <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Action
-                </th>
+                </th> */}
               </tr>
             </thead>
 
@@ -267,9 +269,7 @@ const DashboardPage = () => {
                           <p className="text-sm font-semibold text-gray-900">
                             {order.patientname}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            ID: {order._id}
-                          </p>
+                          
                         </div>
                       </div>
                     </td>
@@ -283,7 +283,7 @@ const DashboardPage = () => {
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${config.badge}`}
                       >
                         {config.icon}
-                        {config.label}
+                        {order.status}
                       </span>
                     </td>
 
@@ -297,11 +297,11 @@ const DashboardPage = () => {
                       </span>
                     </td>
 
-                    <td className="px-6 py-4">
+                    {/* <td className="px-6 py-4">
                       <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
                         <Eye className="w-4 h-4" />
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
                 );
               })}

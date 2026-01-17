@@ -95,8 +95,7 @@ export default function LabOrdersPage() {
     patientName: "",
     deliveryDate: "",
     note: "",
-    price: "",
-    appointmentId: "",
+    price: ""
   });
   const [files, setFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
@@ -192,13 +191,13 @@ export default function LabOrdersPage() {
           deliveryDate: "",
           note: "",
           price: "",
-          appointmentId: "",
         });
         setFiles([]);
         setSearch("");
 
         // Refresh the orders list and stats
         fetchStats();
+        fetchOrders();
         setCurrentCursorIndex(0);
         setCursors([null]);
       }
@@ -232,15 +231,7 @@ export default function LabOrdersPage() {
       console.error("Failed to fetch stats:", err);
     }
   };
-
-  // Fetch stats on mount
-  useEffect(() => {
-    fetchStats();
-  }, [clinicId]);
-
-  // Fetch orders when filters, status, or cursor changes
-  useEffect(() => {
-    const fetchOrders = async () => {
+const fetchOrders = async () => {
       setIsLoading(true);
       setError(null);
 
@@ -288,8 +279,14 @@ export default function LabOrdersPage() {
         setIsLoading(false);
       }
     };
+  // Fetch stats on mount
+  useEffect(() => {
+    fetchStats();
+  }, [clinicId]);
 
-    fetchOrders();
+  // Fetch orders when filters, status, or cursor changes
+  useEffect(() => {
+      fetchOrders();
   }, [clinicId, selectedStatus, searchQuery, pageSize, currentCursorIndex]);
 
   const handleStatusChange = (status: string) => {
@@ -346,18 +343,6 @@ export default function LabOrdersPage() {
     }
   };
 
-  // const getVendor = async () => {
-  //   try {
-  //     const res = await axios.get(
-  //       `${clinicInventoryBaseUrl}/api/v1/clinicProduct/clinic/labs/${clinicId}`
-  //     );
-  //     console.log("lab 2",res.data.labs);
-      
-  //     setLabName(res.data.labs);
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // };
 
   const getDoctors = async () => {
     try {
@@ -936,7 +921,7 @@ const getAllLab=async()=>{
                 </div>
 
                 {/* Appointment ID */}
-                <div>
+                {/* <div>
                   <label
                     style={{
                       display: "flex",
@@ -975,7 +960,7 @@ const getAllLab=async()=>{
                     }
                     placeholder="Enter appointment ID"
                   />
-                </div>
+                </div> */}
 
                 {/* Delivery Date */}
                 <div>

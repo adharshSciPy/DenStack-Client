@@ -3455,21 +3455,52 @@ export default function Reports() {
         )}
         {ishandleResult && (
           <div
-            className="fixed inset-0 z-[9999] p-4"
             style={{
               position: "fixed",
               inset: 0,
               backgroundColor: "#F9FAF9",
               zIndex: 10000,
-              overflow:"scroll"
+              overflow: "auto",
+              padding: "16px",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <button onClick={closeModal}>close</button>
+            <button
+              onClick={closeModal}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                padding: "8px 16px",
+                backgroundColor: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+                color: "#374151",
+                zIndex: 10001,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#f3f4f6";
+                e.currentTarget.style.borderColor = "#d1d5db";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#ffffff";
+                e.currentTarget.style.borderColor = "#e5e7eb";
+              }}
+            >
+              Close
+            </button>
 
-            <ThreeDCBCTViewer
-              fileUrl={labDetails?.fileUrl}
-              fileName={labDetails?.fileName}
-            />
+            <div style={{ flex: 1, marginTop: "60px" }}>
+              <ThreeDCBCTViewer
+                fileUrl={labDetails?.fileUrl}
+                fileName={labDetails?.fileName}
+              />
+            </div>
           </div>
         )}
       </div>
