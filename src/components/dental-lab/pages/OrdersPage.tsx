@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import OrderDetailsModal from "../components/common/orderDetailModal"
+import OrderDetailsModal from "../components/common/orderDetailModal";
 import {
   Search,
   FileText,
@@ -89,7 +89,7 @@ interface StatusConfig {
 interface UploadModalProps {
   order: LabOrder;
   onClose: () => void;
-  onUpload: (files: File[], notes: string,patientId:string) => Promise<void>;
+  onUpload: (files: File[], notes: string, patientId: string) => Promise<void>;
 }
 
 interface OrderDetailsModalProps {
@@ -101,7 +101,7 @@ const PAGE_SIZE = 10;
 
 const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   const clinicId = useAppSelector((state) => state.auth.clinicId);
-  const fileUrl='http://localhost:8006'
+  const fileUrl = "http://localhost:8006";
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null);
@@ -118,11 +118,46 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
   const getStatusConfig = (status: LabOrder["status"]): StatusConfig => {
     const configs = {
-      pending: { bg: "bg-yellow-500/10", text: "text-yellow-700", border: "border-yellow-200", dot: "bg-yellow-500", icon: Clock, label: "Pending" },
-      "in-progress": { bg: "bg-blue-500/10", text: "text-blue-700", border: "border-blue-200", dot: "bg-blue-500", icon: AlertCircle, label: "In Progress" },
-      completed: { bg: "bg-green-500/10", text: "text-green-700", border: "border-green-200", dot: "bg-green-500", icon: CheckCircle, label: "Completed" },
-      ready: { bg: "bg-purple-500/10", text: "text-purple-700", border: "border-purple-200", dot: "bg-purple-500", icon: FileCheck, label: "Ready" },
-      cancelled: { bg: "bg-red-500/10", text: "text-red-700", border: "border-red-200", dot: "bg-red-500", icon: XCircle, label: "Cancelled" },
+      pending: {
+        bg: "bg-yellow-500/10",
+        text: "text-yellow-700",
+        border: "border-yellow-200",
+        dot: "bg-yellow-500",
+        icon: Clock,
+        label: "Pending",
+      },
+      "in-progress": {
+        bg: "bg-blue-500/10",
+        text: "text-blue-700",
+        border: "border-blue-200",
+        dot: "bg-blue-500",
+        icon: AlertCircle,
+        label: "In Progress",
+      },
+      completed: {
+        bg: "bg-green-500/10",
+        text: "text-green-700",
+        border: "border-green-200",
+        dot: "bg-green-500",
+        icon: CheckCircle,
+        label: "Completed",
+      },
+      ready: {
+        bg: "bg-purple-500/10",
+        text: "text-purple-700",
+        border: "border-purple-200",
+        dot: "bg-purple-500",
+        icon: FileCheck,
+        label: "Ready",
+      },
+      cancelled: {
+        bg: "bg-red-500/10",
+        text: "text-red-700",
+        border: "border-red-200",
+        dot: "bg-red-500",
+        icon: XCircle,
+        label: "Cancelled",
+      },
     };
     return configs[status] || configs.pending;
   };
@@ -154,25 +189,28 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
       try {
         const params: any = { limit: PAGE_SIZE };
-        
+
         const currentCursor = cursorHistory[currentPageIndex];
         if (currentCursor) {
           params.cursor = currentCursor;
         }
-        
+
         if (selectedStatus !== "all") params.status = selectedStatus;
         if (searchQuery.trim()) params.search = searchQuery.trim();
 
         const response = await axios.get(
           `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
-          { params }
+          { params },
         );
 
         setLabData(response);
-        
+
         // Update cursor history if there's a next page
-        if (response.data.nextCursor && !cursorHistory.includes(response.data.nextCursor)) {
-          setCursorHistory(prev => {
+        if (
+          response.data.nextCursor &&
+          !cursorHistory.includes(response.data.nextCursor)
+        ) {
+          setCursorHistory((prev) => {
             const newHistory = [...prev];
             newHistory[currentPageIndex + 1] = response.data.nextCursor;
             return newHistory;
@@ -205,23 +243,27 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
     setCursorHistory([null]);
   };
 
-  const handleUpload = async (files: File[], notes: string,patientId:string) => {
+  const handleUpload = async (
+    files: File[],
+    notes: string,
+    patientId: string,
+  ) => {
     setUploading(true);
-    console.log("ss",patientId);
-      console.log(files);
-      console.log(uploadModalOpen!._id);
-      
+
     try {
       const formData = new FormData();
       files.forEach((file) => formData.append("resultFiles", file));
       formData.append("labOrderId", uploadModalOpen!._id);
+      const labOrderId = uploadModalOpen!._id;
+      formData.forEach((value, key) => {
+        console.log(key, value);
+      });
 
-      const response=await axios.patch(
-        `${labBaseUrl}api/v1/lab-orders/dental-orders/upload-results/${patientId}`,
-        formData
+      const response = await axios.patch(
+        `${labBaseUrl}api/v1/lab-orders/dental-orders/upload-results/${patientId}/${labOrderId}`,
+        formData,
       );
-      console.log(response);
-      
+console.log("Upload response:", response);
       setUploadModalOpen(null);
 
       // Refresh current page
@@ -233,13 +275,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
       const refresh = await axios.get(
         `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
-        { params }
+        { params },
       );
       setLabData(refresh);
-    } catch(error) {
-      console.log("Ds",error);
+    } catch (error) {
+      console.log("Ds", error);
       setError("Failed to upload files. Please try again.");
-      
     } finally {
       setUploading(false);
     }
@@ -264,28 +305,30 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   const currentPage = currentPageIndex + 1;
 
   const renderPagination = () => (
-    <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-6 rounded-2xl border shadow" >
+    <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-6 rounded-2xl border shadow">
       <p className="text-gray-600 mb-4 sm:mb-0">
         Showing <b>{count}</b> orders on page <b>{currentPage}</b>
-        {hasNextPage && <span className="text-sm text-gray-400"> (More pages available)</span>}
+        {hasNextPage && (
+          <span className="text-sm text-gray-400"> (More pages available)</span>
+        )}
       </p>
 
       <div className="flex items-center gap-3">
-        <button 
-          disabled={!hasPrevPage || isPaginationLoading} 
+        <button
+          disabled={!hasPrevPage || isPaginationLoading}
           onClick={handlePrevPage}
           className="px-4 py-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 flex items-center gap-2 font-medium transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
           Previous
         </button>
-        
+
         <div className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg font-semibold">
           Page {currentPage}
         </div>
-        
-        <button 
-          disabled={!hasNextPage || isPaginationLoading} 
+
+        <button
+          disabled={!hasNextPage || isPaginationLoading}
           onClick={handleNextPage}
           className="px-4 py-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 flex items-center gap-2 font-medium transition-colors"
         >
@@ -296,29 +339,41 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
     </div>
   );
 
-  const StatusBadge: React.FC<{ status: LabOrder["status"] }> = ({ status }) => {
+  const StatusBadge: React.FC<{ status: LabOrder["status"] }> = ({
+    status,
+  }) => {
     const cfg = getStatusConfig(status);
     const Icon = cfg.icon;
     return (
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+      <div
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}
+      >
         <div className={`w-2 h-2 rounded-full ${cfg.dot} animate-pulse`}></div>
         <Icon className="w-3 h-3" />
-        <span className="text-xs font-semibold uppercase tracking-wider">{cfg.label}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider">
+          {cfg.label}
+        </span>
       </div>
     );
   };
 
-  const UploadModal: React.FC<UploadModalProps> = ({ order, onClose, onUpload }) => {
+  const UploadModal: React.FC<UploadModalProps> = ({
+    order,
+    onClose,
+    onUpload,
+  }) => {
     const [files, setFiles] = useState<File[]>([]);
     const [notes, setNotes] = useState("");
-    const patientId=order?.patientName
-    
+    const patientId = order?.patientName;
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
       const selected = Array.from(e.target.files || []);
       setFiles([...files, ...selected]);
     };
-    const handleUploadFiles = async () => await onUpload(files, notes,patientId);
-    const removeFile = (idx: number) => setFiles(files.filter((_, i) => i !== idx));
+    const handleUploadFiles = async () =>
+      await onUpload(files, notes, patientId);
+    const removeFile = (idx: number) =>
+      setFiles(files.filter((_, i) => i !== idx));
 
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -329,11 +384,18 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                 <Upload className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Upload Test Results</h2>
-                <p className="text-sm text-gray-500">Order: {order._id.slice(-8)}</p>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Upload Test Results
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Order: {order._id.slice(-8)}
+                </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-xl"
+            >
               <X className="w-6 h-6 text-gray-500" />
             </button>
           </div>
@@ -346,25 +408,47 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
               <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto flex items-center justify-center mb-4">
                 <FilePlus className="w-8 h-8 text-blue-600" />
               </div>
-              <p className="text-lg font-semibold text-gray-900 mb-2">Drop files here</p>
-              <p className="text-sm text-gray-500 mb-4">Supports: PDF, JPG, PNG</p>
-              <input id="fileInput" type="file" multiple className="hidden" onChange={handleFileSelect} />
+              <p className="text-lg font-semibold text-gray-900 mb-2">
+                Drop files here
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Supports: PDF, JPG, PNG
+              </p>
+              <input
+                id="fileInput"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+              />
             </div>
 
             {files.length > 0 && (
               <div>
-                <h3 className="font-semibold text-gray-900 mb-3">Selected Files ({files.length})</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Selected Files ({files.length})
+                </h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {files.map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between bg-gray-50 p-3 rounded-xl"
+                    >
                       <div className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-blue-600" />
                         <div>
-                          <p className="font-medium text-gray-900">{file.name}</p>
-                          <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          <p className="font-medium text-gray-900">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
                         </div>
                       </div>
-                      <button onClick={() => removeFile(idx)} className="p-1 hover:bg-gray-200 rounded-lg">
+                      <button
+                        onClick={() => removeFile(idx)}
+                        className="p-1 hover:bg-gray-200 rounded-lg"
+                      >
                         <X className="w-4 h-4 text-gray-500" />
                       </button>
                     </div>
@@ -374,7 +458,9 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
             )}
 
             <div>
-              <label className="font-semibold text-gray-900 block mb-2">Notes</label>
+              <label className="font-semibold text-gray-900 block mb-2">
+                Notes
+              </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -384,15 +470,15 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <button 
-                disabled={uploading} 
-                onClick={onClose} 
+              <button
+                disabled={uploading}
+                onClick={onClose}
                 className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 font-semibold disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
-                disabled={files.length===0||uploading}
+                disabled={files.length === 0 || uploading}
                 onClick={handleUploadFiles}
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center justify-center gap-2"
               >
@@ -412,8 +498,6 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
     );
   };
 
-
-
   if (isLoading && orders.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
@@ -430,8 +514,8 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
       <div className="min-h-screen flex items-center justify-center flex-col bg-gradient-to-br from-slate-50 to-white">
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
         <p className="text-gray-700 text-lg font-semibold mb-2">{error}</p>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold transition-colors"
         >
           Retry
@@ -441,11 +525,10 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   }
 
   return (
-    <div className="min-h-screen p-6 " style={{height:"maxContent"}}>
+    <div className="min-h-screen p-6 " style={{ height: "maxContent" }}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-white rounded-3xl shadow-lg p-8">
-
           {/* Filters */}
           <div className="flex gap-4 flex-wrap">
             <div className="flex-1 min-w-[300px] relative">
@@ -472,8 +555,8 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
               <option value="cancelled">Cancelled</option>
             </select>
 
-            <button 
-              onClick={handleSearchSubmit} 
+            <button
+              onClick={handleSearchSubmit}
               className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl hover:shadow-lg transition-all flex items-center gap-2 font-semibold"
             >
               <Filter className="w-5 h-5" />
@@ -486,7 +569,9 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
         {isPaginationLoading && (
           <div className="bg-white rounded-3xl shadow-lg p-12 flex items-center justify-center">
             <Loader2 className="w-10 h-10 text-blue-600 animate-spin mr-3" />
-            <p className="text-gray-700 font-semibold text-lg">Loading page {currentPage}...</p>
+            <p className="text-gray-700 font-semibold text-lg">
+              Loading page {currentPage}...
+            </p>
           </div>
         )}
 
@@ -494,16 +579,23 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
         {!isPaginationLoading && orders.length > 0 && (
           <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {orders.map((order) => (
-              <div key={order._id} className="bg-white rounded-3xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+              <div
+                key={order._id}
+                className="bg-white rounded-3xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
+              >
                 <div className="p-6 border-b border-gray-200 flex justify-between items-start">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center font-bold text-blue-700 text-sm">
                         #
                       </div>
-                      <h3 className="font-bold text-lg text-gray-900">{order._id.slice(-8)}</h3>
+                      <h3 className="font-bold text-lg text-gray-900">
+                        {order._id.slice(-8)}
+                      </h3>
                     </div>
-                    <p className="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
+                    <p className="text-sm text-gray-500">
+                      {formatDate(order.createdAt)}
+                    </p>
                   </div>
                   <StatusBadge status={order.status} />
                 </div>
@@ -514,8 +606,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                       <User className="text-purple-600 w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">{order.patientname}</p>
-                      <p className="text-sm text-gray-500">ID: {order.patientId}</p>
+                      <p className="font-semibold text-gray-900">
+                        {order.patientname}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        ID: {order.patientId}
+                      </p>
                     </div>
                   </div>
 
@@ -524,25 +620,39 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                       <Stethoscope className="text-green-600 w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">{order.doctorName}</p>
-                      <p className="text-sm text-gray-500">Dentist ID: {order.dentist.slice(-8)}</p>
+                      <p className="font-semibold text-gray-900">
+                        {order.doctorName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Dentist ID: {order.dentist.slice(-8)}
+                      </p>
                     </div>
                   </div>
 
                   <div className="bg-orange-50 p-3 rounded-xl flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-orange-600" />
-                    <span className="font-medium text-orange-700">{formatDate(order.deliveryDate)}</span>
+                    <span className="font-medium text-orange-700">
+                      {formatDate(order.deliveryDate)}
+                    </span>
                   </div>
 
-                  <div className={`p-3 rounded-xl flex items-center gap-2 ${getPriorityColor(order.totalLabAmount)}`}>
+                  <div
+                    className={`p-3 rounded-xl flex items-center gap-2 ${getPriorityColor(order.totalLabAmount)}`}
+                  >
                     <DollarSign className="w-4 h-4" />
-                    <span className="font-bold text-lg">${(order.totalLabAmount || 0).toLocaleString()}</span>
+                    <span className="font-bold text-lg">
+                      ${(order.totalLabAmount || 0).toLocaleString()}
+                    </span>
                   </div>
 
                   {order.note && (
                     <div className="bg-gray-50 p-3 rounded-xl">
-                      <p className="text-xs font-medium text-gray-700 mb-1">Note</p>
-                      <p className="text-sm text-gray-600 line-clamp-2">{order.note}</p>
+                      <p className="text-xs font-medium text-gray-700 mb-1">
+                        Note
+                      </p>
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {order.note}
+                      </p>
                     </div>
                   )}
 
@@ -555,7 +665,8 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                       View
                     </button>
 
-                    {(order.status === "pending" || order.status === "in-progress") && (
+                    {(order.status === "pending" ||
+                      order.status === "in-progress") && (
                       <button
                         onClick={() => setUploadModalOpen(order)}
                         className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition-all"
@@ -573,10 +684,17 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
         {/* Empty State */}
         {!isPaginationLoading && orders.length === 0 && (
-          <div className="bg-white rounded-3xl shadow-lg p-16 text-center" style={{padding:"20px"}}>
+          <div
+            className="bg-white rounded-3xl shadow-lg p-16 text-center"
+            style={{ padding: "20px" }}
+          >
             <FileText className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-gray-700 mb-2">No Orders Found</h3>
-            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+            <h3 className="text-2xl font-bold text-gray-700 mb-2">
+              No Orders Found
+            </h3>
+            <p className="text-gray-500">
+              Try adjusting your search or filter criteria
+            </p>
           </div>
         )}
 
@@ -586,11 +704,18 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
       {/* Modals */}
       {selectedOrder && (
-        <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+        <OrderDetailsModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+        />
       )}
 
       {uploadModalOpen && (
-        <UploadModal order={uploadModalOpen} onClose={() => setUploadModalOpen(null)} onUpload={handleUpload} />
+        <UploadModal
+          order={uploadModalOpen}
+          onClose={() => setUploadModalOpen(null)}
+          onUpload={handleUpload}
+        />
       )}
     </div>
   );
