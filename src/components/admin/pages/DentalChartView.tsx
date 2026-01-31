@@ -26,13 +26,13 @@ import {
   Heart,
   Star,
   Sparkles,
-  // Tooth
+  Info
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import DentalLoader from './DentalLoader';
 import { useImagePreloader } from "../../../hooks/useImagePreloader";
 
-// Import ToothSVG from your existing DentalChart component
+// ToothSVG component remains the same
 interface ToothSVGProps {
   type: string;
   color?: string;
@@ -63,14 +63,14 @@ const ToothSVG: React.FC<ToothSVGProps> = ({
 
   const getHueFromColor = (hexColor: string): number => {
     const colorMap: Record<string, number> = {
-      '#dc2626': 0,    // red-600 (caries)
-      '#2563eb': 220,  // blue-600 (filling)
-      '#d97706': 40,   // amber-600 (crown)
-      '#7c3aed': 270,  // violet-600 (root canal)
-      '#6b7280': 0,    // gray-500 (missing)
-      '#059669': 140,  // emerald-600 (healthy)
-      '#4f46e5': 250,  // indigo-600 (hovered/clicked)
-      '#d1d5db': 0,    // light gray for no data
+      '#dc2626': 0,
+      '#2563eb': 220,
+      '#d97706': 40,
+      '#7c3aed': 270,
+      '#6b7280': 0,
+      '#059669': 140,
+      '#4f46e5': 250,
+      '#d1d5db': 0,
     };
     
     return colorMap[hexColor.toLowerCase()] || 0;
@@ -126,7 +126,7 @@ const ToothSVG: React.FC<ToothSVGProps> = ({
   );
 };
 
-// Tooth Data Arrays (keep same as before)
+// Tooth Data Arrays (keep same)
 const ADULT_TOOTH_DATA = [
   // Upper Right (Quadrant 1) - FDI numbers 18-11
   { number: 18, name: "Third Molar", quadrant: 1, svgName: "wisdom", rotation: 180 },
@@ -137,7 +137,6 @@ const ADULT_TOOTH_DATA = [
   { number: 13, name: "Canine", quadrant: 1, svgName: "canine", rotation: 180 },
   { number: 12, name: "Lateral Incisor", quadrant: 1, svgName: "incisor", rotation: 180 },
   { number: 11, name: "Central Incisor", quadrant: 1, svgName: "incisor", rotation: 180 },
-
   // Upper Left (Quadrant 2) - FDI numbers 21-28
   { number: 21, name: "Central Incisor", quadrant: 2, svgName: "incisor", rotation: 180 },
   { number: 22, name: "Lateral Incisor", quadrant: 2, svgName: "incisor", rotation: 180 },
@@ -147,7 +146,6 @@ const ADULT_TOOTH_DATA = [
   { number: 26, name: "First Molar", quadrant: 2, svgName: "molar", rotation: 180 },
   { number: 27, name: "Second Molar", quadrant: 2, svgName: "molar", rotation: 180 },
   { number: 28, name: "Third Molar", quadrant: 2, svgName: "wisdom", rotation: 180 },
-
   // Lower Left (Quadrant 3) - FDI numbers 31-38
   { number: 31, name: "Central Incisor", quadrant: 3, svgName: "incisor", rotation: 0 },
   { number: 32, name: "Lateral Incisor", quadrant: 3, svgName: "incisor", rotation: 0 },
@@ -157,7 +155,6 @@ const ADULT_TOOTH_DATA = [
   { number: 36, name: "First Molar", quadrant: 3, svgName: "molar", rotation: 0 },
   { number: 37, name: "Second Molar", quadrant: 3, svgName: "molar", rotation: 0 },
   { number: 38, name: "Third Molar", quadrant: 3, svgName: "wisdom", rotation: 0 },
-
   // Lower Right (Quadrant 4) - FDI numbers 41-48
   { number: 41, name: "Central Incisor", quadrant: 4, svgName: "incisor", rotation: 0 },
   { number: 42, name: "Lateral Incisor", quadrant: 4, svgName: "incisor", rotation: 0 },
@@ -176,21 +173,18 @@ const PEDIATRIC_TOOTH_DATA = [
   { number: 53, name: "Primary Canine", quadrant: 1, svgName: "canine", rotation: 180 },
   { number: 52, name: "Primary Lateral Incisor", quadrant: 1, svgName: "incisor", rotation: 180 },
   { number: 51, name: "Primary Central Incisor", quadrant: 1, svgName: "incisor", rotation: 180 },
-
   // Upper Left (Quadrant 2) - Primary teeth 61-65
   { number: 61, name: "Primary Central Incisor", quadrant: 2, svgName: "incisor", rotation: 180 },
   { number: 62, name: "Primary Lateral Incisor", quadrant: 2, svgName: "incisor", rotation: 180 },
   { number: 63, name: "Primary Canine", quadrant: 2, svgName: "canine", rotation: 180 },
   { number: 64, name: "Primary First Molar", quadrant: 2, svgName: "molar", rotation: 180 },
   { number: 65, name: "Primary Second Molar", quadrant: 2, svgName: "molar", rotation: 180 },
-
   // Lower Right (Quadrant 4) - Primary teeth 81-85
   { number: 81, name: "Primary Central Incisor", quadrant: 4, svgName: "incisor", rotation: 0 },
   { number: 82, name: "Primary Lateral Incisor", quadrant: 4, svgName: "incisor", rotation: 0 },
   { number: 83, name: "Primary Canine", quadrant: 4, svgName: "canine", rotation: 0 },
   { number: 84, name: "Primary First Molar", quadrant: 4, svgName: "molar", rotation: 0 },
   { number: 85, name: "Primary Second Molar", quadrant: 4, svgName: "molar", rotation: 0 },
-
   // Lower Left (Quadrant 3) - Primary teeth 71-75
   { number: 71, name: "Primary Central Incisor", quadrant: 3, svgName: "incisor", rotation: 0 },
   { number: 72, name: "Primary Lateral Incisor", quadrant: 3, svgName: "incisor", rotation: 0 },
@@ -214,7 +208,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
 }) => {
   const [hoveredTooth, setHoveredTooth] = useState<number | null>(null);
   const [clickedTooth, setClickedTooth] = useState<number | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0, toothNumber: 0, quadrant: 0 });
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipData, setTooltipData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -296,7 +290,6 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
   const getToothColor = useCallback((toothNumber: number): string => {
     const toothChartData = toothDataMap[toothNumber];
     
-    // If no data for this tooth, return dimmed color
     if (!toothChartData) return "#d1d5db";
 
     const conditions = toothChartData.conditions || [];
@@ -317,46 +310,57 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
     if (procedures.some((p: any) => p.name === "Crown" || p.name === "crown")) return "#d97706";
     if (procedures.some((p: any) => p.name.includes("Root Canal"))) return "#7c3aed";
     
-    // If tooth has any data but no specific condition/procedure, use default
     return "#4f46e5";
   }, [toothDataMap]);
 
   // Handle tooth hover (for Teeth View tab)
-  const handleToothHover = useCallback((toothNumber: number, event: React.MouseEvent) => {
-    if (activeTab === "teeth") {
-      const toothChartData = toothDataMap[toothNumber];
-      
-      if (toothChartData) {
-        setHoveredTooth(toothNumber);
-        setTooltipPosition({ x: event.clientX, y: event.clientY });
-        setTooltipData(toothChartData);
-        setShowTooltip(true);
-      }
-    }
-  }, [toothDataMap, activeTab]);
-
-  // Handle tooth click (for Summary tab)
-  const handleToothClick = useCallback((toothNumber: number, event: React.MouseEvent) => {
+const handleToothHover = useCallback((toothNumber: number, event: React.MouseEvent) => {
+  if (activeTab === "teeth") {
     const toothChartData = toothDataMap[toothNumber];
+    const toothInfo = getToothByNumber(toothNumber);
     
     if (toothChartData) {
-      // Toggle clicked tooth
-      if (clickedTooth === toothNumber) {
-        setClickedTooth(null);
-        setShowTooltip(false);
-      } else {
-        setClickedTooth(toothNumber);
-        setTooltipPosition({ x: event.clientX, y: event.clientY });
-        setTooltipData(toothChartData);
-        setShowTooltip(true);
-      }
+      const rect = event.currentTarget.getBoundingClientRect();
+      setHoveredTooth(toothNumber);
+      // Position to the right of the tooth
+      setTooltipPosition({ 
+        x: rect.right,
+        y: rect.top + rect.height / 2,
+        toothNumber,
+        quadrant: toothInfo?.quadrant || 0
+      });
+      setTooltipData({...toothChartData, quadrant: toothInfo?.quadrant});
+      setShowTooltip(true);
     }
-  }, [toothDataMap, clickedTooth]);
+  }
+}, [toothDataMap, activeTab, getToothByNumber]);
 
+  // Handle tooth click (for Summary tab)
+const handleToothClick = useCallback((toothNumber: number, event: React.MouseEvent) => {
+  const toothChartData = toothDataMap[toothNumber];
+  const toothInfo = getToothByNumber(toothNumber);
+  
+  if (toothChartData) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (clickedTooth === toothNumber) {
+      setClickedTooth(null);
+      setShowTooltip(false);
+    } else {
+      setClickedTooth(toothNumber);
+      setTooltipPosition({ 
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+        toothNumber,
+        quadrant: toothInfo?.quadrant || 0
+      });
+      setTooltipData({...toothChartData, quadrant: toothInfo?.quadrant});
+      setShowTooltip(true);
+    }
+  }
+}, [toothDataMap, clickedTooth, getToothByNumber]);
   // Handle mouse leave from tooth (for Teeth View tab)
   const handleToothLeave = useCallback(() => {
     if (activeTab === "teeth") {
-      // Add a small delay to prevent tooltip flickering
       setTimeout(() => {
         if (showTooltip && !clickedTooth) {
           setShowTooltip(false);
@@ -371,7 +375,6 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      // Check if click is outside tooltip and not on a tooth
       if (showTooltip && 
           !target.closest('.tooth-element') && 
           !target.closest('.tooltip-element')) {
@@ -424,17 +427,18 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
     return data.summary;
   }, [data]);
 
-  // Get tooth size based on screen width - MATCHES DentalChart.tsx
+  // Get tooth size based on screen width
   const getToothSize = useCallback(() => {
     if (typeof window !== 'undefined') {
       const width = window.innerWidth;
-      if (width < 640) return 42; 
-      if (width < 768) return 46; 
-      if (width < 1024) return 50; 
-      if (width < 1280) return 54; 
-      return 58; 
+      if (width < 480) return 32;
+      if (width < 640) return 38;
+      if (width < 768) return 42;
+      if (width < 1024) return 46;
+      if (width < 1280) return 50;
+      return 54;
     }
-    return 52;
+    return 42;
   }, []);
 
   // Get teeth for each quadrant
@@ -509,7 +513,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
         </button>
         
         {/* Tooth number below the tooth */}
-        <div className={`mt-1.5 text-[11px] sm:text-xs font-semibold ${
+        <div className={`mt-1.5 text-[10px] sm:text-xs font-semibold ${
           hasData 
             ? isClicked || isHovered
               ? 'text-indigo-600' 
@@ -528,8 +532,8 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
   if (error) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 z-[100] flex flex-col">
-        <div className="bg-white/90 backdrop-blur-sm border-b px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="bg-white/90 backdrop-blur-sm border-b px-4 sm:px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             {onClose && (
               <Button
                 variant="ghost"
@@ -538,10 +542,10 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                 className="gap-2 hover:bg-gray-100"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Consultation
+                <span className="hidden sm:inline">Back to Consultation</span>
               </Button>
             )}
-            <h1 className="text-2xl font-semibold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+            <h1 className="text-xl sm:text-2xl font-semibold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
               Dental History
             </h1>
           </div>
@@ -590,8 +594,8 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 z-[100] flex flex-col overflow-hidden">
-      {/* Enhanced Header with better design */}
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 z-[100] flex flex-col overflow-hidden">
+      {/* Enhanced Header */}
       <div className="bg-gradient-to-r from-blue-50 via-white to-emerald-50 border-b border-gray-200 shadow-sm">
         <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -617,10 +621,10 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                 <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">
                   Dental History
                 </h1>
-                <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                  <div className="flex items-center gap-1.5 bg-white/90 px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1">
+                  <div className="flex items-center gap-1 bg-white/90 px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
                     <User className="h-3 w-3 text-gray-600" />
-                    <span className="text-xs font-medium text-gray-700 truncate max-w-[100px] sm:max-w-none">
+                    <span className="text-xs font-medium text-gray-700 max-w-[80px] sm:max-w-none truncate">
                       {patientName || data?.patient?.name || "Patient"}
                     </span>
                   </div>
@@ -630,11 +634,11 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                         {data.patient.age}y
                       </Badge>
                       <Badge variant="outline" className="text-xs bg-white/90 border-gray-200">
-                        {data.patient.ageGroup === 'pediatric' ? '👶 Pediatric' : '👨‍🦳 Adult'}
+                        {data.patient.ageGroup === 'pediatric' ? '👶' : '👨‍🦳'}
                       </Badge>
-                      <div className="flex items-center gap-1.5 bg-white/90 px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
+                      <div className="hidden sm:flex items-center gap-1 bg-white/90 px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
                         <FileText className="h-3 w-3 text-gray-600" />
-                        <span className="text-xs font-medium text-gray-700 truncate max-w-[80px] sm:max-w-none">
+                        <span className="text-xs font-medium text-gray-700 truncate">
                           {patientUniqueId || data.patient.patientUniqueId}
                         </span>
                       </div>
@@ -645,8 +649,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            {/* Enhanced Oral Health Score Badge */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-green-50 px-3 py-1.5 rounded-full border border-emerald-200 shadow-sm">
               <div className="relative">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 flex items-center justify-center shadow-md">
@@ -664,7 +667,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
             
             <Badge variant="outline" className="bg-white/90 text-blue-700 border-blue-200 text-xs shadow-sm">
               <Eye className="h-3 w-3 mr-1" />
-              View Only
+              <span className="hidden sm:inline">View Only</span>
             </Badge>
             {onClose && (
               <Button
@@ -680,7 +683,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
         </div>
       </div>
 
-      {/* Tab Navigation - Enhanced */}
+      {/* Tab Navigation */}
       <div className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
         <div className="px-4 sm:px-6 py-2">
           <div className="flex overflow-x-auto scrollbar-hide gap-1">
@@ -692,7 +695,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                 setShowTooltip(false);
               }}
               className={`
-                px-4 sm:px-5 py-2.5 text-sm font-medium flex items-center gap-2 whitespace-nowrap
+                px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap
                 transition-all duration-300 relative group
                 ${activeTab === "teeth"
                   ? "bg-white text-primary rounded-xl shadow-lg shadow-primary/10 border border-primary/20"
@@ -706,11 +709,12 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                 )}
               </div>
-              Teeth Chart
+              <span className="hidden sm:inline">Teeth Chart</span>
+              <span className="sm:hidden">Chart</span>
               {activeTab === "teeth" && (
                 <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3/4 h-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full"></div>
               )}
-              <span className="text-xs opacity-60 group-hover:opacity-100">
+              <span className="text-xs opacity-60 group-hover:opacity-100 hidden sm:inline">
                 (Hover)
               </span>
             </button>
@@ -722,7 +726,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                 setShowTooltip(false);
               }}
               className={`
-                px-4 sm:px-5 py-2.5 text-sm font-medium flex items-center gap-2 whitespace-nowrap
+                px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap
                 transition-all duration-300 relative group
                 ${activeTab === "summary"
                   ? "bg-white text-primary rounded-xl shadow-lg shadow-primary/10 border border-primary/20"
@@ -740,7 +744,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
               {activeTab === "summary" && (
                 <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3/4 h-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full"></div>
               )}
-              <span className="text-xs opacity-60 group-hover:opacity-100">
+              <span className="text-xs opacity-60 group-hover:opacity-100 hidden sm:inline">
                 (Click)
               </span>
             </button>
@@ -752,7 +756,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                 setShowTooltip(false);
               }}
               className={`
-                px-4 sm:px-5 py-2.5 text-sm font-medium flex items-center gap-2 whitespace-nowrap
+                px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap
                 transition-all duration-300 relative
                 ${activeTab === "history"
                   ? "bg-white text-primary rounded-xl shadow-lg shadow-primary/10 border border-primary/20"
@@ -771,20 +775,20 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-auto p-4 sm:p-5 md:p-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-4 md:p-5 lg:p-6">
         {activeTab === "teeth" ? (
           <div className="max-w-6xl mx-auto">
-            {/* Statistics Cards */}
+            {/* Statistics Cards - Responsive */}
             {data?.summary && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs font-medium text-blue-600 mb-1">Teeth with Data</div>
-                      <div className="text-2xl font-bold text-blue-700">{stats.totalTeeth}</div>
+                      <div className="text-xl sm:text-2xl font-bold text-blue-700">{stats.totalTeeth}</div>
                     </div>
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <Activity className="h-5 w-5 text-blue-600" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t border-blue-200">
@@ -792,14 +796,14 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs font-medium text-green-600 mb-1">Total Procedures</div>
-                      <div className="text-2xl font-bold text-green-700">{stats.totalProcedures}</div>
+                      <div className="text-xl sm:text-2xl font-bold text-green-700">{stats.totalProcedures}</div>
                     </div>
-                    <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t border-green-200">
@@ -807,14 +811,14 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-200 rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs font-medium text-amber-600 mb-1">Planned</div>
-                      <div className="text-2xl font-bold text-amber-700">{stats.plannedProcedures}</div>
+                      <div className="text-xl sm:text-2xl font-bold text-amber-700">{stats.plannedProcedures}</div>
                     </div>
-                    <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                      <Clock className="h-5 w-5 text-amber-600" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t border-amber-200">
@@ -822,14 +826,14 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs font-medium text-purple-600 mb-1">Oral Health</div>
-                      <div className="text-2xl font-bold text-purple-700">{calculateOralHealthScore}%</div>
+                      <div className="text-xl sm:text-2xl font-bold text-purple-700">{calculateOralHealthScore}%</div>
                     </div>
-                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                      <Heart className="h-5 w-5 text-purple-600" fill="currentColor" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                      <Heart className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" fill="currentColor" />
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t border-purple-200">
@@ -840,17 +844,17 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
             )}
 
             {/* Dental Chart Container */}
-            <div className="relative mb-8">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 to-emerald-50/30 rounded-2xl -m-4"></div>
+            <div className="relative mb-6 sm:mb-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 to-emerald-50/30 rounded-2xl -m-2 sm:-m-3 md:-m-4"></div>
               
-              <div className="relative border border-gray-300/50 rounded-2xl bg-white/80 backdrop-blur-sm p-4 sm:p-5 md:p-6 shadow-lg">
+              <div className="relative border border-gray-300/50 rounded-2xl bg-white/80 backdrop-blur-sm p-3 sm:p-4 md:p-5 lg:p-6 shadow-lg">
                 {/* Vertical midline */}
                 <div className="absolute left-1/2 top-0 bottom-0 transform -translate-x-1/2">
                   <div className="w-px h-full bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
                 </div>
 
                 {/* Upper Arch */}
-                <div className="flex justify-center items-center gap-1.5 sm:gap-2 md:gap-2.5 mb-6 sm:mb-8 md:mb-10">
+                <div className="flex justify-center items-center gap-0.5 sm:gap-1 md:gap-1.5 lg:gap-2 mb-4 sm:mb-6 md:mb-8">
                   {/* Quadrant 1 - Upper Right */}
                   {upperRightTeeth.map((tooth, index) => renderTooth(tooth, index))}
 
@@ -859,7 +863,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                 </div>
 
                 {/* Lower Arch */}
-                <div className="flex justify-center items-center gap-1.5 sm:gap-2 md:gap-2.5 mt-6 sm:mt-8 md:mt-10">
+                <div className="flex justify-center items-center gap-0.5 sm:gap-1 md:gap-1.5 lg:gap-2 mt-4 sm:mt-6 md:mt-8">
                   {/* Quadrant 4 - Lower Right */}
                   {lowerRightTeeth.map((tooth, index) => renderTooth(tooth, index))}
 
@@ -870,70 +874,70 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                 {/* Quadrant Labels */}
                 <div className="absolute top-2 left-2">
                   <Badge className="bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 text-xs border border-blue-200 shadow-sm">
-                    Q1 (Upper Right)
+                    Q1 (UR)
                   </Badge>
                 </div>
                 
                 <div className="absolute top-2 right-2">
                   <Badge className="bg-gradient-to-r from-green-50 to-emerald-100 text-green-700 text-xs border border-green-200 shadow-sm">
-                    Q2 (Upper Left)
+                    Q2 (UL)
                   </Badge>
                 </div>
                 
                 <div className="absolute bottom-2 left-2">
                   <Badge className="bg-gradient-to-r from-amber-50 to-yellow-100 text-amber-700 text-xs border border-amber-200 shadow-sm">
-                    Q3 (Lower Left)
+                    Q3 (LL)
                   </Badge>
                 </div>
                 
                 <div className="absolute bottom-2 right-2">
                   <Badge className="bg-gradient-to-r from-purple-50 to-violet-100 text-purple-700 text-xs border border-purple-200 shadow-sm">
-                    Q4 (Lower Right)
+                    Q4 (LR)
                   </Badge>
                 </div>
               </div>
             </div>
 
             {/* Legend */}
-            <div className="bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl p-4 sm:p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-300/50 rounded-xl p-3 sm:p-4 shadow-sm">
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center gap-2">
+                <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
                 Condition Legend
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition-colors">
                   <div className="relative">
-                    <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-300 rounded-full animate-pulse"></div>
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-red-500"></div>
+                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-300 rounded-full animate-pulse"></div>
                   </div>
                   <span className="text-xs font-medium text-gray-700">Caries</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-blue-500"></div>
                   <span className="text-xs font-medium text-gray-700">Filling</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="w-4 h-4 rounded-full bg-amber-500"></div>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-amber-500"></div>
                   <span className="text-xs font-medium text-gray-700">Crown</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="w-4 h-4 rounded-full bg-purple-500"></div>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-purple-500"></div>
                   <span className="text-xs font-medium text-gray-700">Root Canal</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="w-4 h-4 rounded-full bg-gray-500"></div>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gray-500"></div>
                   <span className="text-xs font-medium text-gray-700">Missing</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="w-4 h-4 rounded-full bg-emerald-500"></div>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-emerald-500"></div>
                   <span className="text-xs font-medium text-gray-700">Healthy</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-400"></div>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-dashed border-gray-400 bg-transparent"></div>
                   <span className="text-xs font-medium text-gray-700">No Data</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="w-4 h-4 rounded-full bg-indigo-500 animate-pulse"></div>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-indigo-500 animate-pulse"></div>
                   <span className="text-xs font-medium text-gray-700">
                     {activeTab === "teeth" ? "Hovered" : "Clicked"}
                   </span>
@@ -942,22 +946,23 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
             </div>
           </div>
         ) : activeTab === "summary" ? (
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Conditions & Health Overview */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Conditions Summary */}
-                <Card className="overflow-hidden border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
+          <div className="max-w-6xl mx-auto h-full">
+            {/* Optimized Summary Layout - Uses all space efficiently */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+              {/* Left Column - Conditions & Teeth History */}
+              <div className="lg:col-span-2 flex flex-col gap-4">
+                {/* Conditions Summary - Compact */}
+                <Card className="flex-1 border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-400 to-red-600"></div>
-                  <CardHeader className="py-4 pl-6">
+                  <CardHeader className="py-3 pl-5">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-red-500" />
-                      Dental Conditions Overview
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-sm">Dental Conditions</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="py-4 pl-6">
+                  <CardContent className="py-3 pl-5">
                     {stats.uniqueConditions && stats.uniqueConditions.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {stats.uniqueConditions.map((condition: string, idx: number) => {
                           const affectedTeeth = toothData.filter(t => 
                             toothDataMap[t.number]?.conditions?.includes(condition)
@@ -965,10 +970,10 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                           const percentage = Math.round((affectedTeeth / toothData.length) * 100);
                           
                           return (
-                            <div key={idx} className="group hover:bg-gray-50 p-3 rounded-lg transition-colors">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-3 h-3 rounded-full ${
+                            <div key={idx} className="group hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${
                                     condition === 'Caries' ? 'bg-red-500' :
                                     condition === 'Missing' ? 'bg-gray-500' :
                                     condition === 'Healthy' ? 'bg-emerald-500' :
@@ -980,7 +985,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                                   {affectedTeeth} teeth
                                 </Badge>
                               </div>
-                              <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="relative h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                 <div 
                                   className={`absolute left-0 top-0 h-full rounded-full ${
                                     condition === 'Caries' ? 'bg-red-500' :
@@ -991,7 +996,7 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                                   style={{ width: `${percentage}%` }}
                                 ></div>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1 text-right">
+                              <div className="text-xs text-gray-500 mt-0.5 text-right">
                                 {percentage}% of total teeth
                               </div>
                             </div>
@@ -999,9 +1004,9 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                         })}
                       </div>
                     ) : (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                          <CheckCircle className="h-8 w-8 text-gray-400" />
+                      <div className="text-center py-6">
+                        <div className="w-12 h-12 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-2">
+                          <CheckCircle className="h-6 w-6 text-gray-400" />
                         </div>
                         <p className="text-gray-500 text-sm">No dental conditions recorded</p>
                       </div>
@@ -1009,18 +1014,18 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                   </CardContent>
                 </Card>
 
-                {/* Teeth with History - CLICKABLE */}
+                {/* Teeth with History - Compact Grid */}
                 {data?.dentalChart && data.dentalChart.length > 0 && (
-                  <Card className="overflow-hidden border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
+                  <Card className="flex-1 border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
                     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 to-blue-600"></div>
-                    <CardHeader className="py-4 pl-6">
+                    <CardHeader className="py-3 pl-5">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <Activity className="h-5 w-5 text-blue-500" />
-                        Teeth with Dental History (Click to view details)
+                        <Activity className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm">Teeth with History (Click to view)</span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="py-4 pl-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <CardContent className="py-3 pl-5">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-2">
                         {data.dentalChart.map((tooth: any) => {
                           const toothInfo = getToothByNumber(tooth.toothNumber);
                           const severity = tooth.conditions.length + tooth.procedures.length;
@@ -1031,57 +1036,51 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                               key={tooth.toothNumber}
                               type="button"
                               onClick={(e) => handleToothClick(tooth.toothNumber, e)}
-                              className={`group border rounded-xl p-4 text-left transition-all hover:border-blue-300 hover:shadow-sm ${
+                              className={`group border rounded-lg p-2 text-left transition-all hover:border-blue-300 hover:shadow-sm ${
                                 isClicked 
-                                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300 ring-2 ring-blue-200' 
+                                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300 ring-1 ring-blue-200' 
                                   : 'hover:bg-blue-50/50'
                               }`}
                             >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="relative">
-                                    <div className={`w-10 h-10 border rounded-lg flex items-center justify-center ${
-                                      isClicked ? 'bg-blue-100 border-blue-300' : 'bg-white'
-                                    }`}>
-                                      <span className={`font-bold ${
-                                        isClicked ? 'text-blue-700' : 'text-gray-700'
-                                      }`}>{tooth.toothNumber}</span>
+                              <div className="flex items-center gap-2">
+                                <div className="relative">
+                                  <div className={`w-8 h-8 border rounded-lg flex items-center justify-center ${
+                                    isClicked ? 'bg-blue-100 border-blue-300' : 'bg-white'
+                                  }`}>
+                                    <span className={`font-bold text-sm ${
+                                      isClicked ? 'text-blue-700' : 'text-gray-700'
+                                    }`}>{tooth.toothNumber}</span>
+                                  </div>
+                                  {severity > 2 && (
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                      <span className="text-[10px] font-bold text-white">{severity}</span>
                                     </div>
-                                    {severity > 2 && (
-                                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                                        <span className="text-xs font-bold text-white">{severity}</span>
-                                      </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-medium text-xs truncate">{toothInfo?.name || 'Tooth'}</div>
+                                  <div className="flex flex-wrap gap-0.5 mt-0.5">
+                                    {tooth.conditions.slice(0, 1).map((cond: string, idx: number) => (
+                                      <span 
+                                        key={idx} 
+                                        className={`px-1.5 py-0.5 rounded-full text-xs truncate ${
+                                          cond === 'Caries' ? 'bg-red-100 text-red-700' :
+                                          cond === 'Missing' ? 'bg-gray-100 text-gray-700' :
+                                          cond === 'Healthy' ? 'bg-emerald-100 text-emerald-700' :
+                                          'bg-blue-100 text-blue-700'
+                                        }`}
+                                      >
+                                        {cond}
+                                      </span>
+                                    ))}
+                                    {tooth.conditions.length > 1 && (
+                                      <span className="text-xs text-gray-500 ml-1">
+                                        +{tooth.conditions.length - 1}
+                                      </span>
                                     )}
                                   </div>
-                                  <div>
-                                    <div className="font-medium text-sm">{toothInfo?.name || 'Tooth'}</div>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {tooth.conditions.slice(0, 2).map((cond: string, idx: number) => (
-                                        <span 
-                                          key={idx} 
-                                          className={`px-2 py-0.5 rounded-full text-xs ${
-                                            cond === 'Caries' ? 'bg-red-100 text-red-700' :
-                                            cond === 'Missing' ? 'bg-gray-100 text-gray-700' :
-                                            cond === 'Healthy' ? 'bg-emerald-100 text-emerald-700' :
-                                            'bg-blue-100 text-blue-700'
-                                          }`}
-                                        >
-                                          {cond}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-xs font-medium text-gray-900">
+                                  <div className="text-xs text-gray-500 mt-0.5">
                                     {tooth.procedures.length} procedures
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {new Date(tooth.lastUpdated).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric'
-                                    })}
                                   </div>
                                 </div>
                               </div>
@@ -1095,20 +1094,21 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
               </div>
 
               {/* Right Column - Health Stats & Procedures */}
-              <div className="space-y-6">
-                {/* Oral Health Stats */}
-                <Card className="overflow-hidden border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex flex-col gap-4">
+                {/* Oral Health Stats - Compact */}
+                <Card className="border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-400 to-emerald-600"></div>
-                  <CardHeader className="py-4 pl-6">
+                  <CardHeader className="py-3 pl-5">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-emerald-500" />
-                      Oral Health Statistics
+                      <TrendingUp className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm">Health Statistics</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="py-4 pl-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                        <div className="flex items-center gap-3">
+                  <CardContent className="py-3 pl-5">
+                    <div className="space-y-3">
+                      {/* Health Score Card */}
+                      <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                             <Heart className="h-4 w-4 text-emerald-600" fill="currentColor" />
                           </div>
@@ -1117,20 +1117,16 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                             <div className="text-lg font-bold text-emerald-900">{calculateOralHealthScore}%</div>
                           </div>
                         </div>
-                        <div className="relative w-16 h-16">
+                        <div className="relative w-14 h-14">
                           <svg className="w-full h-full" viewBox="0 0 36 36">
                             <path
-                              d="M18 2.0845
-                                a 15.9155 15.9155 0 0 1 0 31.831
-                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                               fill="none"
                               stroke="#E5E7EB"
                               strokeWidth="3"
                             />
                             <path
-                              d="M18 2.0845
-                                a 15.9155 15.9155 0 0 1 0 31.831
-                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                               fill="none"
                               stroke="#10B981"
                               strokeWidth="3"
@@ -1141,19 +1137,32 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-blue-50 p-3 rounded-lg">
+                      {/* Quick Stats Grid */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-blue-50 p-2 rounded-lg border border-blue-200">
                           <div className="text-xs font-medium text-blue-700">Healthy Teeth</div>
-                          <div className="text-lg font-bold text-blue-900">
+                          <div className="text-base font-bold text-blue-900">
                             {toothData.length - (data?.dentalChart?.filter((t: any) => 
                               t.conditions && t.conditions.length > 0
                             ).length || 0)}
                           </div>
                         </div>
-                        <div className="bg-amber-50 p-3 rounded-lg">
+                        <div className="bg-amber-50 p-2 rounded-lg border border-amber-200">
                           <div className="text-xs font-medium text-amber-700">Avg. Procedures</div>
-                          <div className="text-lg font-bold text-amber-900">
+                          <div className="text-base font-bold text-amber-900">
                             {(stats.totalProcedures / (stats.totalTeeth || 1)).toFixed(1)}
+                          </div>
+                        </div>
+                        <div className="bg-green-50 p-2 rounded-lg border border-green-200">
+                          <div className="text-xs font-medium text-green-700">Completed</div>
+                          <div className="text-base font-bold text-green-900">
+                            {stats.completedProcedures || 0}
+                          </div>
+                        </div>
+                        <div className="bg-purple-50 p-2 rounded-lg border border-purple-200">
+                          <div className="text-xs font-medium text-purple-700">Planned</div>
+                          <div className="text-base font-bold text-purple-900">
+                            {stats.plannedProcedures || 0}
                           </div>
                         </div>
                       </div>
@@ -1161,18 +1170,18 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                   </CardContent>
                 </Card>
 
-                {/* Procedures Summary */}
-                <Card className="overflow-hidden border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
+                {/* Procedures Summary - Compact */}
+                <Card className="flex-1 border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-400 to-purple-600"></div>
-                  <CardHeader className="py-4 pl-6">
+                  <CardHeader className="py-3 pl-5">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <CheckSquare className="h-5 w-5 text-purple-500" />
-                      Procedures Summary
+                      <CheckSquare className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm">Procedures</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="py-4 pl-6">
+                  <CardContent className="py-3 pl-5">
                     {stats.uniqueProcedureTypes && stats.uniqueProcedureTypes.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                         {stats.uniqueProcedureTypes.map((procedure: string, idx: number) => {
                           const count = data.dentalChart.reduce((total: number, tooth: any) => 
                             total + (tooth.procedures?.filter((p: any) => 
@@ -1180,29 +1189,27 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                             ).length || 0), 0);
                           
                           return (
-                            <div key={idx} className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded-lg transition-colors">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                                  <CheckCircle className="h-4 w-4 text-purple-600" />
+                            <div key={idx} className="flex items-center justify-between group hover:bg-gray-50 p-1.5 rounded-lg transition-colors">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center">
+                                  <CheckCircle className="h-3 w-3 text-purple-600" />
                                 </div>
-                                <div>
-                                  <div className="text-sm font-medium">{procedure}</div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-medium truncate">{procedure}</div>
                                   <div className="text-xs text-gray-500">{count} procedures</div>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <Badge variant="outline" className="text-xs font-semibold">
-                                  {Math.round((count / stats.totalProcedures) * 100)}%
-                                </Badge>
-                              </div>
+                              <Badge variant="outline" className="text-xs font-semibold">
+                                {Math.round((count / stats.totalProcedures) * 100)}%
+                              </Badge>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
                       <div className="text-center py-4">
-                        <div className="w-12 h-12 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-2">
-                          <Stethoscope className="h-6 w-6 text-gray-400" />
+                        <div className="w-10 h-10 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-1.5">
+                          <Stethoscope className="h-5 w-5 text-gray-400" />
                         </div>
                         <p className="text-gray-500 text-sm">No procedures recorded</p>
                       </div>
@@ -1217,22 +1224,22 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
             {/* Treatment Timeline */}
             <Card className="overflow-hidden border border-gray-300/50 shadow-sm hover:shadow-md transition-shadow">
               <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-amber-400 to-amber-600"></div>
-              <CardHeader className="py-4 pl-6">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-amber-500" />
+              <CardHeader className="py-3 sm:py-4 pl-5 sm:pl-6">
+                <CardTitle className="text-xs sm:text-sm font-semibold flex items-center gap-2">
+                  <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
                   Treatment History Timeline
                 </CardTitle>
                 <p className="text-xs text-gray-500 mt-1">
                   Chronological record of all dental procedures
                 </p>
               </CardHeader>
-              <CardContent className="py-4 pl-6">
+              <CardContent className="py-3 sm:py-4 pl-5 sm:pl-6">
                 {data?.dentalChart && data.dentalChart.length > 0 ? (
                   <div className="relative">
                     {/* Timeline line */}
-                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-200 via-amber-300 to-amber-200"></div>
+                    <div className="absolute left-5 sm:left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-200 via-amber-300 to-amber-200"></div>
                     
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                       {data.dentalChart
                         .flatMap((tooth: any) => 
                           (tooth.procedures || []).map((proc: any) => ({
@@ -1246,51 +1253,51 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                           const toothInfo = getToothByNumber(procedure.toothNumber);
                           
                           return (
-                            <div key={idx} className="relative pl-10 group">
+                            <div key={idx} className="relative pl-8 sm:pl-10 group">
                               {/* Timeline dot */}
                               <div className={`
-                                absolute left-4 top-1/2 transform -translate-y-1/2 -translate-x-1/2
-                                w-4 h-4 rounded-full border-4 border-white shadow-lg
+                                absolute left-3.5 sm:left-4 top-1/2 transform -translate-y-1/2 -translate-x-1/2
+                                w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 sm:border-4 border-white shadow-lg
                                 ${isCompleted ? 'bg-emerald-500' : 'bg-amber-500'}
                               `}></div>
                               
                               <div className={`
-                                border rounded-xl p-4 transition-all duration-300
+                                border rounded-lg sm:rounded-xl p-3 sm:p-4 transition-all duration-300
                                 ${isCompleted 
                                   ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200' 
                                   : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'
                                 }
                                 group-hover:shadow-md
                               `}>
-                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
                                   <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
+                                    <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
                                       <div className={`
-                                        w-10 h-10 rounded-lg flex items-center justify-center
+                                        w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center
                                         ${isCompleted 
                                           ? 'bg-emerald-500/10 text-emerald-700' 
                                           : 'bg-amber-500/10 text-amber-700'
                                         }
                                       `}>
-                                        <Activity className="h-5 w-5" />
+                                        <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
                                       </div>
-                                      <div>
-                                        <div className="font-semibold text-sm sm:text-base">
+                                      <div className="min-w-0">
+                                        <div className="font-semibold text-xs sm:text-sm">
                                           Tooth #{procedure.toothNumber}: {procedure.name}
                                         </div>
-                                        <div className="text-xs text-gray-600 mt-1">
+                                        <div className="text-xs text-gray-600 mt-0.5">
                                           {toothInfo?.name || 'Tooth'} • {procedure.surface} surface
                                         </div>
                                       </div>
                                     </div>
                                     
                                     {procedure.notes && (
-                                      <p className="text-sm text-gray-600 mt-3 p-3 bg-white/50 rounded-lg border border-gray-200">
+                                      <p className="text-xs text-gray-600 mt-2 p-2 bg-white/50 rounded-lg border border-gray-200">
                                         {procedure.notes}
                                       </p>
                                     )}
                                     
-                                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 sm:mt-3">
                                       <Badge variant={isCompleted ? "default" : "outline"} className="text-xs">
                                         {isCompleted ? (
                                           <>
@@ -1307,21 +1314,21 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                                     </div>
                                   </div>
                                   
-                                  <div className="text-right min-w-[120px]">
-                                    <div className="text-sm font-semibold text-gray-900">
+                                  <div className="text-right min-w-[100px] sm:min-w-[120px] mt-2 sm:mt-0">
+                                    <div className="text-xs sm:text-sm font-semibold text-gray-900">
                                       {new Date(procedure.date).toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                         year: 'numeric'
                                       })}
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-1">
+                                    <div className="text-xs text-gray-500 mt-0.5">
                                       {new Date(procedure.date).toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit'
                                       })}
                                     </div>
-                                    <div className="mt-2">
+                                    <div className="mt-1.5 sm:mt-2">
                                       <Badge 
                                         variant="outline" 
                                         className={`text-xs ${
@@ -1342,9 +1349,9 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-10">
-                    <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <Activity className="h-10 w-10 text-gray-400" />
+                  <div className="text-center py-6 sm:py-10">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                      <Activity className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">No Treatment History</h3>
                     <p className="text-gray-500 text-sm max-w-md mx-auto">
@@ -1358,128 +1365,222 @@ const DentalChartView: React.FC<DentalChartViewProps> = ({
         )}
       </div>
 
-      {/* Enhanced Tooltip */}
-      {showTooltip && tooltipData && (
-        <div
-          className="fixed z-[1000] bg-gradient-to-br from-gray-900 to-gray-800 text-white p-4 rounded-xl shadow-2xl max-w-sm backdrop-blur-sm tooltip-element"
-          style={{
-            left: `${Math.min(tooltipPosition.x + 10, window.innerWidth - 320)}px`,
-            top: `${Math.min(tooltipPosition.y + 10, window.innerHeight - 300)}px`,
-          }}
-          onMouseEnter={() => activeTab === "teeth" && setShowTooltip(true)}
-          onMouseLeave={activeTab === "teeth" ? handleToothLeave : undefined}
-        >
-          <div className="absolute -top-2 left-6 w-4 h-4 bg-gray-900 transform rotate-45"></div>
-          
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
-                <Activity className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <div className="font-bold text-sm">Tooth #{tooltipData.toothNumber}</div>
-                <div className="text-xs text-gray-300">{getToothByNumber(tooltipData.toothNumber)?.name}</div>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-xs border-gray-700 text-gray-300">
-              {activeTab === "teeth" ? "Hovering" : "Selected"}
-            </Badge>
+{showTooltip && tooltipData && (
+  <div
+    className="fixed z-[1000] bg-white border border-gray-300 rounded-lg shadow-lg tooltip-element"
+    style={{
+      left: activeTab === "teeth" 
+        ? `${tooltipPosition.x + 20}px` // Position to the right for hover
+        : `${tooltipPosition.x - 140}px`, // Position above for click (centered)
+      top: activeTab === "teeth"
+        ? `${tooltipPosition.y - 100}px` // Center vertically for hover
+        : `${tooltipPosition.y - 200}px`, // Position above for click
+      minWidth: '280px',
+      maxWidth: '320px',
+      pointerEvents: 'auto',
+      transform: activeTab === "summary" ? 'translateX(-50%)' : 'none', // Center when clicked
+    }}
+    onMouseEnter={() => activeTab === "teeth" && setShowTooltip(true)}
+    onMouseLeave={activeTab === "teeth" ? handleToothLeave : undefined}
+  >
+    {/* Tooltip arrow based on positioning */}
+    {activeTab === "summary" && (
+      <div 
+        className="absolute left-1/2 bottom-[-8px] transform -translate-x-1/2"
+        style={{
+          width: '0',
+          height: '0',
+          borderLeft: '8px solid transparent',
+          borderRight: '8px solid transparent',
+          borderTop: '8px solid white',
+          filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.1))',
+        }}
+      ></div>
+    )}
+    
+    {activeTab === "teeth" && (
+      <div 
+        className="absolute left-[-8px] top-1/2 transform -translate-y-1/2"
+        style={{
+          width: '0',
+          height: '0',
+          borderTop: '8px solid transparent',
+          borderBottom: '8px solid transparent',
+          borderRight: '8px solid white',
+          filter: 'drop-shadow(-2px 0 2px rgba(0,0,0,0.1))',
+        }}
+      ></div>
+    )}
+    
+    {/* Tooltip content */}
+    <div className="p-3">
+      {/* Tooltip Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center shadow-sm">
+            <span className="font-bold text-blue-700 text-lg">
+              #{tooltipData.toothNumber}
+            </span>
           </div>
-          
-          {tooltipData.conditions && tooltipData.conditions.length > 0 && (
-            <div className="mb-3">
-              <div className="text-xs font-medium text-gray-300 mb-2 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Conditions
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {tooltipData.conditions.map((cond: string, idx: number) => (
-                  <span 
-                    key={idx} 
-                    className="px-2 py-1 bg-gray-700/50 rounded-lg text-xs border border-gray-600"
-                  >
-                    {cond}
-                  </span>
-                ))}
-              </div>
+          <div>
+            <div className="font-bold text-gray-800 text-base">
+              {getToothByNumber(tooltipData.toothNumber)?.name}
             </div>
-          )}
-          
-          {tooltipData.procedures && tooltipData.procedures.length > 0 && (
-            <div>
-              <div className="text-xs font-medium text-gray-300 mb-2 flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Procedures ({tooltipData.procedures.length})
-              </div>
-              <div className="space-y-1 max-h-40 overflow-y-auto pr-2">
-                {tooltipData.procedures.map((proc: any, idx: number) => (
-                  <div 
-                    key={idx} 
-                    className="flex items-center justify-between p-2 bg-gray-700/30 rounded-lg text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        proc.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'
-                      }`}></div>
-                      <span>{proc.name}</span>
-                    </div>
-                    <div className="text-gray-400 text-xs">
-                      {new Date(proc.date).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              Tooth {tooltipData.toothNumber}
+              {tooltipData.quadrant && (
+                <>
+                  <span className="mx-1">•</span>
+                  {tooltipData.quadrant === 1 && "Upper Right"}
+                  {tooltipData.quadrant === 2 && "Upper Left"}
+                  {tooltipData.quadrant === 3 && "Lower Left"}
+                  {tooltipData.quadrant === 4 && "Lower Right"}
+                </>
+              )}
             </div>
-          )}
-          
-          <div className="text-xs text-gray-400 mt-3 pt-2 border-t border-gray-700">
-            {activeTab === "teeth" 
-              ? "Hover over any tooth to see details" 
-              : "Click tooth again or outside to close"}
+          </div>
+        </div>
+      </div>
+      
+      {/* Conditions Section */}
+      {tooltipData.conditions && tooltipData.conditions.length > 0 && (
+        <div className="mb-3">
+          <div className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Conditions</div>
+          <div className="flex flex-wrap gap-2">
+            {tooltipData.conditions.map((cond: string, idx: number) => {
+              let bgColor = "bg-gray-100";
+              let textColor = "text-gray-700";
+              let borderColor = "border-gray-200";
+              
+              if (cond === "Filling") {
+                bgColor = "bg-blue-50";
+                textColor = "text-blue-700";
+                borderColor = "border-blue-200";
+              } else if (cond === "Caries") {
+                bgColor = "bg-red-50";
+                textColor = "text-red-700";
+                borderColor = "border-red-200";
+              } else if (cond === "Healthy") {
+                bgColor = "bg-emerald-50";
+                textColor = "text-emerald-700";
+                borderColor = "border-emerald-200";
+              } else if (cond === "Missing") {
+                bgColor = "bg-gray-100";
+                textColor = "text-gray-700";
+                borderColor = "border-gray-300";
+              } else if (cond === "Crown") {
+                bgColor = "bg-amber-50";
+                textColor = "text-amber-700";
+                borderColor = "border-amber-200";
+              } else if (cond === "Root Canal") {
+                bgColor = "bg-purple-50";
+                textColor = "text-purple-700";
+                borderColor = "border-purple-200";
+              }
+              
+              return (
+                <div 
+                  key={idx} 
+                  className={`px-2 py-1 text-xs rounded-md border ${bgColor} ${textColor} ${borderColor}`}
+                >
+                  {cond}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
+      
+      {/* Procedures Section */}
+      {tooltipData.procedures && tooltipData.procedures.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+            Procedures ({tooltipData.procedures.length})
+          </div>
+          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+            {tooltipData.procedures.map((proc: any, idx: number) => (
+              <div 
+                key={idx} 
+                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-white transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`w-2 h-2 rounded-full ${
+                    proc.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`}></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-800 truncate">{proc.name}</div>
+                    {proc.surface && (
+                      <div className="text-xs text-gray-500 mt-0.5">{proc.surface} surface</div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right shrink-0 ml-2">
+                  <div className="text-xs font-medium text-gray-800 whitespace-nowrap">
+                    {new Date(proc.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </div>
+                  <div className={`text-xs ${proc.status === 'completed' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {proc.status}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Show message when no data */}
+      {(!tooltipData.conditions || tooltipData.conditions.length === 0) && 
+       (!tooltipData.procedures || tooltipData.procedures.length === 0) && (
+        <div className="text-center py-4">
+          <div className="w-8 h-8 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-2">
+            <Info className="h-4 w-4 text-gray-400" />
+          </div>
+          <p className="text-sm text-gray-500">No dental history recorded</p>
+        </div>
+      )}
+      
+      {/* Last Updated */}
+      {tooltipData.updatedAt && (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <div className="text-xs text-gray-500 text-center">
+            Last updated: {new Date(tooltipData.updatedAt).toLocaleDateString('en-US', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
-      {/* Enhanced Footer */}
-      <div className="border-t border-gray-200 bg-white/80 backdrop-blur-sm px-4 sm:px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-3 flex-shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
+      {/* Footer */}
+      <div className="border-t border-gray-200 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-3 flex flex-col sm:flex-row justify-between items-center gap-2 flex-shrink-0 shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="text-xs text-gray-500">
             <span className="font-medium text-gray-700">{data?.dentalChart?.length || 0}</span> teeth with history
             {stats.totalProcedures > 0 && (
               <>
-                <span className="mx-2">•</span>
+                <span className="mx-1.5 sm:mx-2">•</span>
                 <span className="font-medium text-gray-700">{stats.totalProcedures}</span> total procedures
               </>
             )}
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-xs">
-            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span className="text-gray-500">Last updated:</span>
-            <span className="font-medium text-gray-700">
-              {data?.dentalChart?.length 
-                ? new Date(data.dentalChart[0].lastUpdated).toLocaleDateString()
-                : 'Never'
-              }
-            </span>
-          </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button 
             variant="outline" 
             size="sm" 
             className="text-xs border-gray-300 hover:bg-gray-50 bg-white/90"
           >
             <FileText className="h-3 w-3 mr-1" />
-            Print Report
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="text-xs border-gray-300 hover:bg-gray-50 bg-white/90"
-          >
-            <Activity className="h-3 w-3 mr-1" />
-            Export PDF
+            <span className="hidden sm:inline">Print Report</span>
           </Button>
           {onClose && (
             <Button 
