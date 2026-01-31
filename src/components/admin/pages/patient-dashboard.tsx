@@ -1,6 +1,6 @@
 import { useState, useEffect, use } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import ThreeDCBCTViewer from "./nifti/NiftiViewer";
+import ThreeDCBCTViewer from "./nifti/Niftiviewer";
 import labBaseUrl from "../../../labBaseUrl";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -184,10 +184,10 @@ export default function Reports() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [history, setHistory] = useState<PatientHistory[]>([]);
   const [selectedVisit, setSelectedVisit] = useState<PatientHistory | null>(
-    null
+    null,
   );
   const [clinicDetails, setClinicDetails] = useState<ClinicDetails | null>(
-    null
+    null,
   );
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [patientsLoading, setPatientsLoading] = useState(false);
@@ -230,7 +230,7 @@ export default function Reports() {
     async function fetchClinic() {
       try {
         const res = await axios.get(
-          `${baseUrl}/api/v1/auth/clinic/view-clinic/${clinicId}`
+          `${baseUrl}/api/v1/auth/clinic/view-clinic/${clinicId}`,
         );
 
         const clinic = res.data?.data;
@@ -252,7 +252,7 @@ export default function Reports() {
     try {
       setPatientsLoading(true);
       const res = await axios.get(
-        `${patientServiceBaseUrl}/api/v1/patient-service/patient/all-patients/${clinicId}`
+        `${patientServiceBaseUrl}/api/v1/patient-service/patient/all-patients/${clinicId}`,
       );
       setAllPatients(res.data.data || []);
     } catch (err) {
@@ -287,7 +287,7 @@ export default function Reports() {
   const downloadReport = (
     patient: Patient,
     visit: PatientHistory,
-    clinicDetails: ClinicDetails
+    clinicDetails: ClinicDetails,
   ) => {
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -335,14 +335,14 @@ export default function Reports() {
     pdf.text(
       `Visit Date: ${new Date(visit.visitDate).toLocaleDateString()}`,
       20,
-      110
+      110,
     );
     pdf.text(
       `Doctor: ${visit.doctor?.name || "N/A"} (${
         visit.doctor?.specialization || "N/A"
       })`,
       20,
-      118
+      118,
     );
 
     // ---- Symptoms ----
@@ -367,7 +367,7 @@ export default function Reports() {
         pdf.text(
           `- ${pres.medicineName} (${pres.dosage}, ${pres.frequency}/day, ${pres.duration} days)`,
           25,
-          yPos
+          yPos,
         );
       });
     }
@@ -384,12 +384,12 @@ export default function Reports() {
       pdf.text(
         `${visit.treatmentPlan.planName} (${visit.treatmentPlan.status})`,
         25,
-        treatmentStart + 8
+        treatmentStart + 8,
       );
       pdf.text(
         `${visit.treatmentPlan.stages.length} stage(s)`,
         25,
-        treatmentStart + 16
+        treatmentStart + 16,
       );
     }
 
@@ -418,7 +418,7 @@ export default function Reports() {
       "This prescription is electronically generated and official.",
       pageWidth / 2,
       290,
-      { align: "center" }
+      { align: "center" },
     );
 
     const fileName = `${patient.name.replace(/\s+/g, "_")}_${
@@ -448,7 +448,7 @@ export default function Reports() {
             id: query,
             clinicId: clinicId,
           },
-        }
+        },
       );
 
       const foundPatient = res.data.data;
@@ -476,7 +476,7 @@ export default function Reports() {
         `${patientServiceBaseUrl}/api/v1/patient-service/appointment/patient-history/${patientId}`,
         {
           params: { clinicId },
-        }
+        },
       );
 
       if (res.data.success) {
@@ -530,7 +530,7 @@ export default function Reports() {
       }
 
       const urls = patient.labHistory.map(
-        (id) => `${labBaseUrl}api/v1/lab-orders/dental-orders/${id}`
+        (id) => `${labBaseUrl}api/v1/lab-orders/dental-orders/${id}`,
       );
 
       const responses = await Promise.all(urls.map((url) => axios.get(url)));
@@ -1237,66 +1237,60 @@ export default function Reports() {
                                     gap: 8,
                                   }}
                                 >
-                                  {item.order.resultFiles.map(
-                                    (
-                                      resultFile: ResultFile,
-                                      fileIdx: number
-                                    ) => (
-                                      <div
-                                        key={resultFile._id || fileIdx}
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "space-between",
-                                          padding: "8px 12px",
-                                          backgroundColor: "#f8fafc",
-                                          borderRadius: 8,
-                                          border: "1px solid #e2e8f0",
-                                        }}
-                                      >
-                                        <div>
-                                          <p
-                                            style={{
-                                              fontSize: 12,
-                                              fontWeight: 500,
-                                              margin: 0,
-                                              color: "#334155",
-                                            }}
-                                          >
-                                            {resultFile.fileName}
-                                          </p>
-                                          <p
-                                            style={{
-                                              fontSize: 10,
-                                              color: "#64748B",
-                                              margin: "2px 0 0 0",
-                                            }}
-                                          >
-                                            {new Date(
-                                              resultFile.uploadedAt
-                                            ).toLocaleDateString()}
-                                          </p>
-                                        </div>
-                                        <button
+                                  {item.order.niftiFile && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        padding: "10px 14px",
+                                        backgroundColor: "#f8fafc",
+                                        borderRadius: 8,
+                                        border: "1px solid #e2e8f0",
+                                      }}
+                                    >
+                                      <div>
+                                        <p
                                           style={{
-                                            backgroundColor: "#16a34a",
-                                            color: "#fff",
-                                            padding: "6px 12px",
-                                            fontSize: 11,
+                                            fontSize: 13,
                                             fontWeight: 600,
-                                            borderRadius: "6px",
-                                            border: "none",
-                                            cursor: "pointer",
-                                            whiteSpace: "nowrap",
+                                            margin: 0,
+                                            color: "#334155",
                                           }}
-                                          onClick={() =>
-                                            handleViewResult(resultFile)
-                                          }
                                         >
-                                          View
-                                        </button>
+                                          {item.order.niftiFile.fileName}
+                                        </p>
+
+                                        <p
+                                          style={{
+                                            fontSize: 11,
+                                            color: "#64748B",
+                                            marginTop: 4,
+                                          }}
+                                        >
+                                          NIfTI Result File
+                                        </p>
                                       </div>
-                                    )
+
+                                      <button
+                                        style={{
+                                          backgroundColor: "#2563eb",
+                                          color: "#fff",
+                                          padding: "6px 14px",
+                                          fontSize: 12,
+                                          fontWeight: 600,
+                                          borderRadius: 6,
+                                          border: "none",
+                                          cursor: "pointer",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                        onClick={() =>
+                                          handleViewResult(item.order.niftiFile)
+                                        }
+                                      >
+                                        View 3D
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -3388,7 +3382,7 @@ export default function Reports() {
                           try {
                             await axios.patch(
                               `${patientServiceBaseUrl}/api/v1/patient-service/patient/add/patient_details/${patient._id}`,
-                              patientDetails
+                              patientDetails,
                             );
                             alert("Patient details updated successfully!");
                             setShowAddModal(false);
@@ -3397,7 +3391,7 @@ export default function Reports() {
                             console.error("Error updating patient:", error);
                             alert(
                               error.response?.data?.message ||
-                                "Failed to update patient details"
+                                "Failed to update patient details",
                             );
                           }
                         }}
@@ -3432,7 +3426,7 @@ export default function Reports() {
                       // Make API call to update patient details
                       await axios.put(
                         `${patientServiceBaseUrl}/api/v1/patient-service/patient/update/${patient._id}`,
-                        patientDetails
+                        patientDetails,
                       );
                       alert("Patient details updated successfully!");
                       setShowAddModal(false);
@@ -3442,7 +3436,7 @@ export default function Reports() {
                       console.error("Error updating patient:", error);
                       alert(
                         error.response?.data?.message ||
-                          "Failed to update patient details"
+                          "Failed to update patient details",
                       );
                     }
                   }}

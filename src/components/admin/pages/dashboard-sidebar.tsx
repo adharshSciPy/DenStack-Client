@@ -89,7 +89,7 @@ export function DashboardSidebar() {
     { id: "inventory", label: "Inventory", icon: Package, badge: inventoryCount },
     { id: "lab", label: "Lab Orders", icon: FlaskConical },
     { id: "patients", label: "Patient", icon: FileText },
-    { id: "notifications", label: "Notifications", icon: Bell },
+    // { id: "notifications", label: "Notifications", icon: Bell },
     { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
     { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
     { id: "cart", label: "Cart", icon: ShoppingCart, badge: cartItem.length },

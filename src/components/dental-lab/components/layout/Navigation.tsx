@@ -12,6 +12,7 @@ import {
   Building2,
   ShoppingCart,
   LucideIcon,
+  DollarSign
 } from "lucide-react";
 
 interface NavItem {
@@ -46,6 +47,12 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
       icon: Package,
       label: "Orders",
       path: "orders",
+    },
+    {
+      id: "revenue",
+      icon: DollarSign,
+      label: "Accounts",
+      path: "revenue",
     },
   ];
 

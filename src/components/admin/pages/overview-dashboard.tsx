@@ -27,40 +27,7 @@ const weeklyData = [
   { day: "Sun", appointments: 8, revenue: 1100 }
 ];
 
-const recentActivities = [
-  {
-    id: 1,
-    type: "appointment",
-    message: "New appointment scheduled with John Smith",
-    time: "2 minutes ago",
-    icon: Calendar,
-    color: "text-primary"
-  },
-  {
-    id: 2,
-    type: "payment",
-    message: "Payment received - $450 from Maria Garcia",
-    time: "15 minutes ago",
-    icon: DollarSign,
-    color: "text-green-600"
-  },
-  {
-    id: 3,
-    type: "inventory",
-    message: "Low stock alert: Surgical Gloves",
-    time: "1 hour ago",
-    icon: Package,
-    color: "text-orange-600"
-  },
-  {
-    id: 4,
-    type: "staff",
-    message: "Dr. Wilson checked in for morning shift",
-    time: "2 hours ago",
-    icon: Users,
-    color: "text-secondary"
-  }
-];
+
 
 
 interface StaffCategory {
@@ -95,6 +62,7 @@ interface DashboardData {
   patients: any[];
   todaysAppointments: any[];
   pendingLabOrdersCount: number;
+  totalRevenue: number;
 }
 
 export function OverviewDashboard() {
@@ -144,10 +112,7 @@ export function OverviewDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Today's Appointments</p>
                 <p className="text-3xl text-primary">{dashboardData?.todaysAppointments.length}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <TrendingUp className="w-3 h-3 text-green-600" />
-                  <span className="text-xs text-green-600">+8 from yesterday</span>
-                </div>
+                
               </div>
               <Calendar className="w-8 h-8 text-primary/60" />
             </div>
@@ -159,11 +124,8 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Monthly Revenue</p>
-                <p className="text-3xl text-green-600">${quickStats.monthlyRevenue.toLocaleString()}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <TrendingUp className="w-3 h-3 text-green-600" />
-                  <span className="text-xs text-green-600">+12% this month</span>
-                </div>
+                <p className="text-3xl text-green-600">₹{dashboardData?.totalRevenue}</p>
+                
               </div>
               <DollarSign className="w-8 h-8 text-green-600/60" />
             </div>
@@ -176,7 +138,7 @@ export function OverviewDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Active Staff</p>
                 <p className="text-3xl text-secondary">{dashboardData?.clinic.totalStaffCount}</p>
-                <p className="text-xs text-muted-foreground mt-1">On duty today</p>
+                {/* <p className="text-xs text-muted-foreground mt-1">On duty today</p> */}
               </div>
               <Users className="w-8 h-8 text-secondary/60" />
             </div>
@@ -189,7 +151,7 @@ export function OverviewDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Low Stock Items</p>
                 <p className="text-3xl text-orange-600">{quickStats.lowStockItems}</p>
-                <p className="text-xs text-orange-600 mt-1">Need attention</p>
+                {/* <p className="text-xs text-orange-600 mt-1">Need attention</p> */}
               </div>
               <Package className="w-8 h-8 text-orange-600/60" />
             </div>
@@ -202,7 +164,7 @@ export function OverviewDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Pending Lab Orders</p>
                 <p className="text-3xl text-primary">{dashboardData?.pendingLabOrdersCount}</p>
-                <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p>
+                {/* <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p> */}
               </div>
               <Activity className="w-8 h-8 text-primary/60" />
             </div>
@@ -265,7 +227,7 @@ export function OverviewDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <Card className="bg-muted/60">
+        {/* <Card className="bg-muted/60">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="w-5 h-5" />
@@ -288,10 +250,10 @@ export function OverviewDashboard() {
               })}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Quick Actions & Status */}
-        <Card className="bg-muted/60">
+        {/* <Card className="bg-muted/60">
           <CardHeader>
             <CardTitle>Clinic Status</CardTitle>
           </CardHeader>
@@ -342,7 +304,7 @@ export function OverviewDashboard() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );

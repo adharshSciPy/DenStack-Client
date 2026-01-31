@@ -22,7 +22,6 @@ import {
 import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import labBaseUrl from "../../../labBaseUrl";
-import clinicInventoryBaseUrl from "../../../clinicInventoryBaseUrl";
 import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
 import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
 
@@ -79,16 +78,15 @@ export default function LabOrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cursor-based pagination state
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
   const [pageSize] = useState(10);
-  const [labName, setLabName] = useState<any[]>([]);
   const [doctors, setDoctors] = useState([]);
 
   // Modal state
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('inhouse');
   const [formData, setFormData] = useState({
     vendor: "",
     dentist: "",
@@ -100,6 +98,81 @@ export default function LabOrdersPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
+
+  // NEW: Separate state for labs based on tab
+  const [inhouseLabs, setInhouseLabs] = useState<any[]>([]);
+  const [externalLabs, setExternalLabs] = useState<any[]>([]);
+  const [alignerLabs, setAlignerLabs] = useState<any[]>([]);
+  const [labsLoading, setLabsLoading] = useState(false);
+
+  const tabs = [
+    { id: 'inhouse', label: 'In-House Lab' },
+    { id: 'external', label: 'External Lab' },
+    { id: 'aligner', label: 'Aligner Lab' }
+  ];
+
+  // NEW: Function to fetch labs based on tab type
+  const fetchLabsByType = async (labType: string) => {
+    setLabsLoading(true);
+    try {
+      let endpoint = '';
+      
+      switch(labType) {
+        case 'inhouse':
+          endpoint = `${labBaseUrl}api/v1/lab/inhouse-labs-by-clinic/${clinicId}`;
+          break;
+        case 'external':
+          endpoint = `${labBaseUrl}api/v1/lab/external-vendors`;
+          break;
+        case 'aligner':
+          endpoint = `${labBaseUrl}api/v1/lab/aligner-vendors`;
+          break;
+        default:
+          endpoint = `${labBaseUrl}api/v1/lab/vendors`;
+      }
+      console.log(endpoint);
+      
+      const res = await axios.get(endpoint);
+      console.log(res);
+      
+      switch(labType) {
+        case 'inhouse':
+          setInhouseLabs(res.data);
+          break;
+        case 'external':
+          setExternalLabs(res.data);
+          break;
+        case 'aligner':
+          setAlignerLabs(res.data);
+          break;
+      }
+    } catch (error) {
+      console.error(`Error fetching ${labType} labs:`, error);
+    } finally {
+      setLabsLoading(false);
+    }
+  };
+
+  // NEW: Effect to fetch labs when tab changes
+  useEffect(() => {
+    if (isOpen) {
+      fetchLabsByType(activeTab);
+    }
+  }, [activeTab, isOpen]);
+
+  // NEW: Function to get current labs based on active tab
+  const getCurrentLabs = () => {
+    switch(activeTab) {
+      case 'inhouse':
+        return inhouseLabs;
+      case 'external':
+        return externalLabs;
+      case 'aligner':
+        return alignerLabs;
+      default:
+        return [];
+    }
+  };
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -147,20 +220,15 @@ export default function LabOrdersPage() {
     const selectedFiles = Array.from(e.target.files || []);
     setFiles(selectedFiles);
   };
-  const logFormData = (formData: FormData) => {
-    const entries: any = {};
-    formData.forEach((value, key) => {
-      entries[key] = value;
-    });
-    console.log("FormData =>", entries);
-  };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       const formDataToSend = new FormData();
+      
+      formDataToSend.append('labType', activeTab);
       
       Object.keys(formData).forEach((key) => {
         formDataToSend.append(key, formData[key as keyof typeof formData]);
@@ -170,7 +238,6 @@ export default function LabOrdersPage() {
         formDataToSend.append("files", file);
       });
       
-      logFormData(formDataToSend);
       const response = await axios.post(
         `${labBaseUrl}api/v1/lab-orders/dental-orders`,
         formDataToSend,
@@ -194,8 +261,8 @@ export default function LabOrdersPage() {
         });
         setFiles([]);
         setSearch("");
+        setActiveTab('inhouse');
 
-        // Refresh the orders list and stats
         fetchStats();
         fetchOrders();
         setCurrentCursorIndex(0);
@@ -214,7 +281,6 @@ export default function LabOrdersPage() {
     }
   };
 
-  // Fetch stats function
   const fetchStats = async () => {
     try {
       const statsResponse = await axios.get(
@@ -231,62 +297,63 @@ export default function LabOrdersPage() {
       console.error("Failed to fetch stats:", err);
     }
   };
-const fetchOrders = async () => {
-      setIsLoading(true);
-      setError(null);
 
-      try {
-        const params: any = {
-          limit: pageSize,
-        };
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    setError(null);
 
-        if (cursors[currentCursorIndex]) {
-          params.cursor = cursors[currentCursorIndex];
-        }
+    try {
+      const params: any = {
+        limit: pageSize,
+      };
 
-        if (selectedStatus !== "all") {
-          params.status = selectedStatus;
-        }
-
-        if (searchQuery.trim()) {
-          params.search = searchQuery.trim();
-        }
-
-        const response = await axios.get(
-          `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
-          { params }
-        );
-
-        const { hasNextPage, nextCursor } = response.data;
-
-        setLabData(response.data);
-
-        if (hasNextPage && nextCursor) {
-          setCursors((prev) => {
-            const trimmed = prev.slice(0, currentCursorIndex + 1);
-
-            if (trimmed[trimmed.length - 1] !== nextCursor) {
-              trimmed.push(nextCursor);
-            }
-
-            return trimmed;
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching lab orders:", err);
-        setError("Failed to load lab orders. Please try again.");
-      } finally {
-        setIsLoading(false);
+      if (cursors[currentCursorIndex]) {
+        params.cursor = cursors[currentCursorIndex];
       }
-    };
-  // Fetch stats on mount
+
+      if (selectedStatus !== "all") {
+        params.status = selectedStatus;
+      }
+
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
+      const response = await axios.get(
+        `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
+        { params }
+      );
+      console.log(response);
+      
+      const { hasNextPage, nextCursor } = response.data;
+
+      setLabData(response.data);
+
+      if (hasNextPage && nextCursor) {
+        setCursors((prev) => {
+          const trimmed = prev.slice(0, currentCursorIndex + 1);
+
+          if (trimmed[trimmed.length - 1] !== nextCursor) {
+            trimmed.push(nextCursor);
+          }
+
+          return trimmed;
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching lab orders:", err);
+      setError("Failed to load lab orders. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
   }, [clinicId]);
 
-  // Fetch orders when filters, status, or cursor changes
   useEffect(() => {
-      fetchOrders();
+    fetchOrders();
   }, [clinicId, selectedStatus, searchQuery, pageSize, currentCursorIndex]);
 
   const handleStatusChange = (status: string) => {
@@ -343,7 +410,6 @@ const fetchOrders = async () => {
     }
   };
 
-
   const getDoctors = async () => {
     try {
       const res = await axios.get(
@@ -355,19 +421,7 @@ const fetchOrders = async () => {
     }
   };
 
-const getAllLab=async()=>{
-  try {
-    const res=await axios.get(`${labBaseUrl}api/v1/lab/vendors`)
-    console.log("lab",res.data);
-   setLabName(res.data);
-  } catch (error) {
-    console.log(error)
-  }
-}
-
   useEffect(() => {
-    // getVendor();
-    getAllLab();
     getDoctors();
   }, [clinicId]);
 
@@ -428,6 +482,8 @@ const getAllLab=async()=>{
   const totalPages = cursors.length;
   const currentPage = currentCursorIndex + 1;
 
+  const currentLabs = getCurrentLabs();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -448,7 +504,7 @@ const getAllLab=async()=>{
           </div>
           <button
             onClick={() => setIsOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-secondary to-blue-500 text-white rounded-xl font-medium shadow hover:shadow-md hover:from-blue-700 hover:to-blue-600 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium shadow hover:shadow-md hover:bg-blue-700 transition-all"
           >
             <Plus className="w-4 h-4" />
             Create Order
@@ -667,7 +723,7 @@ const getAllLab=async()=>{
         </div>
       </div>
 
-      {/* Create Order Modal */}
+      {/* Create Order Modal with Tabs */}
       {isOpen && (
         <div
           style={{
@@ -742,9 +798,58 @@ const getAllLab=async()=>{
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ padding: "24px" }}>
+            {/* Tabs */}
+            <div style={{ 
+              borderBottom: "1px solid #e5e7eb",
+              backgroundColor: "white",
+              position: "sticky",
+              top: "73px",
+              zIndex: 9
+            }}>
+              <div style={{ 
+                display: "flex",
+                padding: "0 24px"
+              }}>
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      // Reset vendor selection when switching tabs
+                      setFormData(prev => ({ ...prev, vendor: "" }));
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "12px 16px",
+                      border: "none",
+                      backgroundColor: "transparent",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: activeTab === tab.id ? "#3b82f6" : "#6b7280",
+                      borderBottom: activeTab === tab.id ? "2px solid #3b82f6" : "2px solid transparent",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activeTab !== tab.id) {
+                        e.currentTarget.style.color = "#374151";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activeTab !== tab.id) {
+                        e.currentTarget.style.color = "#6b7280";
+                      }
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: "24px" }}>
               <div style={{ display: "grid", gap: "20px" }}>
-                {/* Vendor */}
+                {/* Lab Selection - Show for all tabs */}
                 <div>
                   <label
                     style={{
@@ -758,30 +863,73 @@ const getAllLab=async()=>{
                     }}
                   >
                     <Building2 size={18} color="#6b7280" />
-                    Lab
+                    {activeTab === 'inhouse' 
+                      ? 'In-House Lab *' 
+                      : activeTab === 'aligner' 
+                      ? 'Aligner Lab *' 
+                      : 'External Lab *'}
                   </label>
-                  <select
-                    name="vendor"
-                    value={formData.vendor}
-                    onChange={handleSelectChange}
-                    style={{
+                  {labsLoading ? (
+                    <div style={{
                       width: "100%",
                       padding: "10px 12px",
                       border: "1px solid #d1d5db",
                       borderRadius: "8px",
                       fontSize: "14px",
-                      outline: "none",
-                      transition: "border-color 0.2s",
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <option value="">Select Lab</option>
-                    {labName.map((lab: any) => (
-                      <option key={lab._id} value={lab._id}>
-                        {lab.name}
+                      color: "#6b7280",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px"
+                    }}>
+                      <Loader2 size={16} className="animate-spin" />
+                      Loading labs...
+                    </div>
+                  ) : (
+                    <select
+                      name="vendor"
+                      value={formData.vendor}
+                      onChange={handleSelectChange}
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                        boxSizing: "border-box",
+                      }}
+                      onFocus={(e) =>
+                        (e.currentTarget.style.borderColor = "#3b82f6")
+                      }
+                      onBlur={(e) =>
+                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      }
+                    >
+                      <option value="">
+                        Select {activeTab === 'inhouse' 
+                          ? 'In-House Lab' 
+                          : activeTab === 'aligner' 
+                          ? 'Aligner Lab' 
+                          : 'External Lab'}
                       </option>
-                    ))}
-                  </select>
+                      {currentLabs.map((lab: any) => (
+                        <option key={lab._id} value={lab._id}>
+                          {lab.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {!labsLoading && currentLabs.length === 0 && (
+                    <div style={{
+                      marginTop: "8px",
+                      fontSize: "12px",
+                      color: "#ef4444",
+                    }}>
+                      No labs found for this category
+                    </div>
+                  )}
                 </div>
 
                 {/* Dentist */}
@@ -824,6 +972,7 @@ const getAllLab=async()=>{
                   </select>
                 </div>
 
+                {/* Patient Name */}
                 <div style={{ position: "relative" }}>
                   <label
                     style={{
@@ -839,7 +988,6 @@ const getAllLab=async()=>{
                     <User size={18} color="#6b7280" />
                     Patient Name *
                   </label>
-
                   <input
                     type="text"
                     name="patientName"
@@ -919,48 +1067,6 @@ const getAllLab=async()=>{
                     </div>
                   )}
                 </div>
-
-                {/* Appointment ID */}
-                {/* <div>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      color: "#374151",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <FileText size={18} color="#6b7280" />
-                    Appointment ID *
-                  </label>
-                  <input
-                    type="text"
-                    name="appointmentId"
-                    value={formData.appointmentId}
-                    onChange={handleInputChange}
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "border-color 0.2s",
-                      boxSizing: "border-box",
-                    }}
-                    onFocus={(e) =>
-                      (e.currentTarget.style.borderColor = "#3b82f6")
-                    }
-                    onBlur={(e) =>
-                      (e.currentTarget.style.borderColor = "#d1d5db")
-                    }
-                    placeholder="Enter appointment ID"
-                  />
-                </div> */}
 
                 {/* Delivery Date */}
                 <div>
@@ -1169,7 +1275,8 @@ const getAllLab=async()=>{
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmit}
                   disabled={loading}
                   style={{
                     padding: "10px 20px",
@@ -1194,7 +1301,7 @@ const getAllLab=async()=>{
                   {loading ? "Creating..." : "Create Order"}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

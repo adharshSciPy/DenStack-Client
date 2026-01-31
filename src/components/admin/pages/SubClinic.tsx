@@ -551,7 +551,7 @@ const handleSubmit = async (
                 </div>
 
                 {/* Features Inheritance */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+                {/* <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-sm">
                   <div className="flex items-start gap-3 mb-4">
                     <div className="bg-blue-100 p-2 rounded-lg">
                       <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -612,7 +612,7 @@ const handleSubmit = async (
                       );
                     })}
                   </div>
-                </div>
+                </div> */}
 
                 {/* Subscription Info */}
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-sm">
