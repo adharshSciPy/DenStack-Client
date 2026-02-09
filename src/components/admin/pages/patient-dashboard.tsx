@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Scissors,
   Users,
+  ArrowLeft
 } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
@@ -37,6 +38,7 @@ import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
 import jsPDF from "jspdf";
 import baseUrl from "../../../baseUrl";
 import react from "@vitejs/plugin-react-swc";
+import DentalChartView from "./DentalChartView";
 
 interface Prescription {
   _id: string;
@@ -221,6 +223,7 @@ export default function Reports() {
       familyHistory: "",
     },
   });
+    const[viewDentalHistory,setViewDentalHistory]=useState(false);
 
   console.log("ddEW", patient);
 
@@ -994,127 +997,570 @@ export default function Reports() {
               </div>
             )}
             {/* Medical History */}
-            {!loading && (
+          {!loading && (
+  <>
+    {/* Medical History Section */}
+    <div
+      style={{
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+        backdropFilter: "blur(18px)",
+        WebkitBackdropFilter: "blur(18px)",
+        borderRadius: 16,
+        padding: 28,
+        marginBottom: 28,
+        boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+        border: "1px solid rgba(255,255,255,0.4)",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          marginBottom: 24,
+        }}
+      >
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: "linear-gradient(135deg, #7C3AED, #A78BFA)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 8px 20px rgba(124,58,237,0.35)",
+          }}
+        >
+          <HeartPulse size={22} color="#fff" />
+        </div>
+
+        <h3
+          style={{
+            fontSize: 18,
+            fontWeight: 700,
+            margin: 0,
+            color: "#0F172A",
+            letterSpacing: "-0.3px",
+          }}
+        >
+          Medical History
+        </h3>
+      </div>
+
+      {/* Cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 18,
+        }}
+      >
+        {medicalHistoryItems.map((item, idx) => (
+          <div
+            key={idx}
+            style={{
+              padding: 20,
+              borderRadius: 14,
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
+              backdropFilter: "blur(14px)",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
               <div
                 style={{
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-                  backdropFilter: "blur(18px)",
-                  WebkitBackdropFilter: "blur(18px)",
-                  borderRadius: 16,
-                  padding: 28,
-                  marginBottom: 28,
-                  boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-                  border: "1px solid rgba(255,255,255,0.4)",
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: item.color,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 8px 18px rgba(0,0,0,0.25)",
                 }}
               >
-                {/* Header */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    marginBottom: 24,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 12,
-                      background: "linear-gradient(135deg, #7C3AED, #A78BFA)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      boxShadow: "0 8px 20px rgba(124,58,237,0.35)",
-                    }}
-                  >
-                    <HeartPulse size={22} color="#fff" />
-                  </div>
-
-                  <h3
-                    style={{
-                      fontSize: 18,
-                      fontWeight: 700,
-                      margin: 0,
-                      color: "#0F172A",
-                      letterSpacing: "-0.3px",
-                    }}
-                  >
-                    Medical History
-                  </h3>
-                </div>
-
-                {/* Cards */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                    gap: 18,
-                  }}
-                >
-                  {medicalHistoryItems.map((item, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: 20,
-                        borderRadius: 14,
-                        background:
-                          "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
-                        backdropFilter: "blur(14px)",
-                        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 10,
-                            background: item.color,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            boxShadow: "0 8px 18px rgba(0,0,0,0.25)",
-                          }}
-                        >
-                          <item.icon size={18} color="#fff" />
-                        </div>
-
-                        <div>
-                          <p
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 600,
-                              margin: 0,
-                              color: "#64748B",
-                            }}
-                          >
-                            {item.label}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 14,
-                              fontWeight: 600,
-                              marginTop: 4,
-                              color: "#0F172A",
-                            }}
-                          >
-                            {item.value}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <item.icon size={18} color="#fff" />
               </div>
-            )}
+
+              <div>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    margin: 0,
+                    color: "#64748B",
+                  }}
+                >
+                  {item.label}
+                </p>
+                <p
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    marginTop: 4,
+                    color: "#0F172A",
+                  }}
+                >
+                  {item.value}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Dental History Section - Same Style */}
+<div
+  style={{
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    borderRadius: 16,
+    padding: 28,
+    marginBottom: 28,
+    boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+    border: "1px solid rgba(255,255,255,0.4)",
+  }}
+>
+  {/* Header */}
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 14,
+      marginBottom: 24,
+    }}
+  >
+    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: "linear-gradient(135deg, #0EA5E9, #38BDF8)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 8px 20px rgba(14,165,233,0.35)",
+        }}
+      >
+        <Activity size={22} color="#fff" />
+      </div>
+
+      <div>
+        <h3
+          style={{
+            fontSize: 18,
+            fontWeight: 700,
+            margin: 0,
+            color: "#0F172A",
+            letterSpacing: "-0.3px",
+          }}
+        >
+          Dental History
+        </h3>
+        <p
+          style={{
+            fontSize: 12,
+            marginTop: 4,
+            color: "#64748B",
+          }}
+        >
+          View and manage dental records
+        </p>
+      </div>
+    </div>
+
+    {/* Dental History Button */}
+    <Button
+      variant="outline"
+      onClick={() => setViewDentalHistory(!viewDentalHistory)}
+      style={{
+        padding: "10px 20px",
+        borderRadius: 10,
+        fontWeight: 600,
+        border: "1px solid rgba(14,165,233,0.3)",
+        background: "rgba(14,165,233,0.1)",
+        color: "#0EA5E9",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        cursor: "pointer",
+      }}
+    >
+      View Dental Chart
+    </Button>
+  </div>
+
+  {/* Dental Summary Cards */}
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+      gap: 18,
+    }}
+  >
+    {/* Card 1: Last Dental Checkup */}
+    <div
+      style={{
+        padding: 20,
+        borderRadius: 14,
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
+        backdropFilter: "blur(14px)",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: "linear-gradient(135deg, #10B981, #34D399)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 8px 18px rgba(16,185,129,0.25)",
+          }}
+        >
+          <Calendar size={18} color="#fff" />
+        </div>
+
+        <div>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              margin: 0,
+              color: "#64748B",
+            }}
+          >
+            Last Dental Checkup
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              marginTop: 4,
+              color: "#0F172A",
+            }}
+          >
+            {(() => {
+              // Calculate last dental visit from history
+              if (!history || history.length === 0) return "Not Recorded";
+              
+              // Sort visits by date (most recent first)
+              const sortedVisits = [...history].sort((a, b) => 
+                new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()
+              );
+              
+              const lastVisit = sortedVisits[0];
+              return new Date(lastVisit.visitDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              });
+            })()}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Card 2: Total Dental Visits */}
+    <div
+      style={{
+        padding: 20,
+        borderRadius: 14,
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
+        backdropFilter: "blur(14px)",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: "linear-gradient(135deg, #8B5CF6, #A78BFA)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 8px 18px rgba(139,92,246,0.25)",
+          }}
+        >
+          <Activity size={18} color="#fff" />
+        </div>
+
+        <div>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              margin: 0,
+              color: "#64748B",
+            }}
+          >
+            Total Dental Visits
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              marginTop: 4,
+              color: "#0F172A",
+            }}
+          >
+            {history.length} visit{history.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Card 3: Recent Dental Procedures */}
+    {/* <div
+      style={{
+        padding: 20,
+        borderRadius: 14,
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
+        backdropFilter: "blur(14px)",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: "linear-gradient(135deg, #F59E0B, #FBBF24)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 8px 18px rgba(245,158,11,0.25)",
+          }}
+        >
+          <CheckCircle size={18} color="#fff" />
+        </div>
+
+        <div>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              margin: 0,
+              color: "#64748B",
+            }}
+          >
+            Recent Procedures
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              marginTop: 4,
+              color: "#0F172A",
+            }}
+          >
+            {(() => {
+              // Count total procedures from all visits
+              if (!history || history.length === 0) return "None";
+              
+              const totalProcedures = history.reduce((total, visit) => {
+                return total + (visit.procedures?.length || 0);
+              }, 0);
+              
+              return `${totalProcedures} procedure${totalProcedures !== 1 ? 's' : ''}`;
+            })()}
+          </p>
+        </div>
+      </div>
+    </div> */}
+
+    {/* Card 4: Dental Health Status */}
+    {/* <div
+      style={{
+        padding: 20,
+        borderRadius: 14,
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85))",
+        backdropFilter: "blur(14px)",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: "linear-gradient(135deg, #EF4444, #F87171)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 8px 18px rgba(239,68,68,0.25)",
+          }}
+        >
+          <AlertCircle size={18} color="#fff" />
+        </div>
+
+        <div>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              margin: 0,
+              color: "#64748B",
+            }}
+          >
+            Active Issues
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              marginTop: 4,
+              color: "#0F172A",
+            }}
+          >
+            {(() => {
+              // Check if there are any recent dental issues
+              if (!history || history.length === 0) return "No issues";
+              
+              // Get most recent visit
+              const sortedVisits = [...history].sort((a, b) => 
+                new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()
+              );
+              
+              const lastVisit = sortedVisits[0];
+              const hasDentalIssues = lastVisit.diagnosis?.some(diag => 
+                diag.toLowerCase().includes('caries') ||
+                diag.toLowerCase().includes('cavity') ||
+                diag.toLowerCase().includes('gingivitis') ||
+                diag.toLowerCase().includes('periodontal') ||
+                diag.toLowerCase().includes('toothache') ||
+                diag.toLowerCase().includes('decay')
+              );
+              
+              return hasDentalIssues ? "Needs attention" : "All good";
+            })()}
+          </p>
+        </div>
+      </div>
+    </div> */}
+  </div>
+</div>
+  </>
+)}
+
+{/* Dental History Modal - This stays outside the main container */}
+{/* Dental History Modal */}
+{viewDentalHistory && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      backgroundColor: "#F9FAF9",
+      zIndex: 10000,
+      display: "flex",
+      flexDirection: "column",
+    }}
+  >
+    {/* Close button similar to 3D viewer */}
+    <button
+      onClick={() => setViewDentalHistory(false)}
+      style={{
+        position: "absolute",
+        top: "16px",
+        right: "16px",
+        padding: "10px 20px",
+        backgroundColor: "white",
+        border: "1px solid #e5e7eb",
+        borderRadius: "8px",
+        cursor: "pointer",
+        fontSize: "14px",
+        fontWeight: "600",
+        color: "#374151",
+        zIndex: 10001,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+      }}
+    >
+      <X size={18} />
+      Close
+    </button>
+
+    {/* Modal Content */}
+    <div style={{ flex: 1, padding: "60px 20px 20px 20px", overflow: "auto" }}>
+      <div
+        style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+          backgroundColor: "white",
+          borderRadius: "12px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+          padding: "24px",
+        }}
+      >
+        <div style={{ marginBottom: "24px" }}>
+          <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>
+            Dental Chart - {patient.name}
+          </h2>
+          <p style={{ color: "#64748B" }}>
+            Patient ID: {patient.patientUniqueId} | Age: {patient.age}
+          </p>
+        </div>
+        
+        <DentalChartView
+          patientId={patient._id}
+          onClose={() => setViewDentalHistory(false)}
+        />
+      </div>
+    </div>
+  </div>
+)}
             {!loading && (
               <div
                 style={{
