@@ -63,15 +63,15 @@ interface LabOrderResponse {
 
 type OrderStatus = "pending" | "completed" | "in-progress" | "cancelled";
 
-export default function LabOrdersPage() {
+  export default function LabOrdersPage() {
   const { clinicId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedStatus, setSelectedStatus] = useState(
-    searchParams.get("status") || "all"
+    searchParams.get("status") || "all",
   );
   const [searchQuery, setSearchQuery] = useState(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
   const [labOrders, setLabOrders] = useState<LabStatus | null>(null);
   const [labData, setLabData] = useState<LabOrderResponse | null>(null);
@@ -86,14 +86,26 @@ export default function LabOrdersPage() {
   // Modal state
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('inhouse');
+  const [activeTab, setActiveTab] = useState("inhouse");
   const [formData, setFormData] = useState({
     vendor: "",
     dentist: "",
     patientName: "",
     deliveryDate: "",
     note: "",
-    price: ""
+    price: "",
+    // Aligner specific fields
+    trays: {
+      upperArch: 0,
+      lowerArch: 0,
+    },
+    treatmentDuration: "",
+    // For file uploads
+    stlFiles: {
+      upper: null as File | null,
+      lower: null as File | null,
+      total: null as File | null,
+    },
   });
   const [files, setFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
@@ -106,43 +118,66 @@ export default function LabOrdersPage() {
   const [labsLoading, setLabsLoading] = useState(false);
 
   const tabs = [
-    { id: 'inhouse', label: 'In-House Lab' },
-    { id: 'external', label: 'External Lab' },
-    { id: 'aligner', label: 'Aligner Lab' }
+    { id: "inhouse", label: "In-House Lab" },
+    { id: "external", label: "External Lab" },
+    { id: "aligner", label: "Aligner Lab" },
   ];
+
+  // Function to reset form data
+  const resetFormData = () => {
+    setFormData({
+      vendor: "",
+      dentist: "",
+      patientName: "",
+      deliveryDate: "",
+      note: "",
+      price: "",
+      trays: {
+        upperArch: 0,
+        lowerArch: 0,
+      },
+      treatmentDuration: "",
+      stlFiles: {
+        upper: null,
+        lower: null,
+        total: null,
+      },
+    });
+    setFiles([]);
+    setSearch("");
+    setResults([]);
+  };
 
   // NEW: Function to fetch labs based on tab type
   const fetchLabsByType = async (labType: string) => {
     setLabsLoading(true);
     try {
-      let endpoint = '';
-      
-      switch(labType) {
-        case 'inhouse':
+      let endpoint = "";
+
+      switch (labType) {
+        case "inhouse":
           endpoint = `${labBaseUrl}api/v1/lab/inhouse-labs-by-clinic/${clinicId}`;
           break;
-        case 'external':
+        case "external":
           endpoint = `${labBaseUrl}api/v1/lab/external-vendors`;
           break;
-        case 'aligner':
+        case "aligner":
           endpoint = `${labBaseUrl}api/v1/lab/aligner-vendors`;
           break;
         default:
           endpoint = `${labBaseUrl}api/v1/lab/vendors`;
       }
-      console.log(endpoint);
-      
+
       const res = await axios.get(endpoint);
-      console.log(res);
-      
-      switch(labType) {
-        case 'inhouse':
+
+      switch (labType) {
+        case "inhouse":
           setInhouseLabs(res.data);
           break;
-        case 'external':
+        case "external":
           setExternalLabs(res.data);
           break;
-        case 'aligner':
+        case "aligner":
           setAlignerLabs(res.data);
           break;
       }
@@ -162,12 +197,12 @@ export default function LabOrdersPage() {
 
   // NEW: Function to get current labs based on active tab
   const getCurrentLabs = () => {
-    switch(activeTab) {
-      case 'inhouse':
+    switch (activeTab) {
+      case "inhouse":
         return inhouseLabs;
-      case 'external':
+      case "external":
         return externalLabs;
-      case 'aligner':
+      case "aligner":
         return alignerLabs;
       default:
         return [];
@@ -184,7 +219,7 @@ export default function LabOrdersPage() {
       try {
         setLoading(true);
         const res = await axios.get(
-          `${patientServiceBaseUrl}/api/v1/patient-service/patient/clinic-patients/${clinicId}?search=${search}`
+          `${patientServiceBaseUrl}/api/v1/patient-service/patient/clinic-patients/${clinicId}?search=${search}`,
         );
         setResults(res.data.data);
       } catch (err) {
@@ -199,7 +234,7 @@ export default function LabOrdersPage() {
   }, [search, clinicId]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -227,54 +262,101 @@ export default function LabOrdersPage() {
 
     try {
       const formDataToSend = new FormData();
-      
-      formDataToSend.append('labType', activeTab);
-      
-      Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, formData[key as keyof typeof formData]);
-      });
-      
-      files.forEach((file) => {
-        formDataToSend.append("files", file);
-      });
-      
-      const response = await axios.post(
-        `${labBaseUrl}api/v1/lab-orders/dental-orders`,
-        formDataToSend,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+
+      formDataToSend.append("labType", activeTab);
+      formDataToSend.append("clinicId", clinicId || "");
+
+      // Handle different lab types
+      if (activeTab === "aligner") {
+        // For aligner orders
+        formDataToSend.append("vendorId", formData.vendor);
+        formDataToSend.append("patientId", formData.patientName);
+        formDataToSend.append("doctorName", formData.dentist);
+        formDataToSend.append("upperArch", formData.trays.upperArch.toString());
+        formDataToSend.append("lowerArch", formData.trays.lowerArch.toString());
+        formDataToSend.append("totalAmount", formData.price);
+        formDataToSend.append("note", formData.note);
+
+        // Append STL files with specific keys
+        if (formData.stlFiles.upper) {
+          formDataToSend.append("upperFile", formData.stlFiles.upper);
         }
-      );
+        if (formData.stlFiles.lower) {
+          formDataToSend.append("lowerFile", formData.stlFiles.lower);
+        }
+        if (formData.stlFiles.total) {
+          formDataToSend.append("totalJaw", formData.stlFiles.total);
+        }
 
-      if (response.status === 200 || response.status === 201) {
-        alert("Dental lab order created successfully!");
-        setIsOpen(false);
-        setFormData({
-          vendor: "",
-          dentist: "",
-          patientName: "",
-          deliveryDate: "",
-          note: "",
-          price: "",
+        // Use aligner-specific endpoint
+        const response = await axios.post(
+          `${labBaseUrl}api/v1/aligners/create-order`,
+          formDataToSend,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          },
+        );
+        console.log(response);
+
+        if (response.status === 200 || response.status === 201) {
+          alert("Aligner order created successfully!");
+          // Reset form
+          setIsOpen(false);
+          resetFormData();
+          setActiveTab("inhouse");
+
+          fetchStats();
+          fetchOrders();
+          setCurrentCursorIndex(0);
+          setCursors([null]);
+        }
+      } else {
+        // For inhouse and external lab orders
+        Object.keys(formData).forEach((key) => {
+          if (key !== "trays" && key !== "stlFiles") {
+            const value = formData[key as keyof typeof formData];
+            if (typeof value === "string" || value instanceof Blob) {
+              formDataToSend.append(key, value);
+            }
+          }
         });
-        setFiles([]);
-        setSearch("");
-        setActiveTab('inhouse');
 
-        fetchStats();
-        fetchOrders();
-        setCurrentCursorIndex(0);
-        setCursors([null]);
+        // Append files for non-aligner orders
+        files.forEach((file) => {
+          formDataToSend.append("files", file);
+        });
+
+        const response = await axios.post(
+          `${labBaseUrl}api/v1/lab-orders/dental-orders`,
+          formDataToSend,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          },
+        );
+
+        if (response.status === 200 || response.status === 201) {
+          alert("Dental lab order created successfully!");
+          setIsOpen(false);
+          resetFormData();
+          setActiveTab("inhouse");
+
+          fetchStats();
+          fetchOrders();
+          setCurrentCursorIndex(0);
+          setCursors([null]);
+        }
       }
     } catch (error) {
       console.error("Error creating order:", error);
       const errorMessage = axios.isAxiosError(error)
         ? error.response?.data?.message || error.message
         : error instanceof Error
-        ? error.message
-        : "Unknown error occurred";
+          ? error.message
+          : "Unknown error occurred";
       alert("Error creating order: " + errorMessage);
     } finally {
       setLoading(false);
@@ -284,7 +366,7 @@ export default function LabOrdersPage() {
   const fetchStats = async () => {
     try {
       const statsResponse = await axios.get(
-        `${labBaseUrl}api/v1/lab-orders/lab-stats/${clinicId}`
+        `${labBaseUrl}api/v1/lab-orders/lab-stats/${clinicId}`,
       );
 
       setLabOrders({
@@ -321,10 +403,9 @@ export default function LabOrdersPage() {
 
       const response = await axios.get(
         `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
-        { params }
+        { params },
       );
-      console.log(response);
-      
+
       const { hasNextPage, nextCursor } = response.data;
 
       setLabData(response.data);
@@ -413,7 +494,7 @@ export default function LabOrdersPage() {
   const getDoctors = async () => {
     try {
       const res = await axios.get(
-        `${clinicServiceBaseUrl}/api/v1/clinic-service/active-doctors?clinicId=${clinicId}`
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/active-doctors?clinicId=${clinicId}`,
       );
       setDoctors(res.data.doctors);
     } catch (error) {
@@ -542,7 +623,10 @@ export default function LabOrdersPage() {
         </motion.div>
 
         {/* Filters & Search */}
-        <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm" style={{padding:'10px'}}>
+        <div
+          className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm"
+          style={{ padding: "10px" }}
+        >
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
               <input
@@ -584,7 +668,7 @@ export default function LabOrdersPage() {
                   {status.charAt(0).toUpperCase() +
                     status.slice(1).replace("-", " ")}
                 </button>
-              )
+              ),
             )}
           </div>
         </div>
@@ -645,10 +729,10 @@ export default function LabOrdersPage() {
                             order.status === "completed"
                               ? "bg-green-100 text-green-700"
                               : order.status === "pending"
-                              ? "bg-orange-100 text-orange-700"
-                              : order.status === "in-progress"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700"
+                                ? "bg-orange-100 text-orange-700"
+                                : order.status === "in-progress"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-gray-100 text-gray-700"
                           }`}
                         >
                           {order.status}
@@ -799,24 +883,27 @@ export default function LabOrdersPage() {
             </div>
 
             {/* Tabs */}
-            <div style={{ 
-              borderBottom: "1px solid #e5e7eb",
-              backgroundColor: "white",
-              position: "sticky",
-              top: "73px",
-              zIndex: 9
-            }}>
-              <div style={{ 
-                display: "flex",
-                padding: "0 24px"
-              }}>
+            <div
+              style={{
+                borderBottom: "1px solid #e5e7eb",
+                backgroundColor: "white",
+                position: "sticky",
+                top: "73px",
+                zIndex: 9,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  padding: "0 24px",
+                }}
+              >
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => {
                       setActiveTab(tab.id);
-                      // Reset vendor selection when switching tabs
-                      setFormData(prev => ({ ...prev, vendor: "" }));
+                      resetFormData();
                     }}
                     style={{
                       flex: 1,
@@ -827,7 +914,10 @@ export default function LabOrdersPage() {
                       fontSize: "14px",
                       fontWeight: "600",
                       color: activeTab === tab.id ? "#3b82f6" : "#6b7280",
-                      borderBottom: activeTab === tab.id ? "2px solid #3b82f6" : "2px solid transparent",
+                      borderBottom:
+                        activeTab === tab.id
+                          ? "2px solid #3b82f6"
+                          : "2px solid transparent",
                       transition: "all 0.2s",
                     }}
                     onMouseEnter={(e) => {
@@ -863,24 +953,26 @@ export default function LabOrdersPage() {
                     }}
                   >
                     <Building2 size={18} color="#6b7280" />
-                    {activeTab === 'inhouse' 
-                      ? 'In-House Lab *' 
-                      : activeTab === 'aligner' 
-                      ? 'Aligner Lab *' 
-                      : 'External Lab *'}
+                    {activeTab === "inhouse"
+                      ? "In-House Lab *"
+                      : activeTab === "aligner"
+                        ? "Aligner Lab *"
+                        : "External Lab *"}
                   </label>
                   {labsLoading ? (
-                    <div style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      color: "#6b7280",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px"
-                    }}>
+                    <div
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        color: "#6b7280",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
                       <Loader2 size={16} className="animate-spin" />
                       Loading labs...
                     </div>
@@ -908,11 +1000,12 @@ export default function LabOrdersPage() {
                       }
                     >
                       <option value="">
-                        Select {activeTab === 'inhouse' 
-                          ? 'In-House Lab' 
-                          : activeTab === 'aligner' 
-                          ? 'Aligner Lab' 
-                          : 'External Lab'}
+                        Select{" "}
+                        {activeTab === "inhouse"
+                          ? "In-House Lab"
+                          : activeTab === "aligner"
+                            ? "Aligner Lab"
+                            : "External Lab"}
                       </option>
                       {currentLabs.map((lab: any) => (
                         <option key={lab._id} value={lab._id}>
@@ -922,11 +1015,13 @@ export default function LabOrdersPage() {
                     </select>
                   )}
                   {!labsLoading && currentLabs.length === 0 && (
-                    <div style={{
-                      marginTop: "8px",
-                      fontSize: "12px",
-                      color: "#ef4444",
-                    }}>
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        fontSize: "12px",
+                        color: "#ef4444",
+                      }}
+                    >
                       No labs found for this category
                     </div>
                   )}
@@ -1069,7 +1164,7 @@ export default function LabOrdersPage() {
                 </div>
 
                 {/* Delivery Date */}
-                <div>
+                {/* <div>
                   <label
                     style={{
                       display: "flex",
@@ -1107,7 +1202,7 @@ export default function LabOrdersPage() {
                       (e.currentTarget.style.borderColor = "#d1d5db")
                     }
                   />
-                </div>
+                </div> */}
 
                 {/* Price */}
                 <div>
@@ -1153,7 +1248,295 @@ export default function LabOrdersPage() {
                   />
                 </div>
 
-                {/* Note */}
+                {/* Aligner-specific fields */}
+                {activeTab === "aligner" && (
+                  <>
+                    {/* Trays Section */}
+                    <div>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#374151",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <FileText size={18} color="#6b7280" />
+                        Number of Trays *
+                      </label>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "16px",
+                        }}
+                      >
+                        {/* Upper Arch Trays */}
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "13px",
+                              color: "#6b7280",
+                              marginBottom: "6px",
+                            }}
+                          >
+                            Upper Arch
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={formData.trays.upperArch}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                trays: {
+                                  ...prev.trays,
+                                  upperArch: parseInt(e.target.value) || 0,
+                                },
+                              }))
+                            }
+                            required
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "8px",
+                              fontSize: "14px",
+                              outline: "none",
+                              transition: "border-color 0.2s",
+                              boxSizing: "border-box",
+                            }}
+                            placeholder="0"
+                          />
+                        </div>
+
+                        {/* Lower Arch Trays */}
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "13px",
+                              color: "#6b7280",
+                              marginBottom: "6px",
+                            }}
+                          >
+                            Lower Arch
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={formData.trays.lowerArch}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                trays: {
+                                  ...prev.trays,
+                                  lowerArch: parseInt(e.target.value) || 0,
+                                },
+                              }))
+                            }
+                            required
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "8px",
+                              fontSize: "14px",
+                              outline: "none",
+                              transition: "border-color 0.2s",
+                              boxSizing: "border-box",
+                            }}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* STL Files Upload - Separate fields for aligner */}
+                    <div>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#374151",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <Upload size={18} color="#6b7280" />
+                        STL Files *
+                      </label>
+
+                      <div style={{ display: "grid", gap: "12px" }}>
+                        {/* Upper Jaw STL */}
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "13px",
+                              color: "#6b7280",
+                              marginBottom: "6px",
+                            }}
+                          >
+                            Upper Jaw STL *
+                          </label>
+                          <input
+                            type="file"
+                            accept=".stl,.STL"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  stlFiles: {
+                                    ...prev.stlFiles,
+                                    upper: file,
+                                  },
+                                }));
+                              }
+                            }}
+                            required
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "8px",
+                              fontSize: "14px",
+                              outline: "none",
+                              backgroundColor: "white",
+                              cursor: "pointer",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          {formData.stlFiles.upper && (
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                fontSize: "12px",
+                                color: "#6b7280",
+                              }}
+                            >
+                              Selected: {formData.stlFiles.upper.name}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Lower Jaw STL */}
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "13px",
+                              color: "#6b7280",
+                              marginBottom: "6px",
+                            }}
+                          >
+                            Lower Jaw STL *
+                          </label>
+                          <input
+                            type="file"
+                            accept=".stl,.STL"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  stlFiles: {
+                                    ...prev.stlFiles,
+                                    lower: file,
+                                  },
+                                }));
+                              }
+                            }}
+                            required
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "8px",
+                              fontSize: "14px",
+                              outline: "none",
+                              backgroundColor: "white",
+                              cursor: "pointer",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          {formData.stlFiles.lower && (
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                fontSize: "12px",
+                                color: "#6b7280",
+                              }}
+                            >
+                              Selected: {formData.stlFiles.lower.name}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Total Jaw STL */}
+                        <div>
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "13px",
+                              color: "#6b7280",
+                              marginBottom: "6px",
+                            }}
+                          >
+                            Total Jaw STL (Optional)
+                          </label>
+                          <input
+                            type="file"
+                            accept=".stl,.STL"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  stlFiles: {
+                                    ...prev.stlFiles,
+                                    total: file,
+                                  },
+                                }));
+                              }
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "8px",
+                              fontSize: "14px",
+                              outline: "none",
+                              backgroundColor: "white",
+                              cursor: "pointer",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          {formData.stlFiles.total && (
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                fontSize: "12px",
+                                color: "#6b7280",
+                              }}
+                            >
+                              Selected: {formData.stlFiles.total.name}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Note - Show for all tabs */}
                 <div>
                   <label
                     style={{
@@ -1197,50 +1580,52 @@ export default function LabOrdersPage() {
                   />
                 </div>
 
-                {/* File Upload */}
-                <div>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      color: "#374151",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <Upload size={18} color="#6b7280" />
-                    Attachments
-                  </label>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      outline: "none",
-                      backgroundColor: "white",
-                      cursor: "pointer",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                  {files.length > 0 && (
-                    <div
+                {/* File Upload - Only for non-aligner tabs */}
+                {activeTab !== "aligner" && (
+                  <div>
+                    <label
                       style={{
-                        marginTop: "8px",
-                        fontSize: "12px",
-                        color: "#6b7280",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#374151",
+                        marginBottom: "8px",
                       }}
                     >
-                      {files.length} file(s) selected
-                    </div>
-                  )}
-                </div>
+                      <Upload size={18} color="#6b7280" />
+                      Attachments
+                    </label>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileChange}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        outline: "none",
+                        backgroundColor: "white",
+                        cursor: "pointer",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    {files.length > 0 && (
+                      <div
+                        style={{
+                          marginTop: "8px",
+                          fontSize: "12px",
+                          color: "#6b7280",
+                        }}
+                      >
+                        {files.length} file(s) selected
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div

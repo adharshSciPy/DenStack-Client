@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { persistor } from "../../../redux/persistor.js";
 import {
   Calendar,
@@ -30,10 +30,15 @@ import { useAppSelector } from "../../../redux/hook.js";
 import clinicInventoryBaseUrl from "../../../clinicInventoryBaseUrl.js";
 
 export function DashboardSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
   const [appointmentCount, setAppointmentCount] = useState(0);
   const [clinic, setClinic] = useState<{ name: string } | null>(null);
   const [inventoryCount, setInventoryCount] = useState(0);
+
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -78,8 +83,43 @@ export function DashboardSidebar() {
     sessionStorage.clear();
     dispatch(clearCart());
     dispatch(logout());
-    navigate("/")
+    navigate("/");
   };
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+    }
+    
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(true);
+      setCollapsed(false);
+    }, 100);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+    }
+    
+    leaveTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+      setCollapsed(true);
+    }, 300);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      if (leaveTimeoutRef.current) clearTimeout(leaveTimeoutRef.current);
+    };
+  }, []);
 
   const menuItems = [
     { id: "overview", label: "Overview", icon: Home },
@@ -89,25 +129,27 @@ export function DashboardSidebar() {
     { id: "inventory", label: "Inventory", icon: Package, badge: inventoryCount },
     { id: "lab", label: "Lab Orders", icon: FlaskConical },
     { id: "patients", label: "Patient", icon: FileText },
-    // { id: "notifications", label: "Notifications", icon: Bell },
     { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
     { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
     { id: "cart", label: "Cart", icon: ShoppingCart, badge: cartItem.length },
     { id: "subclinic", label: "SubClinic", icon: Home },
     { id: "settings", label: "Settings", icon: Settings },
-
   ];
+
+  const isSidebarVisible = isHovered || !collapsed;
+  const sidebarWidth = isSidebarVisible ? "w-64" : "w-16";
 
   return (
     <div
-      className={`bg-white border-r h-full flex flex-col transition-all duration-300 ${
-        collapsed ? "w-16" : "w-64"
-      }`}
-      style={{ overflow: "scroll", scrollbarWidth: "none" }}
+      ref={sidebarRef}
+      className={`bg-white border-r h-full flex flex-col transition-all duration-300 fixed left-0 top-0 bottom-0 z-50 ${sidebarWidth}`}
+      style={{ overflow: "hidden", scrollbarWidth: "none" }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* HEADER */}
-      <div className="p-4 border-b flex items-center justify-between">
-        {!collapsed && (
+      <div className="p-4 border-b flex items-center justify-between min-h-[64px]">
+        {isSidebarVisible ? (
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Activity className="w-4 h-4 text-white" />
@@ -117,33 +159,43 @@ export function DashboardSidebar() {
               <p className="text-xs text-muted-foreground">Admin Panel</p>
             </div>
           </div>
+        ) : (
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto">
+            <Activity className="w-4 h-4 text-white" />
+          </div>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1 h-auto"
-        >
-          {collapsed ? <ChevronRight /> : <ChevronLeft />}
-        </Button>
+        
+        {isSidebarVisible && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-1 h-auto"
+          >
+            {collapsed ? <ChevronRight /> : <ChevronLeft />}
+          </Button>
+        )}
       </div>
 
       {/* NAVIGATION */}
-      <nav className="flex-1 p-2 space-y-1" style={{overflow:"scroll",scrollbarWidth:"none"}}>
+      <nav 
+        className="flex-1 p-2 space-y-1 overflow-y-auto"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
         {menuItems.map(({ id, label, icon: Icon, badge }) => (
           <NavLink
             key={id}
             to={`/dashboard/${clinicId}/${id}`}
             className={({ isActive }) =>
-              `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
+              `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 min-h-[44px]
               ${isActive ? "text-white" : "hover:bg-muted hover:text-primary"}`
             }
             style={({ isActive }) =>
               isActive
                 ? {
                     background: `
-                      radial-gradient(at 0% 0%, rgba(238, 174, 202, 0.4) 0px, transparent 50%),
-                      radial-gradient(at 100% 0%, rgba(147, 197, 253, 0.4) 0px, transparent 50%),
+                      radial-gradient(at 0% 0%, rgba(174, 229, 238, 0.4) 0px, transparent 50%),
+                      radial-gradient(at 100% 0%, rgba(6, 110, 229, 0.4) 0px, transparent 50%),
                       radial-gradient(at 100% 100%, rgba(253, 186, 116, 0.2) 0px, transparent 50%),
                       radial-gradient(at 0% 50%, rgba(233, 213, 255, 0.5) 0px, transparent 50%),
                       linear-gradient(to bottom right, #f8fafc, #f1f5f9)
@@ -154,12 +206,13 @@ export function DashboardSidebar() {
           >
             <Icon className="w-5 h-5 flex-shrink-0" />
 
-            {/* Hide text if collapsed */}
-            {!collapsed && (
+            {isSidebarVisible && (
               <>
-                <span className="text-sm">{label}</span>
-                {badge ? (
-                  <Badge className="ml-auto bg-white text-primary">{badge}</Badge>
+                <span className="text-sm whitespace-nowrap">{label}</span>
+                {badge !== undefined && badge > 0 ? (
+                  <Badge className="ml-auto bg-white text-primary text-xs min-w-[20px] flex items-center justify-center">
+                    {badge}
+                  </Badge>
                 ) : null}
               </>
             )}
@@ -168,25 +221,39 @@ export function DashboardSidebar() {
       </nav>
 
       {/* USER SECTION */}
-      {!collapsed && (
-        <div className="p-4 border-t">
+      <div className="p-4 border-t min-h-[72px]">
+        {isSidebarVisible ? (
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
               {clinic?.name ? clinic.name[0] : "U"}
             </div>
-            <div className="flex-1">
-              <p className="text-xs text-muted-foreground">Welcome</p>
-              <p className="text-sm">{clinic?.name}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground truncate">Welcome</p>
+              <p className="text-sm font-medium truncate">{clinic?.name || "User"}</p>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center px-3 py-2 rounded-md hover:bg-gray-100"
+              className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100 flex-shrink-0"
+              title="Logout"
             >
               <LogOut className="w-5 h-5" />
             </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-col items-center justify-center space-y-1">
+            <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+              {clinic?.name ? clinic.name[0] : "U"}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
