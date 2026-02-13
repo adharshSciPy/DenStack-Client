@@ -8,6 +8,7 @@ import {
   FlaskConical,
   FileText,
   Bell,
+  Stars,
   Settings,
   ShoppingCart,
   Activity,
@@ -134,6 +135,7 @@ export function DashboardSidebar() {
     { id: "cart", label: "Cart", icon: ShoppingCart, badge: cartItem.length },
     { id: "subclinic", label: "SubClinic", icon: Home },
     { id: "settings", label: "Settings", icon: Settings },
+    { id: "reviews  ", label:"Reviews", icon: Stars },
   ];
 
   const isSidebarVisible = isHovered || !collapsed;

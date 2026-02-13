@@ -882,7 +882,9 @@
 .bg-orange-600 {
   background-color: rgb(234 88 12);
 }
-
+.text-black{
+  color: black;
+}
 .bg-emerald-100 {
   background-color: rgb(209 250 229);
 }

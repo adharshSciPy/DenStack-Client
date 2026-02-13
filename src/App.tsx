@@ -18,7 +18,7 @@ import SettingsPage from "./components/admin/pages/settings-sidebar";
 import StaffRegistration from "./components/admin/pages/staff-dashboard";
 import Cart from "./components/admin/pages/Cart";
 import Patients from "./components/admin/pages/patient-dashboard";
-
+import ReviewsPageAdmin from "./components/admin/pages/ReviewListing";
 // Receptionist
 import ReceptionistLayout from "./components/receptionist/ReceptionistLayout";
 import Dashboard from "./components/receptionist/pages/Dashboard";
@@ -34,6 +34,7 @@ import LabDashboardPage from "./components/dental-lab/pages/DashboardPage";
 import LabRevenuePage from "./components/dental-lab/pages/RevenuePage";
 import SubClinic from "./components/admin/pages/SubClinic";
 import { useAppSelector } from "./redux/hook";
+import ReviewPage from "./components/receptionist/pages/ReviewPage";
 
 interface PrivateRouteProps {
   element: React.ReactNode;
@@ -89,6 +90,7 @@ export default function App() {
               <Route path="cart" element={<Cart />} />
               <Route path="staff" element={<StaffRegistration />} />
               <Route path="subclinic" element={<SubClinic />} />
+              <Route path="reviews" element={<ReviewsPageAdmin />} />
 
             </Route>
 
@@ -134,6 +136,8 @@ export default function App() {
               <Route path="queue" element={<QueueManagement />} />
               <Route path="billing" element={<Billing />} />
               <Route path="doctors" element={<DoctorAllocation />} />
+              <Route path="review/:token" element={<ReviewPage />} />
+
             </Route>
 
             {/* ---- DENTAL LAB ROUTES ---- */}
