@@ -10,6 +10,9 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Store,
+  ExternalLink,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Button } from "../../ui/button";
@@ -30,7 +33,7 @@ interface Product {
   description: string;
   price: number;
   image: string[];
-  brand: string | { brandName?: string }; // API sometimes sends id, sometimes full object
+  brand: string | { brandName?: string };
   category: { _id: string };
   stock: number;
   isLowStock: boolean;
@@ -42,22 +45,75 @@ interface Product {
   __v: number;
 }
 
+interface EcommerceOrder {
+  _id: string;
+  orderId: string;
+  clinicId: string;
+  items: Array<{
+    productId: string;
+    name: string;
+    quantity: number;
+    price: number;
+    image: string;
+  }>;
+  totalAmount: number;
+  status: string;
+  orderDate: string;
+  deliveryDate?: string;
+}
+
+interface EcommerceProduct {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  brand: string;
+  category: string;
+  stock: number;
+  rating: number;
+  reviewsCount: number;
+  vendorName: string;
+}
+
+interface AuthState {
+  token: string | null;
+  user?: {
+    _id: string;
+    // Add other user properties as needed
+  };
+}
+
+interface CartItem {
+  _id: string;
+  name: string;
+  price: number;
+  image: string[];
+  quantity: number;
+  stock: number;
+  vendorId?: string;
+  isEcommerce?: boolean;
+}
+
 interface ProductImageGalleryProps {
-  product: Product;
-  inventoryBaseUrl: string;
+  product: Product | EcommerceProduct;
+  inventoryBaseUrl?: string;
   className?: string;
+  isEcommerce?: boolean;
 }
 
 // ✅ ---- IMAGE GALLERY COMPONENT ---- //
-
 function ProductImageGallery({
   product,
-  inventoryBaseUrl,
+  inventoryBaseUrl = "",
   className,
+  isEcommerce = false,
 }: ProductImageGalleryProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  const images = product.image;
+  
+  const images = isEcommerce 
+    ? (product as EcommerceProduct).images 
+    : (product as Product).image;
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -72,9 +128,12 @@ function ProductImageGallery({
       <div className="relative h-48 bg-muted/20">
         {/* MAIN PRODUCT IMAGE */}
         <img
-          src={`${inventoryBaseUrl}${images[currentImageIndex]}`}
+          src={isEcommerce 
+            ? images[currentImageIndex] 
+            : `${inventoryBaseUrl}${images[currentImageIndex]}`
+          }
           alt={`${product.name} image ${currentImageIndex + 1}`}
-          className="w-full h-48 object-cover group-hover:scale-105 transition-transform rounded-lg"
+          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300 rounded-lg"
           onError={(e) => {
             e.currentTarget.src =
               "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300&h=200&fit=crop";
@@ -87,7 +146,7 @@ function ProductImageGallery({
             <button
               onClick={prevImage}
               className="absolute left-2 top-1/2 -translate-y-1/2
-                         bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5"
+                         bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -95,7 +154,7 @@ function ProductImageGallery({
             <button
               onClick={nextImage}
               className="absolute right-2 top-1/2 -translate-y-1/2
-                         bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5"
+                         bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -109,7 +168,7 @@ function ProductImageGallery({
               <button
                 key={idx}
                 onClick={() => setCurrentImageIndex(idx)}
-                className={`w-2 h-2 transition-all rounded-lg ${
+                className={`w-2 h-2 transition-all rounded-full ${
                   idx === currentImageIndex ? "bg-white w-4" : "bg-white/50"
                 }`}
               />
@@ -118,36 +177,49 @@ function ProductImageGallery({
         )}
 
         {/* BADGES */}
-        {product.isLowStock ? (
-          <Badge className="absolute top-2 right-2 bg-red-600">
+        {!isEcommerce && (product as Product).isLowStock && (
+          <Badge className="absolute top-2 right-2 bg-red-600 hover:bg-red-700">
             Out of Stock
           </Badge>
-        ) : null}
+        )}
+        {isEcommerce && (
+          <Badge className="absolute top-2 right-2 bg-green-600 hover:bg-green-700">
+            <Store className="w-3 h-3 mr-1" />
+            Ecommerce
+          </Badge>
+        )}
       </div>
     </div>
   );
 }
 
 // ✅ ---- PRODUCT DETAIL MODAL ---- //
-
 interface ProductDetailModalProps {
-  product: Product;
-  inventoryBaseUrl: string;
+  product: Product | EcommerceProduct;
+  inventoryBaseUrl?: string;
   isOpen: boolean;
   onClose: () => void;
-  onAddToCart: (product: Product, quantity: number) => void;
+  onAddToCart: (product: Product | EcommerceProduct, quantity: number) => void;
+  isEcommerce?: boolean;
 }
 
 function ProductDetailModal({
   product,
-  inventoryBaseUrl,
+  inventoryBaseUrl = "",
   isOpen,
   onClose,
   onAddToCart,
+  isEcommerce = false,
 }: ProductDetailModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [quantity, setQuantity] = useState(0);
-  const images = product.image;
+  const [quantity, setQuantity] = useState(1);
+  const images = isEcommerce 
+    ? (product as EcommerceProduct).images 
+    : (product as Product).image;
+
+  const stock = isEcommerce 
+    ? (product as EcommerceProduct).stock 
+    : (product as Product).stock;
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -159,10 +231,10 @@ function ProductDetailModal({
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
-    if (value >= 0 && value <= product.stock) {
+    if (!isNaN(value) && value >= 1 && value <= stock) {
       setQuantity(value);
     } else if (e.target.value === "") {
-      setQuantity(0);
+      setQuantity(1);
     }
   };
 
@@ -170,71 +242,37 @@ function ProductDetailModal({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1rem",
-        overflowY: "auto",
-        marginBottom: "0",
-      }}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-background rounded-lg w-full"
-        style={{
-          maxWidth: "56rem",
-          maxHeight: "90vh",
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-          position: "relative",
-          overflow: "auto",
-        }}
+        className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] shadow-2xl relative overflow-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* CLOSE BUTTON */}
         <button
           onClick={onClose}
-          className="bg-muted/60 hover:bg-muted rounded-full p-2 transition-colors"
-          style={{
-            position: "absolute",
-            top: "1rem",
-            right: "1rem",
-            zIndex: 10,
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-          }}
+          className="absolute top-4 right-4 z-10 bg-muted/60 hover:bg-muted rounded-full p-2 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="grid md:grid-cols-1 gap-6 p-6">
+        <div className="grid md:grid-cols-2 gap-6 p-6">
           {/* LEFT: IMAGE CAROUSEL */}
-          <div className="product-popup-carousel">
-            <div className="relative overflow-hidden rounded-lg bg-muted/30 carousel-wrapper">
-              {/* CAROUSEL TRACK */}
+          <div>
+            <div className="relative overflow-hidden rounded-lg bg-muted/30">
               <div
-                className="flex transition-transform duration-500"
-                style={{
-                  transform: `translateX(-${currentImageIndex * 100}%)`,
-                  height: "100%",
-                }}
+                className="flex transition-transform duration-500 ease-in-out"
+                style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
               >
                 {images.map((img, idx) => (
                   <div
                     key={idx}
-                    className="w-full flex-shrink-0"
-                    style={{ width: "100%", aspectRatio: "1 / 1" }}
+                    className="w-full shrink-0"
+                    style={{ aspectRatio: "1 / 1" }}
                   >
                     <img
-                      src={`${inventoryBaseUrl}${img}`}
+                      src={isEcommerce ? img : `${inventoryBaseUrl}${img}`}
                       alt={`Product image ${idx + 1}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -251,36 +289,13 @@ function ProductDetailModal({
                 <>
                   <button
                     onClick={prevImage}
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "12px",
-                      transform: "translateY(-50%)",
-                      padding: "8px",
-                      backgroundColor: "rgba(0, 0, 0, 0.6)",
-                      color: "white",
-                      borderRadius: "9999px",
-                      cursor: "pointer",
-                      border: "none",
-                    }}
+                    className="absolute top-1/2 left-3 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 transition-colors"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-
                   <button
                     onClick={nextImage}
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      right: "12px",
-                      transform: "translateY(-50%)",
-                      padding: "8px",
-                      backgroundColor: "rgba(0, 0, 0, 0.6)",
-                      color: "white",
-                      borderRadius: "9999px",
-                      cursor: "pointer",
-                      border: "none",
-                    }}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 transition-colors"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -288,18 +303,7 @@ function ProductDetailModal({
               )}
 
               {/* IMAGE COUNTER */}
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "12px",
-                  right: "12px",
-                  backgroundColor: "rgba(0, 0, 0, 0.6)",
-                  color: "white",
-                  padding: "4px 12px",
-                  borderRadius: "9999px",
-                  fontSize: "0.875rem",
-                }}
-              >
+              <div className="absolute bottom-3 right-3 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
                 {currentImageIndex + 1} / {images.length}
               </div>
             </div>
@@ -309,12 +313,20 @@ function ProductDetailModal({
           <div className="space-y-6">
             {/* HEADER */}
             <div>
-              <h2 className="text-3xl font-bold mb-2">{product.name}</h2>
-              <p className="text-muted-foreground">
-                {typeof product.brand === "string"
-                  ? "Brand ID"
-                  : product.brand?.brandName || "N/A"}
-              </p>
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-3xl font-bold">{product.name}</h2>
+                {isEcommerce && (
+                  <Badge className="bg-green-100 text-green-800 border-green-200">
+                    <Store className="w-3 h-3 mr-1" />
+                    Ecommerce
+                  </Badge>
+                )}
+              </div>
+              {isEcommerce && (
+                <p className="text-muted-foreground">
+                  Sold by: {(product as EcommerceProduct).vendorName}
+                </p>
+              )}
             </div>
 
             {/* RATING */}
@@ -327,28 +339,24 @@ function ProductDetailModal({
                   />
                 ))}
               </div>
-              <span className="text-sm text-muted-foreground">(0 reviews)</span>
+              <span className="text-sm text-muted-foreground">
+                ({isEcommerce ? (product as EcommerceProduct).reviewsCount : 0} reviews)
+              </span>
             </div>
 
             {/* PRICE & STOCK */}
-            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-              <div>
-                <p className="text-3xl font-bold text-primary">
-                  ${product.price}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Price per unit
-                </p>
-              </div>
-
-              <div className="text-right">
-                <Badge
-                  variant={product.isLowStock ? "destructive" : "outline"}
-                  className="text-base px-3 py-1"
-                >
-                  {product.isLowStock
-                    ? "Out of Stock"
-                    : `${product.stock} in stock`}
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-3xl font-bold text-primary">
+                    ${product.price}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Price per unit
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-base px-3 py-1">
+                  {stock} in stock
                 </Badge>
               </div>
             </div>
@@ -363,42 +371,55 @@ function ProductDetailModal({
 
             {/* PRODUCT INFO */}
             <div className="space-y-2">
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-muted-foreground">Product ID</span>
-                <span className="font-medium">{product.productId}</span>
-              </div>
-
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant="outline">{product.status}</Badge>
-              </div>
-
-              {product.expiryDate && (
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Expiry Date</span>
-                  <span className="font-medium">
-                    {new Date(product.expiryDate).toLocaleDateString()}
-                  </span>
-                </div>
+              {isEcommerce && (
+                <>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">Category</span>
+                    <span className="font-medium">
+                      {(product as EcommerceProduct).category}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">Brand</span>
+                    <span className="font-medium">
+                      {(product as EcommerceProduct).brand}
+                    </span>
+                  </div>
+                </>
               )}
             </div>
 
             {/* QUANTITY INPUT */}
-            <div className="flex justify-between py-2 border-b items-center">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
               <span className="text-muted-foreground">Quantity</span>
-              <input
-                type="number"
-                min="0"
-                max={product.stock}
-                className="w-24 px-3 py-1 border rounded-md text-center"
-                placeholder="Quantity"
-                value={quantity}
-                onChange={handleQuantityChange}
-              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-8 h-8 flex items-center justify-center border rounded hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={quantity <= 1}
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max={stock}
+                  className="w-16 text-center border rounded py-1"
+                  value={quantity}
+                  onChange={handleQuantityChange}
+                />
+                <button
+                  onClick={() => setQuantity(Math.min(stock, quantity + 1))}
+                  className="w-8 h-8 flex items-center justify-center border rounded hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={quantity >= stock}
+                >
+                  +
+                </button>
+              </div>
             </div>
 
             {/* TOTAL PRICE */}
-            <div className="flex justify-between py-2 bg-muted/20 px-4 rounded-lg">
+            <div className="flex justify-between p-4 bg-primary/5 rounded-lg">
               <span className="font-semibold">Total</span>
               <span className="font-bold text-lg text-primary">
                 ${(product.price * quantity).toFixed(2)}
@@ -410,7 +431,7 @@ function ProductDetailModal({
               <Button
                 size="lg"
                 className="flex-1 bg-primary hover:bg-primary/90"
-                disabled={product.isLowStock || quantity <= 0}
+                disabled={quantity <= 0}
                 onClick={() => {
                   onAddToCart(product, quantity);
                   onClose();
@@ -427,61 +448,92 @@ function ProductDetailModal({
   );
 }
 
-// ✅ ---- ORDER HISTORY (STATIC) ---- //
-
-const orderHistory = [
-  {
-    id: "ORD-001",
-    date: "2025-09-10",
-    items: 3,
-    total: 459.97,
-    status: "Delivered",
-  },
-  {
-    id: "ORD-002",
-    date: "2025-09-08",
-    items: 1,
-    total: 2499.99,
-    status: "In Transit",
-  },
-  {
-    id: "ORD-003",
-    date: "2025-09-05",
-    items: 5,
-    total: 234.95,
-    status: "Delivered",
-  },
-];
-
 // ✅ ---- MARKETPLACE TAB MAIN ---- //
-
 export function MarketplaceTab() {
-  const { token } = useAppSelector((state) => state.auth);
-  const cartItems = useAppSelector((state) => state.cart.items);
-  console.log(cartItems);
-
+  const auth = useAppSelector((state: any) => state.auth as AuthState);
+  const token = auth?.token || null;
+  const user = auth?.user;
+  const cartItems = useAppSelector((state: any) => state.cart.items as CartItem[]);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  console.log("MarketplaceTab Rendered - Token:", token);
+
+  // State variables
   const [selectedCategory, setSelectedCategory] = useState("All Products");
   const [categories, setCategories] = useState<string[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const dispatch = useDispatch();
+  const [selectedProduct, setSelectedProduct] = useState<Product | EcommerceProduct | null>(null);
+  const [ecommerceProducts, setEcommerceProducts] = useState<EcommerceProduct[]>([]);
+  const [ecommerceOrders, setEcommerceOrders] = useState<EcommerceOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasEcommerceOrders, setHasEcommerceOrders] = useState(false);
+  const [activeView, setActiveView] = useState<'inventory' | 'ecommerce'>('inventory');
 
-  const handleAddToCart = (product: Product, quantity: number) => {
-    dispatch(
-      addToCart({
-        _id: product._id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        quantity: quantity,
-        stock:product.stock,
-        vendorId:product.addedById,
-      })
-    );
+  // Check if clinic has ecommerce orders
+  const checkEcommerceOrders = async () => {
+    if (!token || !user?._id) {
+      setHasEcommerceOrders(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      // Call your API to check if clinic has ecommerce orders
+      const response = await axios.get(
+        `${inventoryBaseUrl}/api/v1/ecommerce/orders/clinic/${user._id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data?.data && response.data.data.length > 0) {
+        setHasEcommerceOrders(true);
+        setEcommerceOrders(response.data.data);
+        // Fetch ecommerce products if orders exist
+        await fetchEcommerceProducts();
+      } else {
+        setHasEcommerceOrders(false);
+      }
+    } catch (error) {
+      console.error("Error checking ecommerce orders:", error);
+      setHasEcommerceOrders(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // ✅ Fetch product categories
+  // Fetch ecommerce products
+  const fetchEcommerceProducts = async () => {
+    try {
+      const response = await axios.get(
+        `${inventoryBaseUrl}/api/v1/ecommerce/products`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setEcommerceProducts(response.data?.data || []);
+    } catch (error) {
+      console.error("Error fetching ecommerce products:", error);
+      setEcommerceProducts([]);
+    }
+  };
+
+  // Navigate to external ecommerce with token
+  const navigateToEcommerce = () => {
+    if (!token) {
+      console.error("No token available");
+      return;
+    }
+    
+    // Encode token for safe URL passing
+    const encodedToken = encodeURIComponent(token);
+    const clinicId = user?._id || '';
+    
+    // Replace with your actual ecommerce URL
+    const ecommerceUrl = `http://localhost:4000/login?accessToken=${encodedToken}&clinicId=${clinicId}`;
+    
+    // Open in new tab
+    window.open(ecommerceUrl, '_blank');
+  };
+
+  // Fetch product categories
   const getCategories = async () => {
     try {
       const response = await axios.get(
@@ -489,42 +541,358 @@ export function MarketplaceTab() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const categoryNames = response.data.data.map(
+      const categoryNames = response.data?.data?.map(
         (cat: any) => cat.categoryName
-      );
-      console.log("res",response);
-      
+      ) || [];
       setCategories(["All Products", ...categoryNames]);
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching categories:", error);
+      setCategories(["All Products"]);
     }
   };
 
-  // ✅ Fetch product list
+  // Fetch inventory products
   const getProducts = async () => {
     try {
       const response = await axios.get(
         `${inventoryBaseUrl}/api/v1/product/productsDetails`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      setProducts(response.data.data);
-      console.log(response);
-      
+      setProducts(response.data?.data || []);
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching products:", error);
+      setProducts([]);
     }
   };
 
+  // Initialize
   useEffect(() => {
-    getCategories();
-    getProducts();
-  }, []);
+    if (token) {
+      checkEcommerceOrders();
+      getCategories();
+      getProducts();
+    }
+  }, [token, user]);
+
+  const handleAddToCart = (product: Product | EcommerceProduct, quantity: number) => {
+    const isEcommerceProd = 'images' in product;
+    
+    const cartItem = {
+      _id: product._id,
+      name: product.name,
+      price: product.price,
+      image: isEcommerceProd ? product.images : product.image,
+      quantity: quantity,
+      stock: product.stock,
+      vendorId: 'addedById' in product ? product.addedById : '',
+      isEcommerce: isEcommerceProd,
+    };
+
+    dispatch(addToCart(cartItem));
+  };
 
   const goToCart = () => {
     navigate("/cart");
   };
-console.log("products",selectedProduct);
+
+  // Render ecommerce orders section
+  const renderEcommerceOrders = () => {
+    if (!hasEcommerceOrders || ecommerceProducts.length === 0) {
+      return (
+        <Card className="bg-linear-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <CardContent className="p-8 text-center">
+            <Store className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Access Ecommerce Marketplace</h3>
+            <p className="text-muted-foreground mb-6">
+              Browse and order from our extensive ecommerce marketplace with your clinic account
+            </p>
+            <Button 
+              size="lg" 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={navigateToEcommerce}
+            >
+              <ExternalLink className="w-5 h-5 mr-2" />
+              Visit Ecommerce Marketplace
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Ecommerce Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <Store className="w-8 h-8 text-green-600" />
+              <h2 className="text-2xl font-bold">Ecommerce Products</h2>
+            </div>
+            <p className="text-muted-foreground">
+              Products from our marketplace partners
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            className="border-green-600 text-green-600 hover:bg-green-50"
+            onClick={navigateToEcommerce}
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Browse More
+          </Button>
+        </div>
+
+        {/* View Toggle */}
+        <div className="flex border-b">
+          <button
+            className={`px-4 py-2 font-medium ${
+              activeView === 'inventory'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => setActiveView('inventory')}
+          >
+            Inventory Products
+          </button>
+          <button
+            className={`px-4 py-2 font-medium ${
+              activeView === 'ecommerce'
+                ? 'border-b-2 border-green-600 text-green-600'
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => setActiveView('ecommerce')}
+          >
+            Ecommerce Products
+          </button>
+        </div>
+
+        {/* Ecommerce Products Grid */}
+        {activeView === 'ecommerce' && (
+          <>
+            {/* Recent Orders */}
+            {ecommerceOrders.length > 0 && (
+              <Card className="border-green-200">
+                <CardHeader className="bg-green-50 rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Recent Ecommerce Orders
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    {ecommerceOrders.slice(0, 3).map((order) => (
+                      <div
+                        key={order._id}
+                        className="p-4 bg-green-50/50 rounded-lg border border-green-100"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Order #{order.orderId}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(order.orderDate).toLocaleDateString()} • 
+                              {order.items.length} items • ${order.totalAmount}
+                            </p>
+                          </div>
+                          <Badge className={
+                            order.status === 'Delivered' 
+                              ? 'bg-green-600' 
+                              : order.status === 'Processing'
+                              ? 'bg-yellow-600'
+                              : 'bg-blue-600'
+                          }>
+                            {order.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Ecommerce Products */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {ecommerceProducts.map((product) => (
+                <Card
+                  key={product._id}
+                  className="hover:shadow-lg transition-shadow group border-green-200 hover:border-green-300"
+                >
+                  <ProductImageGallery
+                    product={product}
+                    isEcommerce={true}
+                    className="rounded-t-lg"
+                  />
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-medium line-clamp-2">
+                          {product.name}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {product.brand}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                            <Store className="w-3 h-3 mr-1" />
+                            {product.vendorName}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {product.description}
+                      </p>
+
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <span className="text-sm">{product.rating}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          ({product.reviewsCount} reviews)
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <p className="text-lg font-bold text-green-600">
+                          ${product.price}
+                        </p>
+                        <Badge variant="outline" className="bg-blue-50">
+                          Stock: {product.stock}
+                        </Badge>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Add to Cart
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Inventory Products Grid */}
+        {activeView === 'inventory' && (
+          <div className="space-y-6">
+            <Card className="bg-muted/60">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search products..." className="pl-10" />
+                  </div>
+                  <Button variant="outline">
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {categories.map((category) => (
+                    <Button
+                      key={category}
+                      variant={selectedCategory === category ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedCategory(category)}
+                    >
+                      {category}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <Card
+                  key={product._id}
+                  className="hover:shadow-lg bg-muted/60 transition-shadow group rounded-lg hover:shadow-xl"
+                >
+                  <ProductImageGallery
+                    product={product}
+                    inventoryBaseUrl={inventoryBaseUrl}
+                    className="rounded-t-lg"
+                  />
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-medium line-clamp-2">
+                          {product.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {typeof product.brand === "string"
+                            ? "Brand ID"
+                            : product.brand?.brandName || "N/A"}
+                        </p>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {product.description}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <span className="text-sm">4.5</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          (0 reviews)
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-lg font-bold text-primary">
+                          ${product.price}
+                        </p>
+                        <Badge variant="outline">
+                          Stock: {product.stock}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-primary hover:bg-primary/90"
+                          disabled={product.isLowStock}
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Add to Cart
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* PRODUCT DETAIL MODAL */}
@@ -535,18 +903,20 @@ console.log("products",selectedProduct);
           isOpen={!!selectedProduct}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
+          isEcommerce={'images' in selectedProduct}
         />
       )}
 
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl">Marketplace</h2>
+          <h2 className="text-2xl font-bold">Marketplace</h2>
           <p className="text-muted-foreground">
-            Browse and order dental supplies
+            {hasEcommerceOrders 
+              ? "Browse inventory and ecommerce products" 
+              : "Browse and order dental supplies"}
           </p>
         </div>
-
         <Button variant="outline" className="relative" onClick={goToCart}>
           <ShoppingCart className="w-4 h-4 mr-2" />
           Cart
@@ -558,193 +928,145 @@ console.log("products",selectedProduct);
         </Button>
       </div>
 
-      {/* TABS */}
-      <Tabs defaultValue="browse" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
-          <TabsTrigger value="browse">Browse</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="favorites">Favorites</TabsTrigger>
-        </TabsList>
+      {/* Main Content */}
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      ) : hasEcommerceOrders ? (
+        renderEcommerceOrders()
+      ) : (
+        <Tabs defaultValue="browse" className="w-full">
+          <TabsList className="grid grid-cols-3 w-full max-w-md">
+            <TabsTrigger value="browse">Browse</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="ecommerce">
+              <Store className="w-4 h-4 mr-2" />
+              Ecommerce
+            </TabsTrigger>
+          </TabsList>
 
-        {/* ✅ ---- BROWSE PRODUCTS TAB ---- */}
-        <TabsContent value="browse" className="space-y-6 mt-6">
-          {/* SEARCH + FILTER */}
-          <Card className="bg-muted/60">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search products..." className="pl-10" />
-                </div>
-
-                <Button variant="outline">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filters
-                </Button>
-              </div>
-
-              {/* CATEGORY FILTER */}
-              <div className="flex flex-wrap gap-2 mt-4">
-                {categories.map((category) => (
-                  <Button
-                    key={category}
-                    variant={
-                      selectedCategory === category ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => setSelectedCategory(category)}
-                  >
-                    {category}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ✅ ---- PRODUCT GRID ---- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <Card
-                key={product._id}
-                className="hover:shadow-lg bg-muted/60 transition-shadow group rounded-lg"
-              >
-                <ProductImageGallery
-                  product={product}
-                  inventoryBaseUrl={inventoryBaseUrl}
-                  className="rounded-t-lg"
-                />
-
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    {/* PRODUCT NAME + BRAND */}
-                    <div>
-                      <h3 className="font-medium line-clamp-2">
-                        {product.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {typeof product.brand === "string"
-                          ? "Brand ID"
-                          : product.brand.brandName || "N/A"}
-                      </p>
-                    </div>
-
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {product.description}
-                    </p>
-
-                    {/* STAR RATING */}
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-sm">4.5</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        (0 reviews)
-                      </span>
-                    </div>
-
-                    {/* PRICE + STOCK */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold text-primary">
-                        ${product.price}
-                      </p>
-                      <Badge variant="outline">Stock: {product.stock}</Badge>
-                    </div>
-
-                    {/* BUTTONS */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => setSelectedProduct(product)}
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-primary hover:bg-primary/90"
-                        disabled={product.isLowStock}
-                        onClick={() => setSelectedProduct(product)}
-                      >
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                        Add to Cart
-                      </Button>
-                    </div>
+          {/* Browse Tab */}
+          <TabsContent value="browse" className="space-y-6 mt-6">
+            <Card className="bg-muted/60">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search products..." className="pl-10" />
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+                  <Button variant="outline">
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {categories.map((category) => (
+                    <Button
+                      key={category}
+                      variant={selectedCategory === category ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedCategory(category)}
+                    >
+                      {category}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* ✅ ---- ORDERS TAB ---- */}
-        <TabsContent value="orders" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {orderHistory.map((order) => (
-                  <div
-                    key={order.id}
-                    className="p-4 bg-muted/30 rounded-lg flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-4">
-                      <Package className="w-8 h-8 text-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <Card
+                  key={product._id}
+                  className="hover:shadow-lg bg-muted/60 transition-shadow group rounded-lg hover:shadow-xl"
+                >
+                  <ProductImageGallery
+                    product={product}
+                    inventoryBaseUrl={inventoryBaseUrl}
+                    className="rounded-t-lg"
+                  />
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
                       <div>
-                        <p className="font-medium">Order {order.id}</p>
+                        <h3 className="font-medium line-clamp-2">
+                          {product.name}
+                        </h3>
                         <p className="text-sm text-muted-foreground">
-                          {order.date} • {order.items} items • ${order.total}
+                          {typeof product.brand === "string"
+                            ? "Brand ID"
+                            : product.brand?.brandName || "N/A"}
                         </p>
                       </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {product.description}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <span className="text-sm">4.5</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          (0 reviews)
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-lg font-bold text-primary">
+                          ${product.price}
+                        </p>
+                        <Badge variant="outline">
+                          Stock: {product.stock}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-primary hover:bg-primary/90"
+                          disabled={product.isLowStock}
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Add to Cart
+                        </Button>
+                      </div>
                     </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
 
-                    <Badge
-                      className={
-                        order.status === "Delivered"
-                          ? "bg-green-600"
-                          : "bg-secondary"
-                      }
-                    >
-                      {order.status === "In Transit" && (
-                        <Truck className="w-3 h-3 mr-1" />
-                      )}
-                      {order.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ✅ ---- FAVORITES TAB ---- */}
-        <TabsContent value="favorites" className="space-y-6 mt-6">
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No favorites yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Browse products and mark items as favorites
-              </p>
-              <Button
-                className="bg-primary"
-                onClick={() =>
-                  document
-                    .querySelector('[value="browse"]')
-                    ?.dispatchEvent(new MouseEvent("click"))
-                }
-              >
-                Browse Products
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          {/* Ecommerce Tab */}
+          <TabsContent value="ecommerce" className="space-y-6 mt-6">
+            <Card className="bg-linear-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="p-8 text-center">
+                <Store className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Access Ecommerce Marketplace</h3>
+                <p className="text-muted-foreground mb-6">
+                  Browse and order from our extensive ecommerce marketplace with your clinic account
+                </p>
+                <Button 
+                  size="lg" 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={navigateToEcommerce}
+                >
+                  <ExternalLink className="w-5 h-5 mr-2" />
+                  Visit Ecommerce Marketplace
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
