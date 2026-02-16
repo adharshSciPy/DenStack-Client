@@ -38,7 +38,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           className="flex-1 overflow-y-auto p-6"
           style={{ 
             marginLeft: "20%",
-            height: "calc(100vh - 80px)",
+            // height: "calc(100vh - 80px)",
             position: "relative"
           }}
         >
