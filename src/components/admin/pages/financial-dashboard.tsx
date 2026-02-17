@@ -873,7 +873,7 @@ export function FinancialDashboard() {
           </div>
 
           {/* Recent Transactions */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Billing Summary</CardTitle>
             </CardHeader>
@@ -905,7 +905,7 @@ export function FinancialDashboard() {
                 <p className="text-lg font-bold text-green-600">{dashboardData?.billingSummary.paymentRate || '0%'}</p>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </>
       )}
 
