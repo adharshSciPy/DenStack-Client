@@ -7,6 +7,7 @@ import {
   LogOut,
   LucideIcon,
 } from "lucide-react";
+import { useAppSelector } from "../../../../redux/hook";
 
 interface NavItem {
   id: string;
@@ -15,8 +16,10 @@ interface NavItem {
   path: string;
   badge?: number | null;
 }
-
 const Navigation: React.FC = () => {
+  const labVendorId=useAppSelector((state) => state.auth.user?.labVendorId);
+  console.log(labVendorId.labVendorId);
+  
   const navigate = useNavigate();
 
   const navItems: NavItem[] = [
@@ -24,25 +27,25 @@ const Navigation: React.FC = () => {
       id: "dashboard",
       icon: Activity,
       label: "Dashboard",
-      path: "/labadmin/dashboard",
+      path: `/labadmin/dashboard/${labVendorId}`,
     },
     {
       id: "orders",
       icon: Package,
       label: "Orders",
-      path: "/labadmin/orders",
+      path: `/labadmin/orders/${labVendorId}`,
     },
     {
       id: "revenue",
       icon: DollarSign,
       label: "Accounts",
-      path: "/labadmin/revenue",
+      path: `/labadmin/revenue/${labVendorId}`,
     },
     {
       id: "inventory",
       icon: Package,
       label: "Inventory",
-      path: "/labadmin/inventory",
+      path: `/labadmin/inventory/${labVendorId}`,
     },
   ];
 

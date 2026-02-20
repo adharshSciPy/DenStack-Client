@@ -103,7 +103,7 @@ const DashboardPage = () => {
   const [pageSize] = useState(5);
   const [searchParams] = useSearchParams();
   const [labData, setLabData] = useState<LabOrder[] | null>(null);
-
+  const labOrderId = useAppSelector((state) => state.auth.user?.labVendorId);
   const [searchQuery] = useState(searchParams.get("search") || "");
   const [selectedStatus] = useState(searchParams.get("status") || "all");
 
@@ -111,7 +111,7 @@ const DashboardPage = () => {
   const fetchStats = async () => {
     try {
       const statsResponse = await axios.get(
-        `${labBaseUrl}api/v1/lab-orders/lab-stats/${clinicId}`
+        `${labBaseUrl}api/v1/lab-orders/lab-status/${labOrderId}`
       );
 
       setLabOrders({
@@ -138,7 +138,7 @@ const DashboardPage = () => {
       if (searchQuery.trim()) params.search = searchQuery.trim();
 
       const response = await axios.get(
-        `${labBaseUrl}api/v1/lab-orders/getLatest/clinic-dental-orders/${clinicId}`,
+        `${labBaseUrl}api/v1/lab-orders/lab/${labOrderId}`,
         { params }
       );
       console.log(response);

@@ -110,7 +110,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   // Cursor-based pagination state
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
-
+  const labOrderId = useAppSelector((state) => state.auth.user?.labVendorId);
   const getStatusConfig = (status: LabOrder["status"]): StatusConfig => {
     const configs = {
       pending: {
@@ -175,6 +175,8 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   // Fetch orders with cursor
   useEffect(() => {
     const fetchOrders = async () => {
+      console.log(clinicId);
+      
       if (currentPageIndex === 0) {
         setIsLoading(true);
       } else {
@@ -194,12 +196,13 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
         if (searchQuery.trim()) params.search = searchQuery.trim();
 
         const response = await axios.get(
-          `${labBaseUrl}api/v1/lab-orders/clinic-dental-orders/${clinicId}`,
+          `${labBaseUrl}api/v1/lab-orders/lab/${labOrderId}`,
           { params },
         );
 
         setLabData(response);
-
+        console.log(response);
+        
         // Update cursor history if there's a next page
         if (
           response.data.nextCursor &&
