@@ -7,6 +7,7 @@ import {
   FileText,
   DollarSign,
   User,
+  MessageCircle
 } from "lucide-react";
 import PatientProfile from "./PatientProfile";
 import PatientBilling from "./PatientBilling";
@@ -74,7 +75,7 @@ export default function PatientManagement() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<"list" | "profile" | "billing" | "history">("list"); // Add history view
+  const [currentView, setCurrentView] = useState<"list" | "profile" | "billing" | "history">("list");
   
   const reception = useAppSelector(
     (state) => state.auth.user
@@ -85,7 +86,6 @@ export default function PatientManagement() {
     try {
       setLoading(true);
       
-      // Build URL with query parameters
       const params = new URLSearchParams();
       if (search.trim()) {
         params.append('search', search.trim());
@@ -108,11 +108,10 @@ export default function PatientManagement() {
     if (!clinicId) return;
 
     const timeoutId = setTimeout(() => {
-      // Only search if query is empty (to load all) or has 3+ characters
       if (searchQuery.trim().length === 0 || searchQuery.trim().length >= 3) {
         getPatients(searchQuery);
       }
-    }, 500); // Wait 500ms after user stops typing
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [clinicId, searchQuery]);
@@ -148,6 +147,37 @@ export default function PatientManagement() {
     setSelectedPatient(patient);
     setCurrentView("history");
   };
+
+  // Add this function to generate WhatsApp link
+const generateWhatsAppLink = async (patient: PatientData) => {
+  try {
+    const response = await axios.get(
+      `${patientServiceBaseUrl}/api/v1/patient-service/patient/encrypted-link/${patient._id}`
+    );
+    
+    const { secureLink } = response.data.data;
+    const lastFourDigits = patient.patientUniqueId.slice(-4);
+    
+    // The secureLink now has NO special characters
+    const portalUrl = `${window.location.origin}/patient-access/${secureLink}`;
+    
+    console.log('Clean URL:', portalUrl); // Should show only alphanumeric + - and _
+    
+   const message = encodeURIComponent(
+`Hello ${patient.name},
+Click this link to access your dental records:
+${portalUrl}
+Verification code: ${lastFourDigits}`
+);
+
+    
+    return `https://wa.me/${patient.phone}?text=${message}`;
+  } catch (error) {
+    console.error('Error generating secure link:', error);
+    alert('Failed to generate secure access link. Please try again.');
+    throw error;
+  }
+};
 
   // Render based on current view
   if (currentView === "profile" && selectedPatient) {
@@ -326,12 +356,6 @@ export default function PatientManagement() {
                         >
                           <Eye className={styles.actionIcon} />
                         </button>
-                        {/* <button
-                          className={`${styles.actionButton} ${styles.calendarButton}`}
-                          title="Book Appointment"
-                        >
-                          <Calendar className={styles.actionIcon} />
-                        </button> */}
                         <button
                           onClick={() => handleViewHistory(patient)}
                           className={`${styles.actionButton} ${styles.historyButton}`}
@@ -345,6 +369,17 @@ export default function PatientManagement() {
                           title="Billing"
                         >
                           <DollarSign className={styles.actionIcon} />
+                        </button>
+                        {/* Add WhatsApp button here */}
+                        <button
+                       onClick={async () => {
+    const link = await generateWhatsAppLink(patient);
+    window.open(link, '_blank');
+  }}
+                          className={`${styles.actionButton} ${styles.whatsappButton}`}
+                          title="Send Access Link via WhatsApp"
+                        >
+                          <MessageCircle className={styles.actionIcon} />
                         </button>
                       </div>
                     </td>

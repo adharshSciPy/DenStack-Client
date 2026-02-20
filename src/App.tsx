@@ -35,6 +35,8 @@ import LabRevenuePage from "./components/dental-lab/pages/RevenuePage";
 import SubClinic from "./components/admin/pages/SubClinic";
 import { useAppSelector } from "./redux/hook";
 import ReviewPage from "./components/receptionist/pages/ReviewPage";
+import PatientPortalPage from "./components/receptionist/pages/PatientPortalPage";
+
 
 interface PrivateRouteProps {
   element: React.ReactNode;
@@ -158,7 +160,7 @@ export default function App() {
               <Route path="vendors" element={<div>Lab Vendors Page</div>} />
               <Route path="settings" element={<div>Lab Settings</div>} />
             </Route>
-
+<Route path="/patient-access/:encryptedId" element={<PatientPortalPage />} />
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
