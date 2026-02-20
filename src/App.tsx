@@ -34,6 +34,10 @@ import LabDashboardPage from "./components/dental-lab/pages/DashboardPage";
 import LabRevenuePage from "./components/dental-lab/pages/RevenuePage";
 import SubClinic from "./components/admin/pages/SubClinic";
 import { useAppSelector } from "./redux/hook";
+import { InventoryPage } from "./components/dental-lab/pages/InventoryPage"; 
+
+
+
 import ReviewPage from "./components/receptionist/pages/ReviewPage";
 
 interface PrivateRouteProps {
@@ -45,7 +49,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ element, allowedRoles }) =>
   const token = useAppSelector((state) => state.auth.token);
   const role = useAppSelector((state) => state.auth.user.role);
 
-  console.log(useAppSelector((state) => state.auth.user));
+  console.log(useAppSelector((state) => state.auth.user.id));
   
 
   if (!token) return <Navigate to="/login" replace />;
@@ -156,6 +160,8 @@ export default function App() {
               <Route path="revenue" element={<LabRevenuePage />} />
               <Route path="vendors" element={<div>Lab Vendors Page</div>} />
               <Route path="settings" element={<div>Lab Settings</div>} />
+              <Route path="inventory" element={<InventoryPage />} />
+
             </Route>
 
             {/* Fallback */}

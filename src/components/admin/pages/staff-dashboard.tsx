@@ -1,4 +1,4 @@
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import baseUrl from "../../../baseUrl";
 import {
@@ -20,6 +20,8 @@ import {
 import axios from "axios";
 import { Button } from "../../ui/button";
 import { useAppSelector } from "../../../redux/hook";
+import labBaseUrl from "../../../labBaseUrl";
+
 interface StaffMember {
   id: string;
   name: string;
@@ -63,13 +65,17 @@ interface ClinicStaffResponse {
   total: number;
   staffCounts: StaffCounts;
 }
-interface Staff {
+
+interface Lab {
+  _id: string;
+  id?: string;
   name: string;
-  email: string;
-  id: string;
-  role: string;
-  userRole: string;
+  location?: string;
+  email?: string;
+  phone?: string;
+  status?: string;
 }
+
 const StaffRegistration: React.FC = () => {
   const [formData, setFormData] = useState<StaffFormData>({
     name: "",
@@ -109,6 +115,12 @@ const StaffRegistration: React.FC = () => {
     appointments: { read: false, write: false },
     billing: { read: false, write: false },
   });
+  
+  // States for lab dropdown
+  const [labs, setLabs] = useState<Lab[]>([]);
+  const [selectedLabVendorId, setSelectedLabVendorId] = useState<string | null>(null);
+  const [loadingLabs, setLoadingLabs] = useState(false);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -116,13 +128,65 @@ const StaffRegistration: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedRole(e.target.value);
+  // Simplified fetch function - ONLY in-house labs
+  const fetchLabs = async () => {
+    setLoadingLabs(true);
+    try {
+      // Only fetch in-house labs
+      const response = await axios.get(
+        `${labBaseUrl}api/v1/lab/inhouse-labs-by-clinic/${clinicId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      console.log("In-house labs response:", response.data);
+      
+      // Handle different response structures
+      if (response.data?.success && response.data?.labs) {
+        setLabs(response.data.labs);
+      } else if (response.data?.data) {
+        setLabs(response.data.data);
+      } else if (Array.isArray(response.data)) {
+        setLabs(response.data);
+      } else if (response.data?.labs && Array.isArray(response.data.labs)) {
+        setLabs(response.data.labs);
+      } else {
+        setLabs([]);
+        console.warn("Unexpected response structure:", response.data);
+      }
+    } catch (error: any) {
+      console.error("Error fetching in-house labs:", error);
+      setLabs([]);
+      
+      // Optional: Show user-friendly error message
+      setMessage("Failed to load in-house labs");
+      setMessageType("error");
+    } finally {
+      setLoadingLabs(false);
+    }
+  };
+
+  const handleRoleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const role = e.target.value;
+    setSelectedRole(role);
     setFormData((prev) => ({
       ...prev,
       specialization: "",
       licenseNumber: "",
     }));
+    
+    // Reset lab selection when role changes
+    setSelectedLabVendorId(null);
+    
+    // Fetch in-house labs when technician role is selected
+    if (role === "technician") {
+      await fetchLabs();
+    } else {
+      setLabs([]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -140,6 +204,13 @@ const StaffRegistration: React.FC = () => {
       return;
     }
 
+    // Validate lab selection for technicians
+    if (selectedRole === "technician" && !selectedLabVendorId) {
+      setMessage("Please select a lab for technician.");
+      setMessageType("error");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
@@ -153,32 +224,20 @@ const StaffRegistration: React.FC = () => {
       };
 
       const url = roleEndpoints[selectedRole];
-      if (!url) {
-        throw new Error("Invalid staff role selected.");
-      }
+      if (!url) throw new Error("Invalid staff role selected.");
 
       let formattedData: any = {
         ...formData,
         phoneNumber: Number(formData.phoneNumber),
+        clinicId: clinicId || "0",
       };
 
-      if (
-        [
-          "nurse",
-          "pharmacist",
-          "technician",
-          "receptionist",
-          "accountant",
-        ].includes(selectedRole)
-      ) {
-        formattedData = {
-          ...formattedData,
-          clinicId: clinicId || "0",
-        };
+      // Add labVendorId for lab technicians
+      if (selectedRole === "technician" && selectedLabVendorId) {
+        formattedData.labVendorId = selectedLabVendorId;
       }
 
       const response = await axios.post(url, formattedData);
-      console.log(response);
 
       if (response.status === 201 || response.status === 200) {
         setMessage(
@@ -187,13 +246,17 @@ const StaffRegistration: React.FC = () => {
           } registered successfully!`
         );
         setMessageType("success");
+
         setFormData({
           name: "",
           email: "",
           phoneNumber: "",
           password: "",
         });
+
         setSelectedRole("");
+        setSelectedLabVendorId(null);
+        setLabs([]);
         fetchStaffData();
       } else {
         setMessage("❌ Registration failed. Please try again.");
@@ -210,11 +273,9 @@ const StaffRegistration: React.FC = () => {
       setLoading(false);
     }
   };
-  console.log("Sd", staffList);
 
   const handleStaffCardClick = async (role: string) => {
     setSelectedStaffRole(role);
-
     setViewMode("details");
     setLoadingStaff(true);
 
@@ -278,7 +339,7 @@ const StaffRegistration: React.FC = () => {
       setStaffList((prev) => prev.filter((s) => s.id !== staffId));
       setMessage("✅ Staff member removed successfully");
       setMessageType("success");
-      fetchStaffData(); // Refresh staff counts
+      fetchStaffData();
     } catch (error: any) {
       console.error("Remove staff error:", error);
       setMessage(
@@ -294,7 +355,6 @@ const StaffRegistration: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Helper: convert "YYYY-MM-DD" to "DD-MM-YYYY"
   const toBackendDateFormat = (dateStr: string) => {
     const [year, month, day] = dateStr.split("-");
     return `${day}-${month}-${year}`;
@@ -309,7 +369,6 @@ const StaffRegistration: React.FC = () => {
       return;
     }
 
-    // Validate dates
     if (new Date(startDate) > new Date(endDate)) {
       setMessage("❌ Start date cannot be after end date");
       setMessageType("error");
@@ -323,8 +382,6 @@ const StaffRegistration: React.FC = () => {
       endTime,
       role,
     };
-
-    console.log("Reschedule payload (backend format):", payload);
 
     try {
       const response = await axios.patch(
@@ -343,21 +400,16 @@ const StaffRegistration: React.FC = () => {
       setIsModalOpen(false);
       setNewShift({ startDate: "", endDate: "", startTime: "", endTime: "" });
     } catch (error: any) {
-      console.error(
-        "Shift update failed:",
-        error.response?.data || error.message
-      );
+      console.error("Shift update failed:", error.response?.data || error.message);
       setMessage("❌ Failed to reschedule shift");
       setMessageType("error");
     }
   };
 
-  // Handler for opening permission modal
   const handleOpenPermissionModal = async (staff: StaffMember) => {
     setSelectedStaffForPermissions(staff);
 
     try {
-      // Fetch existing permissions
       const response = await axios.get(
         `${baseUrl}api/v1/auth/roles/permissions?role=${staff.userRole}&staffId=${staff.id}`,
         {
@@ -366,11 +418,9 @@ const StaffRegistration: React.FC = () => {
           },
         }
       );
-      console.log(response.data);
 
       if (response.data?.success === true) {
         const data = response.data?.permissions;
-        console.log("SX", data);
         setPermissions(data);
       }
     } catch (error) {
@@ -380,15 +430,15 @@ const StaffRegistration: React.FC = () => {
     setIsPermissionModalOpen(true);
   };
 
-  // Handler for updating permissions
   const handleUpdatePermissions = async () => {
     if (!selectedStaffForPermissions) return;
-    console.log(selectedStaffForPermissions);
+    
     const payload = {
       staffId: selectedStaffForPermissions.id,
       role: selectedStaffForPermissions.userRole,
       permissions,
     };
+    
     try {
       const response = await axios.patch(
         `${baseUrl}api/v1/auth/roles/permissions-update`,
@@ -426,7 +476,6 @@ const StaffRegistration: React.FC = () => {
         `${baseUrl}api/v1/auth/clinic/getStaff/${clinicId}`
       );
       setStaffData(res.data);
-      console.log(res);
     } catch (error) {
       console.error(error);
     }
@@ -465,7 +514,6 @@ const StaffRegistration: React.FC = () => {
           {loadingStaff ? (
             <div className="flex justify-center items-center py-12">
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } } .animate-spin { animation: spin 1s linear infinite; }`}</style>
             </div>
           ) : (
             <div className="grid gap-4 mt-4">
@@ -536,7 +584,6 @@ const StaffRegistration: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 ml-4">
-                        {/* Existing buttons */}
                         <Button
                           variant="default"
                           onClick={() => handleOpenRescheduleModal(staff)}
@@ -546,7 +593,6 @@ const StaffRegistration: React.FC = () => {
                           Reschedule
                         </Button>
 
-                        {/* NEW: Permission Button */}
                         <Button
                           variant="outline"
                           onClick={() => handleOpenPermissionModal(staff)}
@@ -572,7 +618,7 @@ const StaffRegistration: React.FC = () => {
             </div>
           )}
 
-          {/* Reschedule Modal - Fixed Positioning */}
+          {/* Reschedule Modal */}
           {isModalOpen && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
               <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
@@ -660,6 +706,7 @@ const StaffRegistration: React.FC = () => {
               </div>
             </div>
           )}
+
           {/* Permission Modal */}
           {isPermissionModalOpen && selectedStaffForPermissions && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
@@ -686,14 +733,13 @@ const StaffRegistration: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Permissions Table */}
                 <div className="mb-6">
                   <h3 className="font-medium text-gray-700 mb-3">
                     Module Permissions
                   </h3>
 
                   <div className="overflow-hidden border border-gray-200 rounded-lg mb-4">
-                    <table className="min-w-full divide-y divide-gray-200" style={{width:"100%"}}>
+                    <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -708,7 +754,6 @@ const StaffRegistration: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {/* Appointment Permissions */}
                         <tr>
                           <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                             Appointment
@@ -755,7 +800,6 @@ const StaffRegistration: React.FC = () => {
                           </td>
                         </tr>
 
-                        {/* Billing Permissions */}
                         <tr>
                           <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                             Billing
@@ -800,11 +844,8 @@ const StaffRegistration: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
-
-                  {/* Permission Help Text */}
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
@@ -823,6 +864,7 @@ const StaffRegistration: React.FC = () => {
               </div>
             </div>
           )}
+
           {message && (
             <div
               className={`mt-4 p-4 rounded-xl text-center ${
@@ -840,7 +882,7 @@ const StaffRegistration: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen  py-8 px-4">
+    <div className="min-h-screen py-8 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <div className="inline-flex bg-muted/60 items-center gap-3 px-6 py-3 rounded-full border border-gray-200 mb-6 shadow-sm">
@@ -968,6 +1010,42 @@ const StaffRegistration: React.FC = () => {
               <option value="receptionist">📋 Receptionist</option>
             </select>
 
+            {/* Lab Dropdown - Shows ONLY when Technician is selected */}
+            {selectedRole === "technician" && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Lab *
+                </label>
+                {loadingLabs ? (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">
+                    <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-gray-600">Loading labs...</span>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedLabVendorId || ""}
+                    onChange={(e) => setSelectedLabVendorId(e.target.value || null)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-gray-900"
+                    required={selectedRole === "technician"}
+                  >
+                    <option value="">Select a Lab *</option>
+                    <option value="IN_HOUSE_LAB">🏥 In-House Lab</option>
+                    {labs.length > 0 && labs.map((lab) => (
+                      <option key={lab._id || lab.id} value={lab._id || lab.id}>
+                        🔬 {lab.name} {lab.location ? `- ${lab.location}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                
+                {labs.length === 0 && !loadingLabs && (
+                  <p className="text-sm text-amber-600 mt-2">
+                    No in-house labs found. You can select "In-House Lab" or add labs from the lab management section.
+                  </p>
+                )}
+              </div>
+            )}
+
             {message && (
               <div
                 className={`p-4 rounded-xl text-center ${
@@ -989,7 +1067,6 @@ const StaffRegistration: React.FC = () => {
               {loading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } } .animate-spin { animation: spin 1s linear infinite; }`}</style>
                   Registering...
                 </>
               ) : (
