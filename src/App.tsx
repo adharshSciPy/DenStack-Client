@@ -34,6 +34,10 @@ import LabDashboardPage from "./components/dental-lab/pages/DashboardPage";
 import LabRevenuePage from "./components/dental-lab/pages/RevenuePage";
 import SubClinic from "./components/admin/pages/SubClinic";
 import { useAppSelector } from "./redux/hook";
+import { InventoryPage } from "./components/dental-lab/pages/InventoryPage"; 
+
+
+
 import ReviewPage from "./components/receptionist/pages/ReviewPage";
 import PatientPortalPage from "./components/receptionist/pages/PatientPortalPage";
 
@@ -48,6 +52,8 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ element, allowedRoles }) =>
   const role = useAppSelector((state) => state.auth.userRole); 
   const isHybrid = useAppSelector((state) => state.auth.isHybrid);
 
+  console.log(useAppSelector((state) => state.auth.user.id));
+  
   console.log("PrivateRoute - auth state:", { token, role, isHybrid });
 
   if (!token) return <Navigate to="/login" replace />;
@@ -159,6 +165,8 @@ export default function App() {
               <Route path="revenue" element={<LabRevenuePage />} />
               <Route path="vendors" element={<div>Lab Vendors Page</div>} />
               <Route path="settings" element={<div>Lab Settings</div>} />
+              <Route path="inventory" element={<InventoryPage />} />
+
             </Route>
 <Route path="/patient-access/:encryptedId" element={<PatientPortalPage />} />
             {/* Fallback */}

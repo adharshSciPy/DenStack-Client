@@ -1,61 +1,38 @@
 // src/modules/dental-lab/DentalLabModule.jsx
 import React, { useState } from "react";
+import { Outlet } from "react-router-dom";
 import DashboardLayout from "./components/layout/DashboardLayout";
-import DashboardPage from "./pages/DashboardPage";
-import OrdersPage from "./pages/OrdersPage";
-import RevenuePage from "./pages/RevenuePage";
 import CreateOrderModal from "./components/modals/CreateOrderModal";
 import UploadResultsModal from "./components/modals/UploadResultsModal";
 import axios from "axios";
-
-interface OrdersPageProps {
-  onUploadResults: (order: LabOrder) => void;
-}
 
 interface LabUploadPayload {
   files: File[];
   notes: string;
 }
+
 interface LabOrder {
   _id: string;
-  vendor: string;
-  dentist: string;
-  patientId: string;
   patientname: string;
-  patientName: string;
-  doctorName: string;
-  deliveryDate: string;
-  appointmentId: string;
-  note: string;
-  status: "pending" | "in-progress" | "completed" | "ready" | "cancelled";
-  totalLabAmount: number;
-  tests: Test[];
-  attachments: Attachment[];
-  resultFiles: Attachment[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
+  patientId?: string;
+  clinicId?: string;
+  status?: "pending" | "processing" | "completed" | "delivered";
+  createdAt?: string;
+  dueDate?: string;
+  attachments?: string[];
+  results?: string[];
+  notes?: string;
 }
-interface Attachment {
-  _id: string;
-  url: string;
-  filename: string;
-  mimetype: string;
-}
-interface Test {
-  testId: string;
-  price: number;
-  _id: string;
-  testName?: string;
-}
+
 const DentalLabModule = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null);
 
-  // Handle files + notes coming from modal
+  // 🔥 Exposed handler (can be passed via context later if needed)
   const handleUploadResults = async ({ files, notes }: LabUploadPayload) => {
+    if (!selectedOrder) return;
+
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
     formData.append("notes", notes);
@@ -65,33 +42,20 @@ const DentalLabModule = () => {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
-    // TODO: Refresh orders or show toast if needed
+    setShowUploadModal(false);
   };
 
   return (
-    <DashboardLayout
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      onCreateOrder={() => setShowCreateModal(true)}
-    >
-      {activeTab === "dashboard" && <DashboardPage />}
+    <DashboardLayout onCreateOrder={() => setShowCreateModal(true)}>
+      {/* 🔥 ROUTER WILL RENDER PAGES HERE */}
+      <Outlet />
 
-      {activeTab === "orders" && (
-        <OrdersPage
-          onUploadResults={(order: LabOrder) => {
-            setSelectedOrder(order);
-            setShowUploadModal(true);
-          }}
-        />
-      )}
-
-      {activeTab === "revenue" && <RevenuePage />}
-
+      {/* MODALS (GLOBAL TO LAB MODULE) */}
       {showCreateModal && (
         <CreateOrderModal onClose={() => setShowCreateModal(false)} />
       )}
 
-      {showUploadModal && (
+      {showUploadModal && selectedOrder && (
         <UploadResultsModal
           order={selectedOrder}
           onClose={() => setShowUploadModal(false)}

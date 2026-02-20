@@ -234,7 +234,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     { id: "600", label: "Doctor" },
     { id: "lab", label: "Lab" },
     { id: "200", label: "Pharmacy" },
-    { id: "tech", label: "Tech" },
+    { id: "400", label: "Tech" },
     { id: "staff", label: "Staff" },
     { id: "300", label: "Nurse" },
     { id: "456", label: "Clinic Doctor" },
