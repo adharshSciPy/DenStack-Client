@@ -9,26 +9,33 @@ import axios from "axios";
 import baseUrl from "../../../baseUrl";
 import { useParams } from "react-router-dom";
 
-const quickStats = {
-  todayAppointments: 24,
-  monthlyRevenue: 67000,
-  activeStaff: 12,
-  lowStockItems: 3, 
-  pendingLabOrders: 7
-};
+// Skeleton Loader Component
+const StatCardSkeleton = () => (
+  <Card className="bg-muted/60">
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-8 w-16 bg-gray-300 rounded animate-pulse"></div>
+        </div>
+        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
-const weeklyData = [
-  { day: "Mon", appointments: 18, revenue: 2400 },
-  { day: "Tue", appointments: 24, revenue: 3200 },
-  { day: "Wed", appointments: 19, revenue: 2800 },
-  { day: "Thu", appointments: 22, revenue: 3100 },
-  { day: "Fri", appointments: 26, revenue: 3600 },
-  { day: "Sat", appointments: 15, revenue: 2200 },
-  { day: "Sun", appointments: 8, revenue: 1100 }
-];
-
-
-
+const ChartSkeleton = () => (
+  <Card className="bg-muted/60">
+    <CardHeader>
+      <div className="h-5 w-40 bg-gray-200 rounded animate-pulse"></div>
+    </CardHeader>
+    <CardContent>
+      <div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+        <Activity className="w-8 h-8 text-gray-300 animate-pulse" />
+      </div>
+    </CardContent>
+  </Card>
+);
 
 interface StaffCategory {
   accountants: any[];
@@ -65,32 +72,75 @@ interface DashboardData {
   totalRevenue: number;
 }
 
+const weeklyData = [
+  { day: "Mon", appointments: 18, revenue: 2400 },
+  { day: "Tue", appointments: 24, revenue: 3200 },
+  { day: "Wed", appointments: 19, revenue: 2800 },
+  { day: "Thu", appointments: 22, revenue: 3100 },
+  { day: "Fri", appointments: 26, revenue: 3600 },
+  { day: "Sat", appointments: 15, revenue: 2200 },
+  { day: "Sun", appointments: 8, revenue: 1100 }
+];
+
 export function OverviewDashboard() {
-
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-
-
+  const [isLoading, setIsLoading] = useState(true);
   const { clinicId } = useParams();
+
   useEffect(() => {
     const getData = async () => {
+      setIsLoading(true);
       try {
-        const res= await axios.get(`${baseUrl}api/v1/auth/clinic/dashboard/${clinicId}`);
+        const res = await axios.get(`${baseUrl}api/v1/auth/clinic/dashboard/${clinicId}`);
         setDashboardData(res.data);
       } catch (error) {
         console.log(error);
-        
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
     getData();
   }, [clinicId]);
-  console.log(dashboardData);
-  
+
+  // Show loading skeleton while data is being fetched
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Welcome Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 w-32 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Key Metrics Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          {[...Array(5)].map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ChartSkeleton />
+          <ChartSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  // Show actual data when loaded
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl">Welcome back,{dashboardData?.clinic.name}</h2>
+          <h2 className="text-2xl font-semibold">Welcome back, {dashboardData?.clinic?.name || 'Clinic'}</h2>
           <p className="text-muted-foreground">Here's what's happening at your clinic today</p>
         </div>
         <div className="flex gap-2">
@@ -111,8 +161,7 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Today's Appointments</p>
-                <p className="text-3xl text-primary">{dashboardData?.todaysAppointments.length}</p>
-                
+                <p className="text-3xl text-primary font-bold">{dashboardData?.todaysAppointments?.length || 0}</p>
               </div>
               <Calendar className="w-8 h-8 text-primary/60" />
             </div>
@@ -124,8 +173,7 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Monthly Revenue</p>
-                <p className="text-3xl text-green-600">₹{dashboardData?.totalRevenue}</p>
-                
+                <p className="text-3xl text-green-600 font-bold">₹{dashboardData?.totalRevenue?.toLocaleString() || 0}</p>
               </div>
               <DollarSign className="w-8 h-8 text-green-600/60" />
             </div>
@@ -137,8 +185,7 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active Staff</p>
-                <p className="text-3xl text-secondary">{dashboardData?.clinic.totalStaffCount}</p>
-                {/* <p className="text-xs text-muted-foreground mt-1">On duty today</p> */}
+                <p className="text-3xl text-secondary font-bold">{dashboardData?.clinic?.totalStaffCount || 0}</p>
               </div>
               <Users className="w-8 h-8 text-secondary/60" />
             </div>
@@ -150,8 +197,7 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Low Stock Items</p>
-                <p className="text-3xl text-orange-600">{quickStats.lowStockItems}</p>
-                {/* <p className="text-xs text-orange-600 mt-1">Need attention</p> */}
+                <p className="text-3xl text-orange-600 font-bold">3</p>
               </div>
               <Package className="w-8 h-8 text-orange-600/60" />
             </div>
@@ -163,8 +209,7 @@ export function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pending Lab Orders</p>
-                <p className="text-3xl text-primary">{dashboardData?.pendingLabOrdersCount}</p>
-                {/* <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p> */}
+                <p className="text-3xl text-primary font-bold">{dashboardData?.pendingLabOrdersCount || 0}</p>
               </div>
               <Activity className="w-8 h-8 text-primary/60" />
             </div>
@@ -172,6 +217,7 @@ export function OverviewDashboard() {
         </Card>
       </div>
 
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Weekly Appointments Chart */}
         <Card className="bg-muted/60">
@@ -223,88 +269,6 @@ export function OverviewDashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
-        {/* <Card className="bg-muted/60">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity) => {
-                const Icon = activity.icon;
-                return (
-                  <div key={activity.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                    <Icon className={`w-5 h-5 ${activity.color}`} />
-                    <div className="flex-1">
-                      <p className="text-sm">{activity.message}</p>
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card> */}
-
-        {/* Quick Actions & Status */}
-        {/* <Card className="bg-muted/60">
-          <CardHeader>
-            <CardTitle>Clinic Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Daily Capacity</span>
-                <span className="text-sm text-muted-foreground">24/30 appointments</span>
-              </div>
-              <Progress value={80} className="h-2" />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Staff Utilization</span>
-                <span className="text-sm text-muted-foreground">12/15 staff</span>
-              </div>
-              <Progress value={80} className="h-2" />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Equipment Availability</span>
-                <span className="text-sm text-muted-foreground">18/20 operational</span>
-              </div>
-              <Progress value={90} className="h-2" />
-            </div>
-
-            <div className="space-y-3 pt-4 border-t">
-              <h4 className="text-sm font-medium">Quick Actions</h4>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="justify-start">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  New Appointment
-                </Button>
-                <Button variant="outline" size="sm" className="justify-start">
-                  <Users className="w-4 h-4 mr-2" />
-                  Staff Schedule
-                </Button>
-                <Button variant="outline" size="sm" className="justify-start">
-                  <Package className="w-4 h-4 mr-2" />
-                  Order Supplies
-                </Button>
-                <Button variant="outline" size="sm" className="justify-start">
-                  <Activity className="w-4 h-4 mr-2" />
-                  Lab Report
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
       </div>
     </div>
   );

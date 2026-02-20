@@ -44,18 +44,26 @@ interface PrivateRouteProps {
   element: React.ReactNode;
   allowedRoles: string[];
 }
-// 🔐 Private Route Component with Role Guard
+
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ element, allowedRoles }) => {
   const token = useAppSelector((state) => state.auth.token);
-  const role = useAppSelector((state) => state.auth.user.role);
+  const role = useAppSelector((state) => state.auth.userRole); 
+  const isHybrid = useAppSelector((state) => state.auth.isHybrid);
 
   console.log(useAppSelector((state) => state.auth.user.id));
   
+  console.log("PrivateRoute - auth state:", { token, role, isHybrid });
 
   if (!token) return <Navigate to="/login" replace />;
 
+  if (isHybrid || role === "760") {
+   
+    return <>{element}</>;
+  }
+
   if (!allowedRoles.includes(role || "")) {
-    return <Navigate to="/" replace />;
+    console.warn(`Role ${role} not allowed for this route. Allowed:`, allowedRoles);
+    return <Navigate to="/login" replace />;
   }
 
   return <>{element}</>;
@@ -70,13 +78,11 @@ export default function App() {
             {/* Login */}
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
-
-            {/* ---- ADMIN ROUTES ---- */}
             <Route
               path="/dashboard/:clinicId"
               element={
                 <PrivateRoute
-                  allowedRoles={["700"]}
+                  allowedRoles={["700", "760"]} 
                   element={<AdminLayout />}
                 />
               }
@@ -95,7 +101,6 @@ export default function App() {
               <Route path="staff" element={<StaffRegistration />} />
               <Route path="subclinic" element={<SubClinic />} />
               <Route path="reviews" element={<ReviewsPageAdmin />} />
-
             </Route>
 
             {/* Admin (without clinicId) */}
@@ -103,7 +108,7 @@ export default function App() {
               path="/admin"
               element={
                 <PrivateRoute
-                  allowedRoles={["500"]}
+                  allowedRoles={["500", "760"]}
                   element={<AdminLayout />}
                 />
               }
@@ -120,7 +125,6 @@ export default function App() {
               <Route path="doctoronboard" element={<DoctorPage />} />
               <Route path="cart" element={<Cart />} />
               <Route path="staff" element={<StaffRegistration />} />
-              
             </Route>
 
             {/* ---- RECEPTIONIST ROUTES ---- */}
@@ -128,7 +132,7 @@ export default function App() {
               path="/receptionist"
               element={
                 <PrivateRoute
-                  allowedRoles={["500", "nurse"]}
+                  allowedRoles={["500", "nurse", "760"]}
                   element={<ReceptionistLayout />}
                 />
               }
@@ -141,7 +145,6 @@ export default function App() {
               <Route path="billing" element={<Billing />} />
               <Route path="doctors" element={<DoctorAllocation />} />
               <Route path="review/:token" element={<ReviewPage />} />
-
             </Route>
 
             {/* ---- DENTAL LAB ROUTES ---- */}
@@ -149,7 +152,7 @@ export default function App() {
               path="/labadmin"
               element={
                 <PrivateRoute
-                  allowedRoles={["700","500"]}
+                  allowedRoles={["700","500", "760"]} 
                   element={<DentalLabLayout />}
                 />
               }

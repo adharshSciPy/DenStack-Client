@@ -45,6 +45,9 @@ export function DashboardSidebar() {
   const dispatch = useDispatch();
   const { clinicId } = useParams();
   const cartItem = useAppSelector((state) => state.cart.items);
+  
+  // Get auth state - only need what's necessary for clinic mode
+  const { isHybrid, doctorId } = useAppSelector((state) => state.auth);
 
   // Fetch appointment counts
   useEffect(() => {
@@ -77,6 +80,20 @@ export function DashboardSidebar() {
 
     if (clinicId) fetchData();
   }, [clinicId]);
+
+  // Handle switch to doctor portal - SIMPLE DIRECT NAVIGATION
+  const handleSwitchToDoctor = () => {
+    if (doctorId && clinicId) {
+      const token = localStorage.getItem('token');
+      // Direct redirect to doctor portal with all params
+      const redirectURL = `http://localhost:3001/?token=${encodeURIComponent(token || '')}&role=760&doctorId=${doctorId}&clinicId=${clinicId}&isHybrid=true`;
+      
+      console.log("➡️ Switching to doctor portal:", redirectURL);
+      window.location.href = redirectURL;
+    } else {
+      console.error("Missing doctorId or clinicId for doctor portal");
+    }
+  };
 
   const handleLogout = async () => {
     await persistor.purge();
@@ -122,20 +139,20 @@ export function DashboardSidebar() {
     };
   }, []);
 
+  // Menu items - CLINIC MODE ONLY (no doctor mode items)
   const menuItems = [
-    { id: "overview", label: "Overview", icon: Home },
+    { id: "overview", label: "Overview", icon: Home, badge: null },
     { id: "appointments", label: "Appointments", icon: Calendar, badge: appointmentCount },
-    { id: "financial", label: "Financial", icon: DollarSign },
-    { id: "staff", label: "Staff", icon: Users },
+    { id: "financial", label: "Financial", icon: DollarSign, badge: null },
+    { id: "staff", label: "Staff", icon: Users, badge: null },
     { id: "inventory", label: "Inventory", icon: Package, badge: inventoryCount },
-    { id: "lab", label: "Lab Orders", icon: FlaskConical },
-    { id: "patients", label: "Patient", icon: FileText },
-    { id: "marketplace", label: "Marketplace", icon: ShoppingCart },
-    { id: "doctoronboard", label: "Doctor", icon: Stethoscope },
-    { id: "cart", label: "Cart", icon: ShoppingCart, badge: cartItem.length },
-    { id: "subclinic", label: "SubClinic", icon: Home },
-    { id: "settings", label: "Settings", icon: Settings },
-    { id: "reviews  ", label:"Reviews", icon: Stars },
+    { id: "lab", label: "Lab Orders", icon: FlaskConical, badge: null },
+    { id: "patients", label: "Patients", icon: FileText, badge: null },
+    { id: "marketplace", label: "Marketplace", icon: ShoppingCart, badge: cartItem.length },
+    { id: "doctoronboard", label: "Doctor Onboard", icon: Stethoscope, badge: null },
+    { id: "subclinic", label: "Sub Clinic", icon: Home, badge: null },
+    { id: "settings", label: "Settings", icon: Settings, badge: null },
+    { id: "reviews", label: "Reviews", icon: Stars, badge: null },
   ];
 
   const isSidebarVisible = isHovered || !collapsed;
@@ -174,10 +191,25 @@ export function DashboardSidebar() {
             onClick={() => setCollapsed(!collapsed)}
             className="p-1 h-auto"
           >
-            {collapsed ? <ChevronRight /> : <ChevronLeft />}
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </Button>
         )}
       </div>
+
+      {isHybrid && isSidebarVisible && (
+        <div className="px-2 py-3 border-b">
+          <button
+            onClick={handleSwitchToDoctor}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 bg-blue-50 text-blue-600 border border-blue-200 shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <Stethoscope className="w-5 h-5" />
+            <span className="text-sm font-medium flex-1 text-left">
+              Doctor Portal
+            </span>
+            <span className="text-xs opacity-70">→</span>
+          </button>
+        </div>
+      )}
 
       {/* NAVIGATION */}
       <nav 
@@ -211,11 +243,11 @@ export function DashboardSidebar() {
             {isSidebarVisible && (
               <>
                 <span className="text-sm whitespace-nowrap">{label}</span>
-                {badge !== undefined && badge > 0 ? (
+                {badge !== null && badge > 0 && (
                   <Badge className="ml-auto bg-white text-primary text-xs min-w-[20px] flex items-center justify-center">
-                    {badge}
+                    {badge > 99 ? '99+' : badge}
                   </Badge>
-                ) : null}
+                )}
               </>
             )}
           </NavLink>
@@ -226,12 +258,11 @@ export function DashboardSidebar() {
       <div className="p-4 border-t min-h-[72px]">
         {isSidebarVisible ? (
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
-              {clinic?.name ? clinic.name[0] : "U"}
-            </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs text-muted-foreground truncate">Welcome</p>
-              <p className="text-sm font-medium truncate">{clinic?.name || "User"}</p>
+              <p className="text-sm font-medium truncate">
+                {clinic?.name || "Clinic"}
+              </p>
             </div>
             <button
               onClick={handleLogout}
