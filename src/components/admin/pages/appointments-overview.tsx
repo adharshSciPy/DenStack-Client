@@ -2086,7 +2086,7 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
               variant={showCalendarView ? "ghost" : "default"}
               size="sm"
               onClick={() => setShowCalendarView(false)}
-              className={`flex items-center gap-2 ${!showCalendarView ? "bg-white shadow-sm" : ""}`}
+              className={`flex items-center gap-2 ${!showCalendarView ? "bg-white text-black shadow-sm" : ""} `}
             >
               <List className="w-4 h-4" />
               List View
@@ -2095,7 +2095,7 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
               variant={showCalendarView ? "default" : "ghost"}
               size="sm"
               onClick={() => setShowCalendarView(true)}
-              className={`flex items-center gap-2 ${showCalendarView ? "bg-white shadow-sm" : ""}`}
+              className={`flex items-center gap-2 ${showCalendarView ? "bg-white text-black shadow-sm" : ""}`}
             >
               <CalendarDays className="w-4 h-4" />
               Calendar View
@@ -2195,7 +2195,7 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
                   <div className="border-2 border-primary/20 p-6 rounded-lg bg-primary/5 relative">
                     {!foundPatient ? (
                       <>
-                        <Label className="text-lg font-semibold mb-4 block">
+                        <Label className="text-lg font-semibold mb-4 block text-black">
                           Search Patient by ID or Register New Patient
                         </Label>
                         <div className="flex flex-wrap gap-3">
@@ -2210,7 +2210,7 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
                                 handlePatientSearch();
                               }
                             }}
-                            className="flex-1 h-12 text-lg"
+                            className="flex-1 h-12 text-lg "
                           />
                           <Button
                             onClick={handlePatientSearch}

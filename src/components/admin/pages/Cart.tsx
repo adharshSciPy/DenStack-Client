@@ -37,7 +37,7 @@ import { removeFromCart } from "../../../redux/slice/cartSlice";
 import { useAppSelector } from "../../../redux/hook";
 import { useDispatch } from "react-redux";
 import axios from "axios";
-import clinicInventoryBaseUrl from "../../../clinicInventoryBaseUrl";
+
 
 
 // Interfaces
@@ -130,7 +130,7 @@ const OrderDetailsModal = ({
   order: order;
   onClose: () => void;
 }) => {
-  const statusConfig = getStatusConfig(order.status);
+  const statusConfig = getStatusConfig(order.orderStatus);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -409,7 +409,7 @@ export default function CartOrderPage() {
 
       console.log(itemToSend)
       const response = await axios.post(    
-        `${clinicInventoryBaseUrl}/api/v1/clinicPurchase/purchase`,
+        `${inventoryBaseUrl}/api/v1/clinicPurchase/purchase`,
         {
           clinicId: clinicId,
           items: itemToSend,
@@ -435,7 +435,7 @@ export default function CartOrderPage() {
   const handleGetOrderHistory = async () => {
     try {
       const res = await axios.get(
-        `${clinicInventoryBaseUrl}/api/v1/clinicPurchase/orders/${clinicId}`,
+        `${inventoryBaseUrl}/api/v1/ecom-order/clinic/${clinicId}`,
         {
           headers: {
             Authorization: `Bearer ${clinicToken}`,
@@ -455,10 +455,15 @@ export default function CartOrderPage() {
 
   const handleDeliver=async(orderId:string)=>{
     try {
-      const res=await axios.post(`${clinicInventoryBaseUrl}/api/v1/clinicPurchase/clinic/order/mark-delivered`,{
-        orderId: orderId,
-        clinicId: clinicId
-      },)
+      const res=await axios.put(`${inventoryBaseUrl}/api/v1/ecom-order/updateStatus/${orderId}`,{
+        orderStatus:"DELIVERED"
+      },{
+        headers: {
+          Authorization: `Bearer ${clinicToken}`,
+        },
+      })
+      console.log(res);
+      
       if(res.status===200){
         handleGetOrderHistory();
       }
@@ -470,10 +475,10 @@ export default function CartOrderPage() {
  const toggleOrderStatus = (orderId: string) => {
   
    handleDeliver(orderId);
-    // setOrderStatuses(prev => ({
-    //   ...prev,
-    //   [orderId]: prev[orderId] === "PENDING" ? "DELIVERED" : "PENDING"
-    // }));
+    setOrderStatuses(prev => ({
+      ...prev,
+      [orderId]: prev[orderId] === "PENDING" ? "DELIVERED" : "PENDING"
+    }));
   };
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8">
@@ -666,7 +671,7 @@ export default function CartOrderPage() {
               <CardContent className="p-6">
                 <div className="space-y-4">
                   {orders.map((order) => {
-                    const statusConfig = getStatusConfig(order.status);
+                    const statusConfig = getStatusConfig(order.orderStatus);
 
                     return (
                       <div
@@ -739,7 +744,7 @@ export default function CartOrderPage() {
                                   padding: "2px",
                                   transition: "background-color 0.3s ease",
                                   backgroundColor:
-                                    `${order.status}` === "DELIVERED"
+                                    `${order.orderStatus}` === "DELIVERED"
                                       ? "#22c55e" // green-500
                                       : "#cbd5e1", // slate-300
                                 }}
@@ -754,7 +759,7 @@ export default function CartOrderPage() {
                                     position: "absolute",
                                     top: "4px",
                                     left:
-                                      `${order.status}` === "DELIVERED"
+                                      `${order.orderStatus}` === "DELIVERED"
                                         ? "28px" // translate-x-7
                                         : "4px", // translate-x-0
                                     transition: "all 0.3s ease",
@@ -819,7 +824,7 @@ export default function CartOrderPage() {
                             </Button>
                           )}
 
-                          {order.orderStatus === "PROCESSING" && (
+                          {order.orderStatus === "PENDING" && (
                             <Button
                               size="sm"
                               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"

@@ -25,7 +25,25 @@ import InventoryReportGenerator from "../inventoryReport/inventoryReport";
 import clinicInventoryBaseUrl from "../../../clinicInventoryBaseUrl";
 import { useAppSelector } from "../../../redux/hook";
 
-interface Inventory {
+// Updated interface to match the actual API response
+interface InventoryItem {
+  _id: string;
+  assignedTo: string | null;
+  clinicId: string;
+  createdAt: string;
+  inventoryType: string;
+  isLowStock: boolean;
+  lowStockThreshold?: number;
+  productId: string;
+  productName: string;
+  productType: string;
+  quantity: number;
+  updatedAt: string;
+  __v?: number;
+}
+
+// Interface for the old format that InventoryReportGenerator expects
+interface LegacyInventory {
   _id: string;
   assignedTo: null;
   clinicId: string;
@@ -37,7 +55,7 @@ interface Inventory {
     brand: {
       _id: string;
       name: string;
-    };
+    } | string;
     createdAt: string;
     description: string;
     expiryDate: string;
@@ -66,26 +84,31 @@ interface Inventory {
 }
 
 interface InventoryResponse {
-  data: Inventory[];
-  count: number;
-  hasMore: boolean;
-  nextCursor?: string;
+  data: InventoryItem[];
   message?: string;
+}
+
+interface Vendor {
+  _id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
 }
 
 export function InventoryTracker() {
   const clinicId = useAppSelector((state) => state.auth.clinicId);
-
-  const [inventoryItems, setInventoryItems] = useState<Inventory[]>([]);
+  const token = useAppSelector((state) => state.auth.token);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Inventory | null>(null);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Cursor-based pagination state
-  const [cursors, setCursors] = useState<(string | null)[]>([null]);
+  const [cursors] = useState<(string | null)[]>([null]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
   const [pageSize] = useState(10);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -93,10 +116,11 @@ export function InventoryTracker() {
   const [assignType, setAssignType] = useState("");
   const [assignId, setAssignId] = useState("");
   const [assignQuantity, setAssignQuantity] = useState("");
-  const [labs, setLabs] = useState<any[]>([]);
-  const [pharmacies, setPharmacies] = useState<any[]>([]);
-  const [editData, setEditData] = useState<Inventory | null>(null);
+  const [labs, setLabs] = useState<Vendor[]>([]);
+  const [pharmacies, setPharmacies] = useState<Vendor[]>([]);
+  const [editData, setEditData] = useState<InventoryItem | null>(null);
   const [isQuantityDialogOpen, setIsQuantityDialogOpen] = useState(false);
+  
   // Stats
   const [stats, setStats] = useState({
     totalItems: 0,
@@ -105,79 +129,119 @@ export function InventoryTracker() {
     categories: 0,
   });
 
-  const getInventoryItems = async (search: string = "") => {
+  // Transform current inventory items to legacy format for the report generator
+  const transformToLegacyFormat = (items: InventoryItem[]): LegacyInventory[] => {
+    return items.map(item => ({
+      _id: item._id,
+      assignedTo: null,
+      clinicId: item.clinicId,
+      createdAt: item.createdAt,
+      inventoryType: item.inventoryType,
+      isLowStock: item.isLowStock,
+      isLocalProduct: item.productType === 'local',
+      product: {
+        brand: {
+          _id: '',
+          name: 'N/A'
+        },
+        createdAt: item.createdAt,
+        description: '',
+        expiryDate: new Date().toISOString(),
+        image: [],
+        isLowStock: item.isLowStock,
+        mainCategory: {
+          _id: '',
+          categoryName: item.inventoryType || 'General'
+        },
+        name: item.productName,
+        price: 0, // Price not available in new format
+        productId: item.productId,
+        status: item.quantity > 0 ? 'available' : 'out of stock',
+        stock: item.quantity,
+        category: item.inventoryType || 'General',
+        subCategory: {
+          _id: '',
+          categoryName: item.productType || 'General'
+        },
+        updatedAt: item.updatedAt,
+        _id: item.productId
+      },
+      productId: item.productId,
+      quantity: item.quantity,
+      updatedAt: item.updatedAt
+    }));
+  };
+
+  const getClinicProducts = async () => {
+    if (!clinicId) {
+      setError("Missing clinic ID");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const params: any = {
-        limit: pageSize,
-      };
-
-      // ✅ Add cursor only if not the first page
-      if (cursors[currentCursorIndex]) {
-        params.cursor = cursors[currentCursorIndex];
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
-
-      // ✅ Add search
-      if (search.trim()) {
-        params.search = search.trim();
-      }
-
-      console.log("API params:", params);
 
       const response = await axios.get(
-        `${clinicInventoryBaseUrl}/api/v1/clinicInventory/products/${clinicId}`,
-        { params }
+        `${clinicInventoryBaseUrl}/api/v1/clinicInventory/clinicProduct/${clinicId}`,
+        { headers }
       );
 
-      if (response.status === 200) {
-        const data: InventoryResponse = response.data;
+      console.log("API Response:", response);
 
-        setInventoryItems(data.data || []);
-        setTotalCount(data.count || 0);
-        setHasNextPage(data.hasMore || false);
+      if (response?.status === 200 && response?.data?.data) {
+        const inventoryData: InventoryItem[] = response.data.data;
+        console.log("Inventory data:", inventoryData);
+        
+        // Apply search filter if search term exists
+        const filteredItems = searchTerm
+          ? inventoryData.filter((item: InventoryItem) => 
+              item.productName?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+          : inventoryData;
 
-        // ✅ Store next cursor only once
-        if (data.hasMore && data.nextCursor) {
-          setCursors((prev) => {
-            const trimmed = prev.slice(0, currentCursorIndex + 1);
-            if (trimmed[trimmed.length - 1] !== data.nextCursor) {
-              trimmed.push(data.nextCursor!);
-            }
-            return trimmed;
-          });
-        }
-
+        setInventoryItems(filteredItems);
+        
         // Calculate stats
-        const lowStock = (data.data || []).filter(
-          (item) => item?.isLowStock
-        ).length;
-        const value = (data.data || []).reduce(
-          (sum, item) =>
-            sum + (item?.product?.price || 0) * (item?.quantity || 0),
+        const totalItems = filteredItems.reduce(
+          (sum: number, item: InventoryItem) => sum + (item.quantity || 0),
           0
         );
-        const cats = [
-          ...new Set(
-            (data.data || [])
-              .filter((item) => item?.product?.mainCategory?.categoryName)
-              .map((item) => item.product.mainCategory.categoryName)
-          ),
-        ].length;
+        
+        const lowStockCount = filteredItems.filter(
+          (item: InventoryItem) => item.isLowStock
+        ).length;
+        
+        // Since we don't have price in the new structure, we'll set a default
+        const totalValue = 0; // Placeholder
+        
+        // For categories, use inventoryType as a proxy for categories
+        const categories = new Set(
+          filteredItems.map(
+            (item: InventoryItem) => item.inventoryType || "General"
+          )
+        ).size;
 
         setStats({
-          totalItems: data.count || 0,
-          lowStockCount: lowStock,
-          totalValue: value,
-          categories: cats,
+          totalItems,
+          lowStockCount,
+          totalValue,
+          categories,
         });
+
+        setTotalCount(filteredItems.length);
+        setHasNextPage(false); // Adjust based on your pagination logic
+        
+        console.log("Processed inventory items:", filteredItems);
       }
-      console.log(response);
-    } catch (err) {
-      console.error("Error fetching inventory:", err);
+    } catch (error) {
+      console.error("Error fetching clinic products:", error);
       setError("Failed to load inventory items. Please try again.");
-      setInventoryItems([]);
     } finally {
       setIsLoading(false);
     }
@@ -185,24 +249,25 @@ export function InventoryTracker() {
 
   // Initial load
   useEffect(() => {
-    if (!clinicId) return;
-
-    // When search term changes → reset pagination & debounce
-    const debounceTimer = setTimeout(() => {
-      if (searchTerm !== "") {
-        setCursors([null]);
-        setCurrentCursorIndex(0);
-      }
-
-      getInventoryItems(searchTerm);
+    if (clinicId) {
+      getClinicProducts();
       getAllVendors();
+    }
+  }, [clinicId]);
+
+  useEffect(() => {
+    // Debounce search
+    const debounceTimer = setTimeout(() => {
+      if (clinicId) {
+        getClinicProducts();
+      }
     }, 500);
 
     return () => clearTimeout(debounceTimer);
-  }, [clinicId, searchTerm, currentCursorIndex]);
+  }, [searchTerm, clinicId]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    setSearchTerm(e?.target?.value || "");
   };
 
   const handleNextPage = () => {
@@ -217,31 +282,31 @@ export function InventoryTracker() {
     }
   };
 
-  const handleEditClick = (item: Inventory) => {
+  const handleEditClick = (item: InventoryItem) => {
     setSelectedItem(item);
     setIsEditDialogOpen(true);
   };
+
   const handleAddClick = () => {
     setIsAddDialogOpen(true);
   };
+
   const handleCloseDialog = () => {
     setIsEditDialogOpen(false);
     setSelectedItem(null);
     setIsAddDialogOpen(false);
+    setAssignQuantity("");
+    setAssignType("");
+    setAssignId("");
   };
-  const handleMove = () => {
-    handleAssignInventory();
-  };
-  // Calculate display info
-  const startItem = currentCursorIndex * pageSize + 1;
-  const endItem = startItem + (inventoryItems?.length || 0) - 1;
-  // Calculate total pages based on whether there's more data
-  const totalPages = hasNextPage
-    ? currentCursorIndex + 2
-    : currentCursorIndex + 1;
+
+  // Calculate display info with null checks
+  const startItem = (currentCursorIndex * pageSize) + 1;
+  const endItem = Math.min(startItem + (inventoryItems?.length || 0) - 1, totalCount);
+  const totalPages = Math.ceil(totalCount / pageSize);
   const currentPage = currentCursorIndex + 1;
 
-  if (error && !inventoryItems.length) {
+  if (error && !inventoryItems?.length) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl border border-red-200 p-8 max-w-md text-center shadow-lg">
@@ -251,7 +316,7 @@ export function InventoryTracker() {
           </h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => getInventoryItems(searchTerm)}
+            onClick={() => getClinicProducts()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Retry
@@ -260,102 +325,131 @@ export function InventoryTracker() {
       </div>
     );
   }
+
   const handleSaveChanges = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!clinicId) {
+      alert("Clinic ID is missing");
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
 
     const payload = {
-      name: formData.get("name"),
-      quantity: Number(formData.get("quantity")),
-      price: Number(formData.get("price")),
-      category: formData.get("category"),
-      mainCategory: formData.get("mainCategory"),
-      subCategory: formData.get("subCategory"),
-      brand: formData.get("brand"),
-      description: formData.get("description"),
+      productName: formData.get("productName") || "",
+      quantity: Number(formData.get("quantity")) || 0,
+      inventoryType: formData.get("inventoryType") || "general",
+      productType: formData.get("productType") || "global",
+      lowStockThreshold: Number(formData.get("lowStockThreshold")) || 20,
     };
 
     try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await axios.post(
-        `${clinicInventoryBaseUrl}/api/v1/clinicProduct/create/${clinicId}`,
-        payload
+        `${clinicInventoryBaseUrl}/api/v1/clinicInventory/create/${clinicId}`,
+        payload,
+        { headers }
       );
-      if (response.status === 201) {
+      if (response?.status === 201) {
         console.log("Item added successfully:", response.data);
         handleCloseDialog();
-        getInventoryItems(searchTerm); // Refresh the list
-      }
-      console.log(response);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  const handleAssignInventory = async () => {
-    if (!selectedItem) {
-      alert("No item selected");
-      return;
-    }
-
-    if (!assignType) {
-      alert("Please select Lab or Pharmacy");
-      return;
-    }
-
-    if (!assignQuantity || Number(assignQuantity) <= 0) {
-      alert("Please enter a valid quantity");
-      return;
-    }
-
-    if (Number(assignQuantity) > selectedItem.quantity) {
-      alert("You cannot assign more than available quantity");
-      return;
-    }
-
-    try {
-      const payload = {
-        clinicId,
-        productId: selectedItem.product._id,
-        productName: selectedItem.product.name, // "lab" or "pharmacy"
-        // For now same, but later change to API data
-        quantity: Number(assignQuantity),
-        assignTo: assignType,
-        assignId: assignId,
-      };
-
-      console.log("sending payload:", payload);
-      console.log("selected item", selectedItem);
-
-      const response = await axios.post(
-        `${clinicInventoryBaseUrl}/api/v1/assign/inventory/assign`,
-        payload
-      );
-      console.log(response);
-
-      if (response.status === 200) {
-        alert("Inventory assigned successfully");
-        handleCloseDialog();
-        getInventoryItems(); // Refresh UI
-        setAssignQuantity("");
-        setAssignType("");
+        getClinicProducts(); // Refresh the list
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to assign inventory");
+      alert("Failed to add item");
     }
   };
+
+const handleAssignInventory = async () => {
+  if (!selectedItem) {
+    alert("No item selected");
+    return;
+  }
+
+  if (!assignType || !assignId) {
+    alert("Please select Lab or Pharmacy");
+    return;
+  }
+
+  if (!assignQuantity || Number(assignQuantity) <= 0) {
+    alert("Please enter a valid quantity");
+    return;
+  }
+
+  if (Number(assignQuantity) > (selectedItem?.quantity || 0)) {
+    alert("You cannot assign more than available quantity");
+    return;
+  }
+
+  if (!clinicId) {
+    alert("Clinic ID is missing");
+    return;
+  }
+
+  try {
+    const payload = {
+      clinicId,
+      productId: selectedItem.productId || selectedItem._id,
+      productName: selectedItem.productName,
+      quantity: Number(assignQuantity),
+      toInventoryType: assignType.toLowerCase(), // "lab" | "pharmacy"
+      toVendorId: assignId, // 🔥 THIS WAS MISSING
+    };
+
+    console.log("sending payload:", payload);
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await axios.post(
+      `${clinicInventoryBaseUrl}/api/v1/assign/inventory/assign/clinicproducts`,
+      payload,
+      { headers }
+    );
+
+    if (response.status === 200) {
+      alert("Inventory assigned successfully");
+      handleCloseDialog();
+      getClinicProducts();
+      setAssignQuantity("");
+      setAssignType("");
+      setAssignId("");
+    }
+  } catch (err: any) {
+    console.error(err);
+    alert(err?.response?.data?.message || "Failed to assign inventory");
+  }
+};
+
+
 
   const getAllVendors = async () => {
-    try {
-      const response = await axios.get(
-        `${clinicInventoryBaseUrl}/api/v1/clinicProduct/clinic/vendor-ids/${clinicId}`
-      );
-      console.log(response);
+    if (!clinicId) return;
 
-      if (response.status === 200) {
+    try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await axios.get(
+        `${clinicInventoryBaseUrl}/api/v1/clinicProduct/clinic/vendor-ids/${clinicId}`,
+        { headers }
+      );
+      console.log("Vendors response:", response);
+
+      if (response?.status === 200 && response?.data) {
         console.log("Vendors fetched:", response.data);
-        setLabs(response.data.labs || []);
-        setPharmacies(response.data.pharmacies || []);
+        setLabs(response?.data?.labs || []);
+        setPharmacies(response?.data?.pharmacies || []);
       }
     } catch (err) {
       console.error("Error fetching vendors:", err);
@@ -363,46 +457,76 @@ export function InventoryTracker() {
   };
 
   const handleDeleteItem = async (id: string) => {
+    if (!id) {
+      alert("Invalid item ID");
+      return;
+    }
+
     try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await axios.delete(
-        `${clinicInventoryBaseUrl}/api/v1/clinicInventory/inventory/delete/${id}`
+        `${clinicInventoryBaseUrl}/api/v1/clinicInventory/inventory/delete/${id}`,
+        { headers }
       );
       console.log(response);
-      if (response.status === 200) {
+      if (response?.status === 200) {
         alert("Item deleted successfully");
-        getInventoryItems(searchTerm); // Refresh the list
+        getClinicProducts(); // Refresh the list
       }
     } catch (error) {
       console.log(error);
+      alert("Failed to delete item");
     }
   };
 
-  const handleUpdateClick = async (item: Inventory) => {
+  const handleUpdateClick = async (item: InventoryItem) => {
     setEditData(item);
     setIsQuantityDialogOpen(true);
   };
+
   const handleEditChanges = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!clinicId) {
+      alert("Clinic ID is missing");
+      return;
+    }
+
+    if (!editData?._id) {
+      alert("Invalid item data");
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
 
     const payload = {
-      quantity: Number(formData.get("quantity")),
+      quantity: Number(formData.get("quantity")) || 0,
     };
 
     try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await axios.patch(
-        `${clinicInventoryBaseUrl}/api/v1/clinicProduct/update/${clinicId}/${editData?._id}`,
-        payload
+        `${clinicInventoryBaseUrl}/api/v1/clinicInventory/update/${clinicId}/${editData._id}`,
+        payload,
+        { headers }
       );
       console.log(response);
-      if (response.status === 200) {
+      if (response?.status === 200) {
         alert("Item updated successfully");
         handleCloseQuantityDialog();
-        getInventoryItems(searchTerm); // Refresh the list
+        getClinicProducts(); // Refresh the list
       }
     } catch (error) {
       console.log(error);
+      alert("Failed to update item");
     }
   };
 
@@ -410,6 +534,7 @@ export function InventoryTracker() {
     setIsQuantityDialogOpen(false);
     setEditData(null);
   };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -420,9 +545,9 @@ export function InventoryTracker() {
         </div>
         <div className="flex gap-2">
           <InventoryReportGenerator
-            inventoryItems={inventoryItems}
+            inventoryItems={transformToLegacyFormat(inventoryItems)}
             stats={stats}
-            clinicId={clinicId}
+            clinicId={clinicId || ""}
           />
           <Button
             className="bg-primary hover:bg-primary/90"
@@ -435,7 +560,7 @@ export function InventoryTracker() {
       </div>
 
       {/* Low Stock Alert */}
-      {stats.lowStockCount > 0 && (
+      {stats?.lowStockCount > 0 && (
         <Alert className="border-orange-200 bg-orange-50">
           <AlertTriangle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-orange-800">
@@ -452,7 +577,7 @@ export function InventoryTracker() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Items</p>
-                <p className="text-3xl text-primary">{stats.totalItems}</p>
+                <p className="text-3xl text-primary">{stats?.totalItems || 0}</p>
               </div>
               <Package className="w-8 h-8 text-primary/60" />
             </div>
@@ -465,7 +590,7 @@ export function InventoryTracker() {
               <div>
                 <p className="text-sm text-muted-foreground">Low Stock Items</p>
                 <p className="text-3xl text-destructive">
-                  {stats.lowStockCount}
+                  {stats?.lowStockCount || 0}
                 </p>
               </div>
               <AlertTriangle className="w-8 h-8 text-destructive/60" />
@@ -479,10 +604,9 @@ export function InventoryTracker() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Value</p>
                 <p className="text-3xl text-secondary">
-                  ₹{stats.totalValue.toFixed(2)}
+                  ₹{(stats?.totalValue || 0).toFixed(2)}
                 </p>
               </div>
-              {/* <TrendingDown className="w-8 h-8 text-secondary/60" /> */}
             </div>
           </CardContent>
         </Card>
@@ -492,7 +616,7 @@ export function InventoryTracker() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Categories</p>
-                <p className="text-3xl text-primary">{stats.categories}</p>
+                <p className="text-3xl text-primary">{stats?.categories || 0}</p>
               </div>
               <Package className="w-8 h-8 text-primary/60" />
             </div>
@@ -531,20 +655,14 @@ export function InventoryTracker() {
             <>
               <div className="space-y-4">
                 {inventoryItems.map((item) => {
-                  if (!item || !item.product) return null;
+                  // Null check for item
+                  if (!item) return null;
 
-                  const isLowStock = item.isLowStock || false;
-
-                  // Normalize brand to a string for safe rendering
-                  const brandValue = item.product.brand;
-                  const brandName =
-                    typeof brandValue === "string"
-                      ? brandValue
-                      : brandValue?.name;
+                  const isLowStock = item?.isLowStock || false;
 
                   return (
                     <div
-                      key={item._id || Math.random()}
+                      key={item?._id || Math.random().toString()}
                       style={{
                         padding: "20px",
                         borderRadius: "12px",
@@ -586,10 +704,10 @@ export function InventoryTracker() {
                               margin: 0,
                             }}
                           >
-                            {item.product?.name || "Unknown Product"}
+                            {item?.productName || "Unknown Product"}
                           </h3>
 
-                          {item.product?.mainCategory?.categoryName && (
+                          {item?.inventoryType && (
                             <Badge
                               variant="outline"
                               style={{
@@ -601,11 +719,11 @@ export function InventoryTracker() {
                                 border: "1px solid #bbf7d0",
                               }}
                             >
-                              {item.product.mainCategory.categoryName}
+                              {item.inventoryType}
                             </Badge>
                           )}
 
-                          {item.product?.subCategory?.categoryName && (
+                          {item?.productType && (
                             <Badge
                               variant="outline"
                               style={{
@@ -617,7 +735,7 @@ export function InventoryTracker() {
                                 border: "1px solid #bfdbfe",
                               }}
                             >
-                              {item.product.subCategory.categoryName}
+                              {item.productType}
                             </Badge>
                           )}
 
@@ -677,7 +795,7 @@ export function InventoryTracker() {
                                 gap: "4px",
                               }}
                             >
-                              {item.quantity || 0}
+                              {item?.quantity || 0}
                               <span
                                 style={{
                                   fontSize: "12px",
@@ -702,7 +820,7 @@ export function InventoryTracker() {
                                 letterSpacing: "0.5px",
                               }}
                             >
-                              Brand
+                              Threshold
                             </span>
                             <p
                               style={{
@@ -712,7 +830,7 @@ export function InventoryTracker() {
                                 margin: 0,
                               }}
                             >
-                              {brandName ?? "N/A"}
+                              {item?.lowStockThreshold || 20} units
                             </p>
                           </div>
 
@@ -738,7 +856,7 @@ export function InventoryTracker() {
                                 margin: 0,
                               }}
                             >
-                              {item.product?.status || "N/A"}
+                              {item?.quantity > 0 ? "In Stock" : "Out of Stock"}
                             </p>
                           </div>
 
@@ -754,17 +872,19 @@ export function InventoryTracker() {
                                 letterSpacing: "0.5px",
                               }}
                             >
-                              Unit Price
+                              Last Updated
                             </span>
                             <p
                               style={{
-                                fontSize: "18px",
-                                fontWeight: "700",
-                                color: "#059669",
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                color: "#4b5563",
                                 margin: 0,
                               }}
                             >
-                              ₹{item.product?.price || 0}
+                              {item?.updatedAt 
+                                ? new Date(item.updatedAt).toLocaleDateString() 
+                                : "N/A"}
                             </p>
                           </div>
                         </div>
@@ -807,39 +927,37 @@ export function InventoryTracker() {
                           ✏️ Edit
                         </Button>
 
-                        {item.isLocalProduct && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUpdateClick(item)}
-                            style={{
-                              padding: "8px 16px",
-                              fontSize: "14px",
-                              fontWeight: "500",
-                              borderRadius: "8px",
-                              border: "1px solid #3b82f6",
-                              backgroundColor: "#eff6ff",
-                              color: "#1e40af",
-                              cursor: "pointer",
-                              transition: "all 0.2s ease",
-                            }}
-                            onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
-                              e.currentTarget.style.backgroundColor = "#dbeafe";
-                              e.currentTarget.style.borderColor = "#2563eb";
-                            }}
-                            onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
-                              e.currentTarget.style.backgroundColor = "#eff6ff";
-                              e.currentTarget.style.borderColor = "#3b82f6";
-                            }}
-                          >
-                            🔄 Update
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUpdateClick(item)}
+                          style={{
+                            padding: "8px 16px",
+                            fontSize: "14px",
+                            fontWeight: "500",
+                            borderRadius: "8px",
+                            border: "1px solid #3b82f6",
+                            backgroundColor: "#eff6ff",
+                            color: "#1e40af",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                          }}
+                          onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            e.currentTarget.style.backgroundColor = "#dbeafe";
+                            e.currentTarget.style.borderColor = "#2563eb";
+                          }}
+                          onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            e.currentTarget.style.backgroundColor = "#eff6ff";
+                            e.currentTarget.style.borderColor = "#3b82f6";
+                          }}
+                        >
+                          🔄 Update
+                        </Button>
 
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteItem(item._id)}
+                          onClick={() => handleDeleteItem(item?._id)}
                           style={{
                             padding: "8px 16px",
                             fontSize: "14px",
@@ -931,6 +1049,8 @@ export function InventoryTracker() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add Dialog */}
       {isAddDialogOpen && (
         <div
           onClick={handleCloseDialog}
@@ -965,7 +1085,7 @@ export function InventoryTracker() {
             }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Add Item</h2>
+              <h2 className="text-lg font-semibold">Add Inventory Item</h2>
               <button
                 onClick={handleCloseDialog}
                 style={{
@@ -992,17 +1112,15 @@ export function InventoryTracker() {
 
             <form onSubmit={handleSaveChanges} className="space-y-4 py-4">
               <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium">
+                <label htmlFor="productName" className="text-sm font-medium">
                   Product Name *
                 </label>
                 <Input
-                  id="name"
-                  name="name"
+                  id="productName"
+                  name="productName"
                   required
-                  defaultValue={editData?.product?.name || ""}
                   style={{
-                    border: "1 px",
-                    borderColor: "black",
+                    border: "1px solid #d1d5db",
                     marginTop: "15px",
                   }}
                 />
@@ -1017,103 +1135,68 @@ export function InventoryTracker() {
                   name="quantity"
                   type="number"
                   required
+                  min="0"
                   style={{
-                    border: "1 px",
-                    borderColor: "black",
+                    border: "1px solid #d1d5db",
                     marginTop: "15px",
                   }}
                 />
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="price" className="text-sm font-medium">
-                  Unit Price ($) *
+                <label htmlFor="inventoryType" className="text-sm font-medium">
+                  Inventory Type *
                 </label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  step="0.01"
+                <select
+                  id="inventoryType"
+                  name="inventoryType"
                   required
-                  style={{
-                    border: "1 px",
-                    borderColor: "black",
-                    marginTop: "15px",
-                  }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="category" className="text-sm font-medium">
-                  Category *
-                </label>
-                <Input
-                  id="category"
-                  name="category"
-                  defaultValue={editData?.product?.category || ""}
-                  required
-                  style={{
-                    border: "1 px",
-                    borderColor: "black",
-                    marginTop: "15px",
-                  }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="mainCategory" className="text-sm font-medium">
-                  Main Category
-                </label>
-                <Input
-                  id="mainCategory"
-                  name="mainCategory"
-                  style={{
-                    border: "1 px",
-                    borderColor: "black",
-                    marginTop: "15px",
-                  }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="subCategory" className="text-sm font-medium">
-                  Sub Category
-                </label>
-                <Input
-                  id="subCategory"
-                  name="subCategory"
-                  style={{
-                    border: "1 px",
-                    borderColor: "black",
-                    marginTop: "15px",
-                  }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="brand" className="text-sm font-medium">
-                  Brand
-                </label>
-                <Input
-                  id="brand"
-                  name="brand"
-                  style={{
-                    border: "1 px",
-                    borderColor: "black",
-                    marginTop: "15px",
-                  }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
+                  style={{
+                    border: "1px solid #d1d5db",
+                    marginTop: "15px",
+                  }}
+                >
+                  <option value="general">General</option>
+                  <option value="medical">Medical</option>
+                  <option value="equipment">Equipment</option>
+                  <option value="consumable">Consumable</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="productType" className="text-sm font-medium">
+                  Product Type *
+                </label>
+                <select
+                  id="productType"
+                  name="productType"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                    border: "1px solid #d1d5db",
+                    marginTop: "15px",
+                  }}
+                >
+                  <option value="global">Global</option>
+                  <option value="local">Local</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="lowStockThreshold" className="text-sm font-medium">
+                  Low Stock Threshold
+                </label>
+                <Input
+                  id="lowStockThreshold"
+                  name="lowStockThreshold"
+                  type="number"
+                  min="1"
+                  defaultValue="20"
+                  style={{
+                    border: "1px solid #d1d5db",
+                    marginTop: "15px",
+                  }}
                 />
               </div>
 
@@ -1125,12 +1208,13 @@ export function InventoryTracker() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Add</Button>
+                <Button type="submit">Add Item</Button>
               </div>
             </form>
           </div>
         </div>
       )}
+
       {/* Edit Dialog */}
       {isEditDialogOpen && selectedItem && (
         <div
@@ -1163,10 +1247,11 @@ export function InventoryTracker() {
               overflowY: "auto",
               padding: "1.5rem",
               zIndex: 10000,
+              color: "black",
             }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Edit Inventory Item</h2>
+              <h2 className="text-lg font-semibold">Assign Inventory</h2>
               <button
                 onClick={handleCloseDialog}
                 style={{
@@ -1197,59 +1282,52 @@ export function InventoryTracker() {
                 </label>
                 <Input
                   id="product-name"
-                  defaultValue={selectedItem.product?.name || ""}
+                  defaultValue={selectedItem?.productName || ""}
                   disabled
                   className="bg-gray-50"
                 />
               </div>
               <div className="space-y-2">
                 <label htmlFor="quantity" className="text-sm font-medium">
-                  Total Quantity
+                  Available Quantity
                 </label>
-                <p>{selectedItem.quantity || 0}</p>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="price" className="text-sm font-medium">
-                  Unit Price (₹)
-                </label>
-                <p>{selectedItem.product?.price || 0}</p>
+                <p className="text-lg font-semibold">{selectedItem?.quantity || 0} units</p>
               </div>
               <div className="space-y-2">
                 <label htmlFor="assign" className="text-sm font-medium">
                   Assign To
                 </label>
 
-                {/* Dropdown */}
                 <select
                   id="assign"
                   className="w-full border px-3 py-2 rounded-md focus:ring"
                   onChange={(e) => {
-                    const value = e.target.value;
+                    const value = e?.target?.value || "";
                     const [type, id] = value.split(":");
-                    setAssignType(type); // lab or pharmacy
-                    setAssignId(id); // actual ID
+                    setAssignType(type || "");
+                    setAssignId(id || "");
                   }}
                 >
                   <option value="">Select</option>
 
-                  {labs.length > 0 && (
+                  {labs && labs.length > 0 && (
                     <optgroup label="Labs">
                       {labs.map((lab) => (
-                        <option key={lab._id} value={`lab:${lab._id}`}>
-                          {lab.name}
+                        <option key={lab?._id || Math.random()} value={`lab:${lab?._id || ""}`}>
+                          {lab?.name || "Unknown Lab"}
                         </option>
                       ))}
                     </optgroup>
                   )}
 
-                  {pharmacies.length > 0 && (
+                  {pharmacies && pharmacies.length > 0 && (
                     <optgroup label="Pharmacy">
                       {pharmacies.map((pharmacy) => (
                         <option
-                          key={pharmacy._id}
-                          value={`pharmacy:${pharmacy._id}`}
+                          key={pharmacy?._id || Math.random()}
+                          value={`pharmacy:${pharmacy?._id || ""}`}
                         >
-                          {pharmacy.name}
+                          {pharmacy?.name || "Unknown Pharmacy"}
                         </option>
                       ))}
                     </optgroup>
@@ -1258,15 +1336,17 @@ export function InventoryTracker() {
               </div>
               <div className="space-y-2">
                 <label htmlFor="quantity" className="text-sm font-medium">
-                  Quantity To Move
+                  Quantity To Assign
                 </label>
                 <Input
                   id="quantity"
                   name="quantity"
                   type="number"
                   required
+                  min="1"
+                  max={selectedItem?.quantity || 0}
                   value={assignQuantity}
-                  onChange={(e) => setAssignQuantity(e.target.value)}
+                  onChange={(e) => setAssignQuantity(e?.target?.value || "")}
                   style={{
                     border: "1px solid black",
                     marginTop: "15px",
@@ -1278,14 +1358,16 @@ export function InventoryTracker() {
               <Button variant="outline" onClick={handleCloseDialog}>
                 Cancel
               </Button>
-              <Button onClick={handleMove}>Save Changes</Button>
+              <Button onClick={handleAssignInventory}>Assign Inventory</Button>
             </div>
           </div>
         </div>
       )}
-      {isQuantityDialogOpen && (
+
+      {/* Quantity Dialog */}
+      {isQuantityDialogOpen && editData && (
         <div
-          onClick={handleCloseDialog}
+          onClick={handleCloseQuantityDialog}
           style={{
             position: "fixed",
             top: 0,
@@ -1317,7 +1399,7 @@ export function InventoryTracker() {
             }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Add Item</h2>
+              <h2 className="text-lg font-semibold">Update Quantity</h2>
               <button
                 onClick={handleCloseQuantityDialog}
                 style={{
@@ -1345,33 +1427,41 @@ export function InventoryTracker() {
             <form onSubmit={handleEditChanges} className="space-y-4 py-4">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium">
-                  Product Name *
+                  Product Name
                 </label>
                 <Input
                   id="name"
                   name="name"
-                  required
-                  defaultValue={editData?.product?.name || ""}
+                  defaultValue={editData?.productName || ""}
+                  disabled
                   style={{
-                    border: "1 px",
-                    borderColor: "black",
+                    border: "1px solid #d1d5db",
                     marginTop: "15px",
+                    backgroundColor: "#f3f4f6",
                   }}
                 />
               </div>
 
               <div className="space-y-2">
+                <label htmlFor="currentQuantity" className="text-sm font-medium">
+                  Current Quantity
+                </label>
+                <p className="text-lg font-semibold">{editData?.quantity || 0} units</p>
+              </div>
+
+              <div className="space-y-2">
                 <label htmlFor="quantity" className="text-sm font-medium">
-                  Quantity *
+                  New Quantity *
                 </label>
                 <Input
                   id="quantity"
                   name="quantity"
                   type="number"
                   required
+                  min="0"
+                  defaultValue={editData?.quantity || 0}
                   style={{
-                    border: "1 px",
-                    borderColor: "black",
+                    border: "1px solid #d1d5db",
                     marginTop: "15px",
                   }}
                 />
@@ -1385,7 +1475,7 @@ export function InventoryTracker() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Add</Button>
+                <Button type="submit">Update Quantity</Button>
               </div>
             </form>
           </div>

@@ -16,6 +16,7 @@ import {
 import styles from "../styles/PatientMedicalHistory.module.css";
 import axios from "axios";
 import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
+
 interface Prescription {
   medicineName: string;
   dosage: string;
@@ -86,7 +87,6 @@ export default function PatientMedicalHistory({
   const fetchMedicalHistory = async () => {
     try {
       setLoading(true);
-      // Replace with your actual API endpoint
       const response = await axios.get(
         `${patientServiceBaseUrl}/api/v1/patient-service/appointment/patient-history/${patient._id}?clinicId=${patient.clinicId}`
       );
@@ -111,9 +111,7 @@ export default function PatientMedicalHistory({
 
   const filteredRecords = medicalRecords.filter((record) => {
     if (filterStatus === "all") return true;
-    if (filterStatus === "completed") return record.status === "completed";
-    if (filterStatus === "pending") return record.status === "pending";
-    return true;
+    return record.status === filterStatus;
   });
 
   const formatDate = (dateString: string) => {
@@ -131,6 +129,14 @@ export default function PatientMedicalHistory({
       style: "currency",
       currency: "INR",
     }).format(amount);
+  };
+
+  // Helper function to safely join arrays
+  const safeJoin = (arr: any[] | undefined | null, separator: string = ", ") => {
+    if (!arr || !Array.isArray(arr) || arr.length === 0) {
+      return "N/A";
+    }
+    return arr.join(separator);
   };
 
   if (loading) {
@@ -188,7 +194,7 @@ export default function PatientMedicalHistory({
             <p className={styles.summaryLabel}>Total Prescriptions</p>
             <p className={styles.summaryValue}>
               {medicalRecords.reduce(
-                (sum, record) => sum + record.prescriptions.length,
+                (sum, record) => sum + (record.prescriptions?.length || 0),
                 0
               )}
             </p>
@@ -203,7 +209,7 @@ export default function PatientMedicalHistory({
             <p className={styles.summaryLabel}>Procedures Done</p>
             <p className={styles.summaryValue}>
               {medicalRecords.reduce(
-                (sum, record) => sum + record.procedures.length,
+                (sum, record) => sum + (record.procedures?.length || 0),
                 0
               )}
             </p>
@@ -217,7 +223,7 @@ export default function PatientMedicalHistory({
           <div>
             <p className={styles.summaryLabel}>Last Visit</p>
             <p className={styles.summaryValue}>
-              {medicalRecords.length > 0
+              {medicalRecords.length > 0 && medicalRecords[0]?.visitDate
                 ? new Date(medicalRecords[0].visitDate).toLocaleDateString(
                     "en-IN",
                     { month: "short", day: "numeric" }
@@ -267,12 +273,12 @@ export default function PatientMedicalHistory({
                   <div className={styles.recordHeaderLeft}>
                     <div className={styles.recordDate}>
                       <Calendar className={styles.recordIcon} />
-                      {formatDate(record.visitDate)}
+                      {record.visitDate ? formatDate(record.visitDate) : "Date N/A"}
                     </div>
                     <div className={styles.recordDoctor}>
                       <Stethoscope className={styles.recordIcon} />
                       {record.doctor
-                        ? `${record.doctor.name} - ${record.doctor.specialization}`
+                        ? `${record.doctor.name || "Unknown"} - ${record.doctor.specialization || "General"}`
                         : "Doctor Not Assigned"}
                     </div>
                   </div>
@@ -284,7 +290,7 @@ export default function PatientMedicalHistory({
                           : styles.statusPending
                       }`}
                     >
-                      {record.status}
+                      {record.status || "Unknown"}
                     </span>
                     <button
                       onClick={() => toggleRecordExpansion(record._id)}
@@ -302,7 +308,7 @@ export default function PatientMedicalHistory({
                     <div>
                       <p className={styles.infoLabel}>Symptoms</p>
                       <p className={styles.infoValue}>
-                        {record.symptoms.join(", ")}
+                        {safeJoin(record.symptoms)}
                       </p>
                     </div>
                   </div>
@@ -311,7 +317,7 @@ export default function PatientMedicalHistory({
                     <div>
                       <p className={styles.infoLabel}>Diagnosis</p>
                       <p className={styles.infoValue}>
-                        {record.diagnosis.join(", ")}
+                        {safeJoin(record.diagnosis)}
                       </p>
                     </div>
                   </div>
@@ -321,7 +327,7 @@ export default function PatientMedicalHistory({
                 {expandedRecords.has(record._id) && (
                   <div className={styles.expandedContent}>
                     {/* Prescriptions */}
-                    {record.prescriptions.length > 0 && (
+                    {record.prescriptions && record.prescriptions.length > 0 && (
                       <div className={styles.detailSection}>
                         <h4 className={styles.sectionTitle}>
                           <Pill className={styles.sectionIcon} />
@@ -334,12 +340,12 @@ export default function PatientMedicalHistory({
                               className={styles.prescriptionCard}
                             >
                               <p className={styles.medicineName}>
-                                {prescription.medicineName}
+                                {prescription.medicineName || "N/A"}
                               </p>
                               <div className={styles.prescriptionDetails}>
-                                <span>Dosage: {prescription.dosage}</span>
-                                <span>Frequency: {prescription.frequency}</span>
-                                <span>Duration: {prescription.duration} days</span>
+                                <span>Dosage: {prescription.dosage || "N/A"}</span>
+                                <span>Frequency: {prescription.frequency || "N/A"}</span>
+                                <span>Duration: {prescription.duration || "N/A"}</span>
                               </div>
                             </div>
                           ))}
@@ -348,7 +354,7 @@ export default function PatientMedicalHistory({
                     )}
 
                     {/* Procedures */}
-                    {record.procedures.length > 0 && (
+                    {record.procedures && record.procedures.length > 0 && (
                       <div className={styles.detailSection}>
                         <h4 className={styles.sectionTitle}>
                           <Activity className={styles.sectionIcon} />
@@ -359,7 +365,7 @@ export default function PatientMedicalHistory({
                             <div key={procedure._id} className={styles.procedureItem}>
                               <div>
                                 <p className={styles.procedureName}>
-                                  {procedure.name}
+                                  {procedure.name || "N/A"}
                                 </p>
                                 {procedure.description && (
                                   <p className={styles.procedureDescription}>
@@ -368,7 +374,7 @@ export default function PatientMedicalHistory({
                                 )}
                               </div>
                               <span className={styles.procedureFee}>
-                                {formatCurrency(procedure.fee)}
+                                {procedure.fee ? formatCurrency(procedure.fee) : "N/A"}
                               </span>
                             </div>
                           ))}
@@ -388,7 +394,7 @@ export default function PatientMedicalHistory({
                     )}
 
                     {/* Files/Images */}
-                    {record.files.length > 0 && (
+                    {record.files && record.files.length > 0 && (
                       <div className={styles.detailSection}>
                         <h4 className={styles.sectionTitle}>
                           <Image className={styles.sectionIcon} />
@@ -410,7 +416,10 @@ export default function PatientMedicalHistory({
                                   <FileText />
                                 </div>
                               )}
-                              <button className={styles.downloadButton}>
+                              <button 
+                                className={styles.downloadButton}
+                                onClick={() => window.open(file.url, '_blank')}
+                              >
                                 <Download className={styles.downloadIcon} />
                                 Download
                               </button>
@@ -424,15 +433,15 @@ export default function PatientMedicalHistory({
                     <div className={styles.billingSection}>
                       <div className={styles.billingItem}>
                         <span>Consultation Fee:</span>
-                        <span>{formatCurrency(record.consultationFee)}</span>
+                        <span>{record.consultationFee ? formatCurrency(record.consultationFee) : "N/A"}</span>
                       </div>
-                      {record.procedures.length > 0 && (
+                      {record.procedures && record.procedures.length > 0 && (
                         <div className={styles.billingItem}>
-                          <span>Procedures:</span>
+                          <span>Procedures Total:</span>
                           <span>
                             {formatCurrency(
                               record.procedures.reduce(
-                                (sum, p) => sum + p.fee,
+                                (sum, p) => sum + (p.fee || 0),
                                 0
                               )
                             )}
@@ -441,7 +450,7 @@ export default function PatientMedicalHistory({
                       )}
                       <div className={styles.billingTotal}>
                         <span>Total Amount:</span>
-                        <span>{formatCurrency(record.totalAmount)}</span>
+                        <span>{record.totalAmount ? formatCurrency(record.totalAmount) : "N/A"}</span>
                       </div>
                       <div className={styles.paymentStatus}>
                         <span>Payment Status:</span>
