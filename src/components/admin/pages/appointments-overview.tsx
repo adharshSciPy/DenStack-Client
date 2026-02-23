@@ -264,7 +264,8 @@ export function AppointmentsOverview() {
   const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [calendarLoading, setCalendarLoading] = useState(false);
-  
+  // Add with your other state declarations
+const [approvingId, setApprovingId] = useState<string | null>(null);
   // Calendar booking form states (separate from list booking)
   const [calendarBookingForm, setCalendarBookingForm] = useState({
     patientId: "",
@@ -366,6 +367,8 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       const data = response.data || {};
       const newAppointments = data.data || [];
       console.log("helloookojidjwjdx9e8", response.data);
+       console.log("First appointment full object:", newAppointments[0]);
+      console.log("First appointment ID:", newAppointments[0]._id);
       // Replace current appointments
       setAppointments(newAppointments);
       setNextCursor(data.nextCursor || null);
@@ -1477,6 +1480,50 @@ const Info = ({ label, value }: { label: string; value?: string }) => (
       fetchCalendarDepartments();
     }
   }, [calendarShowBookingForm, clinicId]);
+  // Add this function inside your AppointmentsOverview component
+const handleApproveAppointment = async (appointmentId: string) => {
+  try {
+    console.log("Appointment ID to approve:", appointmentId); // Debug log
+    console.log("Appointment ID type:", typeof appointmentId); // Debug log
+    console.log("Appointment ID length:", appointmentId?.length); // Debug log
+    
+    const confirmApprove = window.confirm("Are you sure you want to approve this appointment?");
+    if (!confirmApprove) return;
+
+    setApprovingId(appointmentId);
+    
+    // Log the full URL to verify
+  const url = `${patientServiceBaseUrl}/api/v1/patient-service/appointment/patient-portal/approve/${appointmentId}`;
+    console.log("Calling URL:", url);
+    
+    const response = await axios.patch(
+      url,
+      {
+        approvedBy: clinicId
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    if (response.data.success) {
+      alert("Appointment approved successfully!");
+      fetchAppointments();
+      if (showCalendarView) {
+        fetchCalendarAppointments(currentMonth, currentYear);
+      }
+    }
+  } catch (error: any) {
+    console.error("Error approving appointment:", error);
+    console.error("Error response data:", error.response?.data);
+    console.error("Error response status:", error.response?.status);
+    alert(error.response?.data?.message || "Failed to approve appointment");
+  } finally {
+    setApprovingId(null);
+  }
+};
 // Recall Approval Modal Component
 const RecallApprovalModal: React.FC<RecallApprovalModalProps> = ({
   isOpen,
@@ -2736,6 +2783,20 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
             </div>
           </CardContent>
         </Card>
+        {/* Pending Approval Stats Card */}
+<Card className="hover:shadow-md bg-muted/60 transition-shadow">
+  <CardContent className="p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-muted-foreground">Pending Approval</p>
+        <p className="text-3xl font-bold text-purple-600">
+          {appointments.filter(apt => apt.status === "pending_approval").length}
+        </p>
+      </div>
+      <Clock className="w-8 h-8 text-purple-600/60" />
+    </div>
+  </CardContent>
+</Card>
         <div style={{ position: "relative" }}>
           <Card
             className="hover:shadow-md bg-muted/60 transition-shadow"
@@ -2945,7 +3006,7 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
                 </div>
               ) : (
                 <>
-                 {appointments.map((appointment) => (
+ {appointments.map((appointment) => (
   <div
     key={appointment._id}
     className={`flex justify-between items-start p-4 rounded-lg transition-colors w-full ${
@@ -2953,6 +3014,8 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
         ? "bg-red-50 hover:bg-red-100 border border-red-200"
         : appointment.status === "recall"
         ? "bg-yellow-50 hover:bg-yellow-100 border border-yellow-200"
+        : appointment.status === "pending_approval"
+        ? "bg-purple-50 hover:bg-purple-100 border border-purple-200" // New color for pending approval
         : "bg-green-50 hover:bg-green-100 border border-green-200"
     }`}
   >
@@ -2963,7 +3026,7 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
           {appointment.patientId?.name}
         </p>
 
-        {/* Status Badge - Updated for recall */}
+        {/* Status Badge - Updated for pending_approval */}
         <span
           style={{
             backgroundColor:
@@ -2973,6 +3036,8 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
                 ? "#ef4444"
                 : appointment.status === "recall"
                 ? "#f59e0b"
+                : appointment.status === "pending_approval"
+                ? "#8b5cf6" // Purple for pending approval
                 : appointment.status === "rescheduled" ||
                   appointment.status === "needs_reschedule"
                 ? "#facc15"
@@ -2980,8 +3045,9 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
             color:
               appointment.status === "rescheduled" ||
               appointment.status === "needs_reschedule" ||
-              appointment.status === "recall"
-                ? "#000"
+              appointment.status === "recall" ||
+              appointment.status === "pending_approval"
+                ? "#fff"
                 : "#fff",
             fontWeight: "bold",
             borderRadius: "8px",
@@ -2995,6 +3061,8 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
             ? "NEED RESCHEDULE"
             : appointment.status === "recall"
             ? "RECALL"
+            : appointment.status === "pending_approval"
+            ? "PENDING APPROVAL"
             : appointment.status.toUpperCase()}
         </span>
       </div>
@@ -3005,8 +3073,9 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
             OP No:{" "}
             <span
               style={{
-                backgroundColor: appointment.status === "recall" ? "#f59e0b" : "#facc15",
-                color: "#000",
+                backgroundColor: appointment.status === "recall" ? "#f59e0b" : 
+                                 appointment.status === "pending_approval" ? "#8b5cf6" : "#facc15",
+                color: "#fff",
                 fontWeight: "bold",
                 borderRadius: "8px",
                 padding: "4px 10px",
@@ -3046,9 +3115,30 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
       </div>
     </div>
 
-    {/* Action Buttons - Updated for recall */}
+    {/* Action Buttons - Updated for pending_approval */}
     {appointment.status !== "cancelled" && (
       <div className="flex items-start gap-2 ml-4 flex-shrink-0 flex-col">
+        {/* Approve Button - For pending_approval appointments */}
+        {appointment.status === "pending_approval" && (
+          <Button
+            variant="outline"
+            size="sm"
+            style={{
+              backgroundColor: "#8b5cf6",
+              color: "#ffffff",
+              borderColor: "#7c3aed",
+              minWidth: "120px",
+            }}
+            onClick={(e: any) => {
+              e.stopPropagation();
+              handleApproveAppointment(appointment._id);
+            }}
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Approve
+          </Button>
+        )}
+
         {/* Recall Approval Button - Only for recall appointments */}
         {appointment.status === "recall" && (
           <Button
@@ -3087,7 +3177,7 @@ const handleApproveRecall = async (data: { appointmentTime: string; appointmentD
           </Button>
         )}
 
-        {/* View button */}
+        {/* View button - Show for all non-cancelled appointments */}
         <Button
           variant="outline"
           size="sm"

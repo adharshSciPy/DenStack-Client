@@ -39,6 +39,8 @@ import { InventoryPage } from "./components/dental-lab/pages/InventoryPage";
 
 // ✅ Public — no auth needed
 import ReviewPage from "./components/ReviewPage";
+import PatientPortalPage from "./components/receptionist/pages/PatientPortalPage";
+
 
 interface PrivateRouteProps {
   element: React.ReactNode;
@@ -168,7 +170,7 @@ export default function App() {
               <Route path="settings" element={<div>Lab Settings</div>} />
               <Route path="inventory" element={<InventoryPage />} />
             </Route>
-
+<Route path="/patient-access/:encryptedId" element={<PatientPortalPage />} />
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
