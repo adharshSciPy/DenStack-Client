@@ -19,6 +19,7 @@ import StaffRegistration from "./components/admin/pages/staff-dashboard";
 import Cart from "./components/admin/pages/Cart";
 import Patients from "./components/admin/pages/patient-dashboard";
 import ReviewsPageAdmin from "./components/admin/pages/ReviewListing";
+
 // Receptionist
 import ReceptionistLayout from "./components/receptionist/ReceptionistLayout";
 import Dashboard from "./components/receptionist/pages/Dashboard";
@@ -34,11 +35,10 @@ import LabDashboardPage from "./components/dental-lab/pages/DashboardPage";
 import LabRevenuePage from "./components/dental-lab/pages/RevenuePage";
 import SubClinic from "./components/admin/pages/SubClinic";
 import { useAppSelector } from "./redux/hook";
-import { InventoryPage } from "./components/dental-lab/pages/InventoryPage"; 
+import { InventoryPage } from "./components/dental-lab/pages/InventoryPage";
 
-
-
-import ReviewPage from "./components/receptionist/pages/ReviewPage";
+// ✅ Public — no auth needed
+import ReviewPage from "./components/ReviewPage";
 
 interface PrivateRouteProps {
   element: React.ReactNode;
@@ -47,17 +47,15 @@ interface PrivateRouteProps {
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ element, allowedRoles }) => {
   const token = useAppSelector((state) => state.auth.token);
-  const role = useAppSelector((state) => state.auth.userRole); 
+  const role = useAppSelector((state) => state.auth.userRole);
   const isHybrid = useAppSelector((state) => state.auth.isHybrid);
 
   console.log(useAppSelector((state) => state.auth.user.id));
-  
   console.log("PrivateRoute - auth state:", { token, role, isHybrid });
 
   if (!token) return <Navigate to="/login" replace />;
 
   if (isHybrid || role === "760") {
-   
     return <>{element}</>;
   }
 
@@ -75,14 +73,19 @@ export default function App() {
       <PersistGate loading={null} persistor={persistor}>
         <Router>
           <Routes>
-            {/* Login */}
+            {/* ── Public routes ───────────────────────────────────────────── */}
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
+
+            {/* ✅ Patient feedback — no login required */}
+            <Route path="/feedback/:token" element={<ReviewPage />} />
+
+            {/* ── Clinic Admin routes ─────────────────────────────────────── */}
             <Route
               path="/dashboard/:clinicId"
               element={
                 <PrivateRoute
-                  allowedRoles={["700", "760"]} 
+                  allowedRoles={["700", "760"]}
                   element={<AdminLayout />}
                 />
               }
@@ -103,7 +106,7 @@ export default function App() {
               <Route path="reviews" element={<ReviewsPageAdmin />} />
             </Route>
 
-            {/* Admin (without clinicId) */}
+            {/* ── Admin (without clinicId) ────────────────────────────────── */}
             <Route
               path="/admin"
               element={
@@ -127,7 +130,7 @@ export default function App() {
               <Route path="staff" element={<StaffRegistration />} />
             </Route>
 
-            {/* ---- RECEPTIONIST ROUTES ---- */}
+            {/* ── Receptionist routes ─────────────────────────────────────── */}
             <Route
               path="/receptionist"
               element={
@@ -144,15 +147,15 @@ export default function App() {
               <Route path="queue" element={<QueueManagement />} />
               <Route path="billing" element={<Billing />} />
               <Route path="doctors" element={<DoctorAllocation />} />
-              <Route path="review/:token" element={<ReviewPage />} />
+              {/* ❌ Removed review route from here — moved to public routes above */}
             </Route>
 
-            {/* ---- DENTAL LAB ROUTES ---- */}
+            {/* ── Dental Lab routes ───────────────────────────────────────── */}
             <Route
               path="/labadmin"
               element={
                 <PrivateRoute
-                  allowedRoles={["700","500", "760"]} 
+                  allowedRoles={["700", "500", "760"]}
                   element={<DentalLabLayout />}
                 />
               }
@@ -164,7 +167,6 @@ export default function App() {
               <Route path="vendors" element={<div>Lab Vendors Page</div>} />
               <Route path="settings" element={<div>Lab Settings</div>} />
               <Route path="inventory" element={<InventoryPage />} />
-
             </Route>
 
             {/* Fallback */}
