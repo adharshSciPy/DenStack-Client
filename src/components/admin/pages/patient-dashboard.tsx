@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Scissors,
   Users,
+  MessageCircle
 } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
@@ -241,6 +242,33 @@ class ErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
+// Add this function inside ReportsContent component, before the return statement
+const generateWhatsAppLink = async (patient: Patient) => {
+  try {
+    const response = await axios.get(
+      `${patientServiceBaseUrl}/api/v1/patient-service/patient/encrypted-link/${patient._id}`
+    );
+    
+    const { secureLink } = response.data.data;
+    const lastFourDigits = patient.patientUniqueId.slice(-4);
+    
+    // The secureLink now has NO special characters
+    const portalUrl = `${window.location.origin}/patient-access/${secureLink}`;
+    
+    const message = encodeURIComponent(
+`Hello ${patient.name},
+Click this link to access your dental records:
+${portalUrl}
+Verification code: ${lastFourDigits}`
+);
+    
+    return `https://wa.me/${patient.phone}?text=${message}`;
+  } catch (error) {
+    console.error('Error generating secure link:', error);
+    alert('Failed to generate secure access link. Please try again.');
+    throw error;
+  }
+};
 
 function ReportsContent() {
   const { clinicId } = useParams();
@@ -1998,6 +2026,34 @@ function ReportsContent() {
                           >
                             View Records
                           </Button>
+         <Button
+  size="sm"
+  variant="outline"
+  onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    try {
+      const link = await generateWhatsAppLink(p);
+      window.open(link, '_blank');
+    } catch (error) {
+      console.error('Failed to send WhatsApp message:', error);
+    }
+  }}
+  style={{
+    marginLeft: '8px',
+    backgroundColor: '#25D366',
+    color: 'white',
+    border: 'none',
+  }}
+  onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.backgroundColor = '#128C7E';
+  }}
+  onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.backgroundColor = '#25D366';
+  }}
+>
+  <MessageCircle size={16} style={{ marginRight: '4px' }} />
+  WhatsApp
+</Button>
                         </div>
                       </div>
                     ))}

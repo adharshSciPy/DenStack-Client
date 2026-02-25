@@ -977,8 +977,9 @@ const DoctorRegistrationForm: React.FC = () => {
     try {
       // First, register the doctor
       const response = await axios.post(
-        `${clinicServiceBaseUrl}/api/v1/clinic-service/onboard-doctor`,
-        formData
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/onboard-doctor`,{ ...formData,
+    standardConsultationFee: Number(formData.standardConsultationFee)}
+        // formData
       );
 
       if (response.status === 201) {
