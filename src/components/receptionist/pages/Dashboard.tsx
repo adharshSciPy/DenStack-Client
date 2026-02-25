@@ -129,7 +129,8 @@ export default function Dashboard() {
       );
 
       const data = response.data || {};
-
+      console.log(data);
+      
       setAppointments(data.data || []);
       setNextCursor(data.nextCursor || null);
       setTotalAppointments(data.totalAppointments || 0);

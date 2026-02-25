@@ -54,6 +54,7 @@ interface LabOrder {
   patientname: string;
   patientName: string;
   doctorName: string;
+  price: number;
   deliveryDate: string;
   appointmentId: string;
   note: string;
@@ -111,6 +112,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const labOrderId = useAppSelector((state) => state.auth.user?.labVendorId);
+  const labType = useAppSelector((state) => state.auth.user?.labType);
   const getStatusConfig = (status: LabOrder["status"]): StatusConfig => {
     const configs = {
       pending: {
@@ -157,12 +159,6 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
     return configs[status] || configs.pending;
   };
 
-  const getPriorityColor = (amount: number) => {
-    if (amount > 2000) return "bg-red-500/10 text-red-700";
-    if (amount > 1000) return "bg-yellow-500/10 text-yellow-700";
-    return "bg-green-500/10 text-green-700";
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -176,7 +172,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   useEffect(() => {
     const fetchOrders = async () => {
       console.log(clinicId);
-      
+
       if (currentPageIndex === 0) {
         setIsLoading(true);
       } else {
@@ -195,14 +191,20 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
         if (selectedStatus !== "all") params.status = selectedStatus;
         if (searchQuery.trim()) params.search = searchQuery.trim();
 
-        const response = await axios.get(
-          `${labBaseUrl}api/v1/lab-orders/lab/${labOrderId}`,
-          { params },
-        );
+        let endpoint = "";
+        if (labType === "inHouse") {
+          endpoint = `${labBaseUrl}api/v1/lab-orders/lab/${labOrderId}`;
+        } else if (labType === "aligner") {
+          endpoint = `${labBaseUrl}api/v1/lab-orders/aligner-orders/${labOrderId}`;
+        } else if (labType === "external") {
+          endpoint = `${labBaseUrl}api/v1/lab-orders/external/${labOrderId}`;
+        }
+
+        const response = await axios.get(endpoint, { params });
 
         setLabData(response);
         console.log(response);
-        
+
         // Update cursor history if there's a next page
         if (
           response.data.nextCursor &&
@@ -700,7 +702,9 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
           <div style={modalStyles.header}>
             <div style={modalStyles.headerLeft}>
               <div style={modalStyles.iconContainer}>
-                <Upload style={{ width: "24px", height: "24px", color: "white" }} />
+                <Upload
+                  style={{ width: "24px", height: "24px", color: "white" }}
+                />
               </div>
               <div>
                 <h2 style={modalStyles.title}>Upload Test Results</h2>
@@ -710,8 +714,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
             <button
               onClick={onClose}
               style={modalStyles.closeButton}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = "#f1f5f9")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "transparent")
+              }
             >
               <X style={{ width: "24px", height: "24px", color: "#64748b" }} />
             </button>
@@ -731,12 +739,27 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
               }}
             >
               <div style={modalStyles.dropzoneIcon}>
-                <FilePlus style={{ width: "32px", height: "32px", color: "#2563eb" }} />
+                <FilePlus
+                  style={{ width: "32px", height: "32px", color: "#2563eb" }}
+                />
               </div>
-              <p style={{ fontSize: "18px", fontWeight: 600, color: "#0f172a", marginBottom: "8px" }}>
+              <p
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: "8px",
+                }}
+              >
                 Drop files here
               </p>
-              <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "16px" }}>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  marginBottom: "16px",
+                }}
+              >
                 Supports: PDF, JPG, PNG
               </p>
               <input
@@ -750,19 +773,44 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
             {files.length > 0 && (
               <div style={modalStyles.fileList}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0f172a", marginBottom: "12px" }}>
+                <h3
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    marginBottom: "12px",
+                  }}
+                >
                   Selected Files ({files.length})
                 </h3>
                 <div style={{ maxHeight: "60px", overflowY: "auto" }}>
                   {files.map((file, idx) => (
                     <div key={idx} style={modalStyles.fileItem}>
                       <div style={modalStyles.fileInfo}>
-                        <FileText style={{ width: "20px", height: "20px", color: "#2563eb" }} />
+                        <FileText
+                          style={{
+                            width: "20px",
+                            height: "20px",
+                            color: "#2563eb",
+                          }}
+                        />
                         <div>
-                          <p style={{ fontWeight: 500, color: "#0f172a", margin: 0 }}>
+                          <p
+                            style={{
+                              fontWeight: 500,
+                              color: "#0f172a",
+                              margin: 0,
+                            }}
+                          >
                             {file.name}
                           </p>
-                          <p style={{ fontSize: "12px", color: "#64748b", margin: "4px 0 0 0" }}>
+                          <p
+                            style={{
+                              fontSize: "12px",
+                              color: "#64748b",
+                              margin: "4px 0 0 0",
+                            }}
+                          >
                             {(file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
                         </div>
@@ -776,10 +824,21 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                           borderRadius: "8px",
                           cursor: "pointer",
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e2e8f0"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor = "#e2e8f0")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            "transparent")
+                        }
                       >
-                        <X style={{ width: "16px", height: "16px", color: "#64748b" }} />
+                        <X
+                          style={{
+                            width: "16px",
+                            height: "16px",
+                            color: "#64748b",
+                          }}
+                        />
                       </button>
                     </div>
                   ))}
@@ -787,7 +846,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
               </div>
             )}
 
-              {/* <div>
+            {/* <div>
                 <label style={{ fontSize: "16px", fontWeight: 600, color: "#0f172a", display: "block", marginBottom: "8px" }}>
                   Notes
                 </label>
@@ -813,10 +872,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                 onClick={onClose}
                 style={modalStyles.cancelButton}
                 onMouseEnter={(e) => {
-                  if (!uploading) e.currentTarget.style.backgroundColor = "#f8fafc";
+                  if (!uploading)
+                    e.currentTarget.style.backgroundColor = "#f8fafc";
                 }}
                 onMouseLeave={(e) => {
-                  if (!uploading) e.currentTarget.style.backgroundColor = "white";
+                  if (!uploading)
+                    e.currentTarget.style.backgroundColor = "white";
                 }}
               >
                 Cancel
@@ -827,18 +888,26 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                 style={modalStyles.uploadButton}
                 onMouseEnter={(e) => {
                   if (files.length > 0 && !uploading) {
-                    e.currentTarget.style.background = "linear-gradient(135deg, #1d4ed8 0%, #3730a3 100%)";
+                    e.currentTarget.style.background =
+                      "linear-gradient(135deg, #1d4ed8 0%, #3730a3 100%)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (files.length > 0 && !uploading) {
-                    e.currentTarget.style.background = "linear-gradient(135deg, #2563eb 0%, #4338ca 100%)";
+                    e.currentTarget.style.background =
+                      "linear-gradient(135deg, #2563eb 0%, #4338ca 100%)";
                   }
                 }}
               >
                 {uploading ? (
                   <>
-                    <Loader2 style={{ width: "16px", height: "16px", animation: "spin 1s linear infinite" }} />
+                    <Loader2
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        animation: "spin 1s linear infinite",
+                      }}
+                    />
                     Uploading...
                   </>
                 ) : (
@@ -852,10 +921,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
     );
   };
 
-  const StatusBadge: React.FC<{ status: LabOrder["status"] }> = ({ status }) => {
+  const StatusBadge: React.FC<{ status: LabOrder["status"] }> = ({
+    status,
+  }) => {
     const cfg = getStatusConfig(status);
     const Icon = cfg.icon;
-    
+
     return (
       <div
         style={{
@@ -879,7 +950,14 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
           }}
         ></div>
         <Icon style={{ width: "12px", height: "12px" }} />
-        <span style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <span
+          style={{
+            fontSize: "12px",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
           {cfg.label}
         </span>
       </div>
@@ -888,10 +966,28 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
   if (isLoading && orders.length === 0) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #f8fafc 0%, white 100%)" }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(135deg, #f8fafc 0%, white 100%)",
+        }}
+      >
         <div style={{ textAlign: "center" }}>
-          <Loader2 style={{ width: "48px", height: "48px", color: "#2563eb", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
-          <p style={{ color: "#475569", fontWeight: 500 }}>Loading lab orders...</p>
+          <Loader2
+            style={{
+              width: "48px",
+              height: "48px",
+              color: "#2563eb",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 16px",
+            }}
+          />
+          <p style={{ color: "#475569", fontWeight: 500 }}>
+            Loading lab orders...
+          </p>
         </div>
       </div>
     );
@@ -899,9 +995,34 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
   if (error && orders.length === 0) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", background: "linear-gradient(135deg, #f8fafc 0%, white 100%)" }}>
-        <AlertCircle style={{ width: "64px", height: "64px", color: "#ef4444", marginBottom: "16px" }} />
-        <p style={{ color: "#334155", fontSize: "18px", fontWeight: 600, marginBottom: "8px" }}>{error}</p>
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          background: "linear-gradient(135deg, #f8fafc 0%, white 100%)",
+        }}
+      >
+        <AlertCircle
+          style={{
+            width: "64px",
+            height: "64px",
+            color: "#ef4444",
+            marginBottom: "16px",
+          }}
+        />
+        <p
+          style={{
+            color: "#334155",
+            fontSize: "18px",
+            fontWeight: 600,
+            marginBottom: "8px",
+          }}
+        >
+          {error}
+        </p>
         <button
           onClick={() => window.location.reload()}
           style={{
@@ -916,8 +1037,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
             cursor: "pointer",
             transition: "background-color 0.2s",
           }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1d4ed8"}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#2563eb"}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.backgroundColor = "#1d4ed8")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.backgroundColor = "#2563eb")
+          }
         >
           Retry
         </button>
@@ -941,7 +1066,8 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                 style={styles.searchInput}
                 onFocus={(e) => {
                   e.target.style.borderColor = "#3b82f6";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                  e.target.style.boxShadow =
+                    "0 0 0 3px rgba(59, 130, 246, 0.1)";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = "#e2e8f0";
@@ -975,11 +1101,14 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
               onClick={handleSearchSubmit}
               style={styles.applyButton}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "linear-gradient(135deg, #1d4ed8 0%, #3730a3 100%)";
-                e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(37, 99, 235, 0.2)";
+                e.currentTarget.style.background =
+                  "linear-gradient(135deg, #1d4ed8 0%, #3730a3 100%)";
+                e.currentTarget.style.boxShadow =
+                  "0 10px 15px -3px rgba(37, 99, 235, 0.2)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "linear-gradient(135deg, #2563eb 0%, #4338ca 100%)";
+                e.currentTarget.style.background =
+                  "linear-gradient(135deg, #2563eb 0%, #4338ca 100%)";
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
@@ -992,7 +1121,15 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
         {/* Pagination Loading Overlay */}
         {isPaginationLoading && (
           <div style={styles.loadingOverlay}>
-            <Loader2 style={{ width: "40px", height: "40px", color: "#2563eb", animation: "spin 1s linear infinite", marginRight: "12px" }} />
+            <Loader2
+              style={{
+                width: "40px",
+                height: "40px",
+                color: "#2563eb",
+                animation: "spin 1s linear infinite",
+                marginRight: "12px",
+              }}
+            />
             <p style={{ color: "#334155", fontWeight: 600, fontSize: "18px" }}>
               Loading page {currentPage}...
             </p>
@@ -1006,20 +1143,55 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
               <div
                 key={order._id}
                 style={styles.orderCard}
-                onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"}
-                onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 10px 25px -5px rgba(0, 0, 0, 0.1)"}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.1)")
+                }
               >
                 <div style={styles.cardHeader}>
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                      <div style={{ width: "32px", height: "32px", backgroundColor: "#dbeafe", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", color: "#2563eb", fontSize: "14px" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          backgroundColor: "#dbeafe",
+                          borderRadius: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: "bold",
+                          color: "#2563eb",
+                          fontSize: "14px",
+                        }}
+                      >
                         #
                       </div>
-                      <h3 style={{ fontWeight: "bold", fontSize: "18px", color: "#0f172a", margin: 0 }}>
+                      <h3
+                        style={{
+                          fontWeight: "bold",
+                          fontSize: "18px",
+                          color: "#0f172a",
+                          margin: 0,
+                        }}
+                      >
                         {order._id.slice(-8)}
                       </h3>
                     </div>
-                    <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
+                    <p
+                      style={{ fontSize: "14px", color: "#64748b", margin: 0 }}
+                    >
                       {formatDate(order.createdAt)}
                     </p>
                   </div>
@@ -1028,59 +1200,110 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
 
                 <div style={styles.cardBody}>
                   <div style={styles.infoRow}>
-                    <div style={{ ...styles.infoIcon, backgroundColor: "#f3e8ff" }}>
-                      <User style={{ color: "#9333ea", width: "20px", height: "20px" }} />
+                    <div
+                      style={{ ...styles.infoIcon, backgroundColor: "#f3e8ff" }}
+                    >
+                      <User
+                        style={{
+                          color: "#9333ea",
+                          width: "20px",
+                          height: "20px",
+                        }}
+                      />
                     </div>
                     <div>
-                      <p style={{ fontWeight: 600, color: "#0f172a", margin: 0 }}>
-                        {order.patientname}
-                      </p>
-                      <p style={{ fontSize: "14px", color: "#64748b", margin: "4px 0 0 0" }}>
-                        ID: {order.patientId}
+                      <p
+                        style={{ fontWeight: 600, color: "#0f172a", margin: 0 }}
+                      >
+                        {labType === "inHouse"
+                          ? order.patientname
+                          : order.patientName || "N/A"}
                       </p>
                     </div>
                   </div>
 
                   <div style={styles.infoRow}>
-                    <div style={{ ...styles.infoIcon, backgroundColor: "#dcfce7" }}>
-                      <Stethoscope style={{ color: "#16a34a", width: "20px", height: "20px" }} />
+                    <div
+                      style={{ ...styles.infoIcon, backgroundColor: "#dcfce7" }}
+                    >
+                      <Stethoscope
+                        style={{
+                          color: "#16a34a",
+                          width: "20px",
+                          height: "20px",
+                        }}
+                      />
                     </div>
                     <div>
-                      <p style={{ fontWeight: 600, color: "#0f172a", margin: 0 }}>
+                      <p
+                        style={{ fontWeight: 600, color: "#0f172a", margin: 0 }}
+                      >
                         {order.doctorName}
-                      </p>
-                      <p style={{ fontSize: "14px", color: "#64748b", margin: "4px 0 0 0" }}>
-                        Dentist ID: {order.dentist.slice(-8)}
                       </p>
                     </div>
                   </div>
 
-                  <div style={styles.deliveryDate}>
-                    <Calendar style={{ width: "16px", height: "16px", color: "#ea580c" }} />
+                  {/* <div style={styles.deliveryDate}>
+                    <Calendar
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        color: "#ea580c",
+                      }}
+                    />
                     <span style={{ fontWeight: 500, color: "#9a3412" }}>
                       {formatDate(order.deliveryDate)}
                     </span>
-                  </div>
+                  </div> */}
 
                   <div
                     style={{
                       ...styles.amount,
-                      backgroundColor: order.totalLabAmount > 2000 ? "#fee2e2" : order.totalLabAmount > 1000 ? "#fef3c7" : "#dcfce7",
-                      color: order.totalLabAmount > 2000 ? "#991b1b" : order.totalLabAmount > 1000 ? "#92400e" : "#166534",
+                      backgroundColor:
+                        order.totalLabAmount > 2000
+                          ? "#fee2e2"
+                          : order.totalLabAmount > 1000
+                            ? "#fef3c7"
+                            : "#dcfce7",
+                      color:
+                        order.totalLabAmount > 2000
+                          ? "#991b1b"
+                          : order.price > 1000
+                            ? "#92400e"
+                            : "#166534",
                     }}
                   >
                     <DollarSign style={{ width: "16px", height: "16px" }} />
                     <span style={{ fontWeight: "bold", fontSize: "18px" }}>
-                      ${(order.totalLabAmount || 0).toLocaleString()}
+                     {labType === "inHouse"
+                          ? order.price
+                          : order.totalAmount || "N/A"}
                     </span>
                   </div>
 
                   {order.note && (
                     <div style={styles.noteContainer}>
-                      <p style={{ fontSize: "12px", fontWeight: 500, color: "#475569", margin: "0 0 4px 0" }}>
+                      <p
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          color: "#475569",
+                          margin: "0 0 4px 0",
+                        }}
+                      >
                         Note
                       </p>
-                      <p style={{ fontSize: "14px", color: "#475569", margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      <p
+                        style={{
+                          fontSize: "14px",
+                          color: "#475569",
+                          margin: 0,
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
                         {order.note}
                       </p>
                     </div>
@@ -1090,23 +1313,31 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                     <button
                       onClick={() => setSelectedOrder(order)}
                       style={styles.viewButton}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#f8fafc")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "white")
+                      }
                     >
                       <Eye style={{ width: "16px", height: "16px" }} />
                       View
                     </button>
 
-                    {(order.status === "pending" || order.status === "in-progress") && (
+                    {(order.status === "pending" ||
+                      order.status === "in-progress") && (
                       <button
                         onClick={() => setUploadModalOpen(order)}
                         style={styles.uploadButton}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "linear-gradient(135deg, #1d4ed8 0%, #3730a3 100%)";
-                          e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(37, 99, 235, 0.2)";
+                          e.currentTarget.style.background =
+                            "linear-gradient(135deg, #1d4ed8 0%, #3730a3 100%)";
+                          e.currentTarget.style.boxShadow =
+                            "0 10px 15px -3px rgba(37, 99, 235, 0.2)";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = "linear-gradient(135deg, #2563eb 0%, #4338ca 100%)";
+                          e.currentTarget.style.background =
+                            "linear-gradient(135deg, #2563eb 0%, #4338ca 100%)";
                           e.currentTarget.style.boxShadow = "none";
                         }}
                       >
@@ -1124,8 +1355,22 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
         {/* Empty State */}
         {!isPaginationLoading && orders.length === 0 && (
           <div style={styles.emptyState}>
-            <FileText style={{ width: "80px", height: "80px", color: "#cbd5e1", margin: "0 auto 16px" }} />
-            <h3 style={{ fontSize: "24px", fontWeight: "bold", color: "#334155", margin: "0 0 8px 0" }}>
+            <FileText
+              style={{
+                width: "80px",
+                height: "80px",
+                color: "#cbd5e1",
+                margin: "0 auto 16px",
+              }}
+            />
+            <h3
+              style={{
+                fontSize: "24px",
+                fontWeight: "bold",
+                color: "#334155",
+                margin: "0 0 8px 0",
+              }}
+            >
               No Orders Found
             </h3>
             <p style={{ color: "#64748b", margin: 0 }}>
@@ -1140,7 +1385,16 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
             <p style={{ color: "#475569", margin: 0 }}>
               Showing <b>{count}</b> orders on page <b>{currentPage}</b>
               {hasNextPage && (
-                <span style={{ fontSize: "14px", color: "#94a3b8", marginLeft: "4px" }}> (More pages available)</span>
+                <span
+                  style={{
+                    fontSize: "14px",
+                    color: "#94a3b8",
+                    marginLeft: "4px",
+                  }}
+                >
+                  {" "}
+                  (More pages available)
+                </span>
               )}
             </p>
 
@@ -1151,22 +1405,25 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                 style={{
                   ...styles.pageButton,
                   opacity: !hasPrevPage || isPaginationLoading ? 0.5 : 1,
-                  cursor: !hasPrevPage || isPaginationLoading ? "not-allowed" : "pointer",
+                  cursor:
+                    !hasPrevPage || isPaginationLoading
+                      ? "not-allowed"
+                      : "pointer",
                 }}
                 onMouseEnter={(e) => {
-                  if (hasPrevPage && !isPaginationLoading) e.currentTarget.style.backgroundColor = "#f1f5f9";
+                  if (hasPrevPage && !isPaginationLoading)
+                    e.currentTarget.style.backgroundColor = "#f1f5f9";
                 }}
                 onMouseLeave={(e) => {
-                  if (hasPrevPage && !isPaginationLoading) e.currentTarget.style.backgroundColor = "white";
+                  if (hasPrevPage && !isPaginationLoading)
+                    e.currentTarget.style.backgroundColor = "white";
                 }}
               >
                 <ChevronLeft style={{ width: "20px", height: "20px" }} />
                 Previous
               </button>
 
-              <div style={styles.pageNumber}>
-                Page {currentPage}
-              </div>
+              <div style={styles.pageNumber}>Page {currentPage}</div>
 
               <button
                 disabled={!hasNextPage || isPaginationLoading}
@@ -1174,13 +1431,18 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                 style={{
                   ...styles.pageButton,
                   opacity: !hasNextPage || isPaginationLoading ? 0.5 : 1,
-                  cursor: !hasNextPage || isPaginationLoading ? "not-allowed" : "pointer",
+                  cursor:
+                    !hasNextPage || isPaginationLoading
+                      ? "not-allowed"
+                      : "pointer",
                 }}
                 onMouseEnter={(e) => {
-                  if (hasNextPage && !isPaginationLoading) e.currentTarget.style.backgroundColor = "#f1f5f9";
+                  if (hasNextPage && !isPaginationLoading)
+                    e.currentTarget.style.backgroundColor = "#f1f5f9";
                 }}
                 onMouseLeave={(e) => {
-                  if (hasNextPage && !isPaginationLoading) e.currentTarget.style.backgroundColor = "white";
+                  if (hasNextPage && !isPaginationLoading)
+                    e.currentTarget.style.backgroundColor = "white";
                 }}
               >
                 Next

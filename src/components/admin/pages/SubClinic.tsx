@@ -1,20 +1,14 @@
-import React, { useState, useEffect } from "react";
+// components/SubclinicManagement.tsx
+
+import React, { useState, useEffect, useCallback } from "react";
 import baseUrl from "../../../baseUrl";
-import { useAppSelector } from "../../../redux/hook";
+import { useAppSelector, useAppDispatch } from "../../../redux/hook";
+import { switchToSubclinic } from "../../../redux/slice/authSlice";
+import { setClinic } from "../../../redux/slice/clinicSlice";
+import { clearCart } from "../../../redux/slice/cartSlice";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
-interface InfoProps {
-  label: string;
-  value: string;
-}
-
-const Info: React.FC<InfoProps> = ({ label, value }) => (
-  <div>
-    <p className="text-slate-600 font-medium">{label}</p>
-    <p className="text-slate-900">{value}</p>
-  </div>
-);
+import { useAuth } from "../../../redux/useAuth";
 // Type Definitions
 interface Subscription {
   package: string;
@@ -100,16 +94,19 @@ interface FeatureCategories {
   [key: string]: FeatureCategory;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-}
+// Info Component
+const Info: React.FC<{ label: string; value: any }> = ({ label, value }) => (
+  <div className="bg-slate-50 p-3 rounded-lg">
+    <div className="text-xs text-slate-500">{label}</div>
+    <div className="font-medium text-slate-900">{value}</div>
+  </div>
+);
 
 const SubclinicManagement: React.FC = () => {
-  const token = useAppSelector((state) => state.auth.token);
-  const id = useAppSelector((state) => state.auth.clinicId);
+  const dispatch = useAppDispatch();
+  const { handleSwitchToSubclinic, clinicId: id, token } = useAuth(); // use hook, not raw selectors
   const navigate = useNavigate();
+  console.log("ssasa", id);
 
   const [activeTab, setActiveTab] = useState<"subclinics" | "register">(
     "subclinics",
@@ -118,9 +115,9 @@ const SubclinicManagement: React.FC = () => {
     null,
   );
   const [parentClinic, setParentClinic] = useState<Clinic | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null); // persistent error state
   const [message, setMessage] = useState<Message>({ type: "", text: "" });
-
   const [formData, setFormData] = useState<FormData>({
     name: "",
     type: "",
@@ -132,7 +129,6 @@ const SubclinicManagement: React.FC = () => {
     theme: "green",
     isOwnLab: false,
   });
-
   const [subclinics, setSubclinics] = useState<Subclinic[]>([]);
 
   useEffect(() => {
@@ -144,25 +140,22 @@ const SubclinicManagement: React.FC = () => {
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: "", text: "" }), 5000);
   };
-  const Info = ({ label, value }: { label: string; value: any }) => (
-    <div className="bg-slate-50 p-3 rounded-lg">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="font-medium text-slate-900">{value}</div>
-    </div>
-  );
+
   const fetchParentClinic = async (): Promise<void> => {
     try {
+      setFetchError(null);
       const response = await axios.get(
         `${baseUrl}api/v1/auth/clinic/view-clinic/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }, // Fixed: added missing auth header
+        },
       );
-      console.log("parentClinic", response.data.data);
-
       if (response.data.data) {
         setParentClinic(response.data.data);
       }
     } catch (error) {
       console.error("Error fetching clinic:", error);
-      showMessage("error", "Failed to load parent clinic data");
+      setFetchError("Failed to load clinic data. Please refresh.");
     }
   };
 
@@ -170,32 +163,27 @@ const SubclinicManagement: React.FC = () => {
     try {
       const response = await axios.get(
         `${baseUrl}api/v1/auth/clinic/${id}/sub-clinic`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+         {
+          headers: { Authorization: `Bearer ${token}` }, // Fixed: added missing auth header
         },
       );
-      console.log(response);
-
       setSubclinics(response.data.data || []);
     } catch (error) {
       console.error("Error fetching subclinics:", error);
-      showMessage("error", "Failed to load subclinics");
+      setFetchError("Failed to load subclinics. Please refresh.");
     }
   };
 
   const handleSubmit = async (
-    e: React.MouseEvent<HTMLButtonElement>,
+    e: React.MouseEvent<HTMLButtonElement>, // Fixed: correct type
   ): Promise<void> => {
     e.preventDefault();
 
-    if (!parentClinic || !parentClinic._id) {
+    if (!parentClinic?._id) {
       showMessage("error", "Parent clinic not found");
       return;
     }
 
-    // Validation
     if (
       !formData.name ||
       !formData.type ||
@@ -207,22 +195,24 @@ const SubclinicManagement: React.FC = () => {
       return;
     }
 
-    if (formData.password.length < 5) {
+    // Fixed: validation and message now consistent at 8 characters
+    if (formData.password.length < 8) {
       showMessage("error", "Password must be at least 8 characters");
       return;
     }
 
     setLoading(true);
-
     try {
       const response = await axios.post(
         `${baseUrl}api/v1/auth/clinic/register-subclinic/${id}`,
         formData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
 
       if (response.data.success) {
         showMessage("success", "Subclinic registered successfully!");
-
         setFormData({
           name: "",
           type: "",
@@ -234,7 +224,6 @@ const SubclinicManagement: React.FC = () => {
           theme: "green",
           isOwnLab: false,
         });
-
         fetchSubclinics();
         setActiveTab("subclinics");
       } else {
@@ -248,42 +237,61 @@ const SubclinicManagement: React.FC = () => {
     }
   };
 
+  // Fixed: separate handler for checkboxes to avoid unsafe cast
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >,
   ): void => {
-    const target = e.target as HTMLInputElement;
-    const { name, value, type } = target;
-    const checked = target.checked;
+    const { name, value } = e.target;
+    const isCheckbox =
+      e.target instanceof HTMLInputElement && e.target.type === "checkbox";
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
-  const featureCategories: FeatureCategories = {
-    patient_management: {
-      label: "Patient Management",
-      subFeatures: ["records", "appointments", "billing"],
-    },
-    inventory: {
-      label: "Inventory",
-      subFeatures: ["stock", "orders", "suppliers"],
-    },
-    reports: {
-      label: "Reports",
-      subFeatures: ["financial", "medical", "operational"],
-    },
-    billing: {
-      label: "Billing",
-      subFeatures: ["invoices", "payments", "tax"],
-    },
-  };
+  // Fixed: uses useAuth hook instead of manual dispatches
+  const handleNavigateToSubclinic = useCallback(
+    (subclinic: Subclinic) => {
+      if (!id) {
+        console.error("handleNavigateToSubclinic: clinicId is null");
+        return;
+      }
 
-  const inheritedFeatures: Features = parentClinic?.features || {};
+      handleSwitchToSubclinic(
+        subclinic._id,
+        id,
+        subclinic.name,
+        subclinic.theme || "green",
+      );
 
+      dispatch(clearCart());
+      setSelectedSubclinic(null);
+      navigate(`/dashboard/${subclinic._id}`);
+    },
+    [handleSwitchToSubclinic, dispatch, id, navigate],
+  );
+
+  // Persistent error banner — doesn't disappear unlike toast
+  if (fetchError) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-red-600 mb-4">{fetchError}</p>
+        <button
+          onClick={() => {
+            fetchParentClinic();
+            fetchSubclinics();
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen p-4 md:p-6">
       {/* Toast Message */}
@@ -638,70 +646,6 @@ const SubclinicManagement: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Features Inheritance */}
-                {/* <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-sm">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="bg-blue-100 p-2 rounded-lg">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900">
-                        Inherited Features
-                      </h3>
-                      <p className="text-sm text-slate-600 mt-1">
-                        This subclinic will automatically inherit all features from the parent clinic
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {Object.entries(featureCategories).map(([key, category]: [string, FeatureCategory]) => {
-                      const isEnabled = inheritedFeatures[key];
-                      const featureObj = (inheritedFeatures[key] as Record<string, boolean>) || {};
-                      
-                      return (
-                        <div key={key} className="bg-white rounded-lg p-4 border border-slate-200">
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-slate-700">
-                              {category.label}
-                            </label>
-                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                              isEnabled
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-slate-100 text-slate-500'
-                            }`}>
-                              {isEnabled ? '✓ Enabled' : 'Disabled'}
-                            </span>
-                          </div>
-                          
-                          {isEnabled && category.subFeatures && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {category.subFeatures.map((subFeature: string) => {
-                                const isSubEnabled = typeof featureObj === 'object' && featureObj[subFeature];
-                                
-                                return (
-                                  <span
-                                    key={subFeature}
-                                    className={`px-3 py-1 text-xs font-medium rounded-full ${
-                                      isSubEnabled
-                                        ? 'bg-blue-100 text-blue-700'
-                                        : 'bg-slate-100 text-slate-500'
-                                    }`}
-                                  >
-                                    {subFeature}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div> */}
-
                 {/* Subscription Info */}
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-sm">
                   <div className="flex items-start gap-3">
@@ -776,6 +720,8 @@ const SubclinicManagement: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Subclinic Details Modal */}
       {selectedSubclinic && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative">
@@ -830,7 +776,7 @@ const SubclinicManagement: React.FC = () => {
               </button>
 
               <button
-                onClick={() => navigate(`/dashboard/${selectedSubclinic._id}`)}
+                onClick={() => handleNavigateToSubclinic(selectedSubclinic)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg"
               >
                 Open Dashboard

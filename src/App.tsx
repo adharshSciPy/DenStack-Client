@@ -53,7 +53,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ element, allowedRoles }) =>
   const role = useAppSelector((state) => state.auth.userRole); 
   const isHybrid = useAppSelector((state) => state.auth.isHybrid);
 
-  console.log(useAppSelector((state) => state.auth.user));
+  console.log(useAppSelector((state) => state.auth));
   
   console.log("PrivateRoute - auth state:", { token, role, isHybrid });
 

@@ -131,11 +131,13 @@ export default function HospitalLogin() {
       // Technician (400) - handles both technician and LabTechnician fields
       "400": (data) => {
         // Check for LabTechnician first (from your response)
+        console.log("dsds",data);
+        
         if (data.LabTechnician) {
           const technicianData = data.LabTechnician;
           clinicId = technicianData.clinicId || technicianData.clinic?.id || null;
           labVendorId = technicianData.labVendorId || null;
-          user = technicianData;
+          user =  { ...technicianData, labType: technicianData.labType || null }; 
           role = technicianData.role || "400";
           console.log("🔧 LabTechnician data extracted:", { clinicId, labVendorId, role });
         } else {
