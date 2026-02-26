@@ -1,3 +1,3 @@
-const clinicServiceBaseUrl="http://localhost:8003";
+const clinicServiceBaseUrl="http://localhost:8001";
 
 export default clinicServiceBaseUrl;
