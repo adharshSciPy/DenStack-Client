@@ -115,7 +115,9 @@ export default function SettingsGrid() {
                  useSelector((state: any) => state?.auth?.user?.id) ?? null;
   const token = useSelector((state: any) => state?.auth?.token) ?? null;
   // const clinicId = useSelector((state: any) => state?.auth?.user?.clinicId) ?? null;
-
+// useEffect(()=>{
+//   console.log("koothi",clinicId)
+// })
   const [activeSettingsTab, setActiveSettingsTab] = useState<'grid' | 'practice' | 'whatsapp'>('grid');
   const [activeProcedureTab, setActiveProcedureTab] = useState<string>('treatment-procedures');
   const [showColorPopup, setShowColorPopup] = useState(false);
@@ -377,7 +379,7 @@ export default function SettingsGrid() {
     try {
       setProfileLoading(true);
       const res = await axios.put(
-        `${clinicServiceBaseUrl}/api/v1/auth/clinic/editClinic/${clinicId}`,
+        `${baseUrl}api/v1/auth/clinic/editClinic/${clinicId}`,
         profileForm,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -400,6 +402,7 @@ export default function SettingsGrid() {
 
       const response = await api.get(activeTab.apiEndpoint, {
         params: {
+          clinicId:clinicId,
           page,
           limit: pagination.itemsPerPage,
           search: search || undefined
@@ -809,6 +812,7 @@ export default function SettingsGrid() {
     try {
       const activeTab = getActiveTabConfig();
       const requestData: any = {
+         clinicId: clinicId,
         name: procedureForm.name.trim(),
         description: procedureForm.description.trim()
       };
@@ -845,6 +849,7 @@ export default function SettingsGrid() {
     try {
       const activeTab = getActiveTabConfig();
       const requestData: any = {
+        clinicId: clinicId,
         name: procedureForm.name.trim(),
         description: procedureForm.description.trim()
       };
@@ -884,7 +889,11 @@ export default function SettingsGrid() {
 
     if (window.confirm(`Are you sure you want to delete this ${itemTypeName}?`)) {
       try {
-        const response = await api.delete(`${activeTab.apiEndpoint}/${id}`);
+        const response = await api.delete(`${activeTab.apiEndpoint}/${id}`, {
+        params: {
+          clinicId: clinicId // Add clinicId as query param
+        }
+      });
 
         if (response.data.success) {
           await fetchItems(pagination.currentPage, searchQuery);
@@ -903,7 +912,11 @@ export default function SettingsGrid() {
   const handleViewItem = async (id: string) => {
     try {
       const activeTab = getActiveTabConfig();
-      const response = await api.get(`${activeTab.apiEndpoint}/${id}`);
+     const response = await api.get(`${activeTab.apiEndpoint}/${id}`, {
+      params: {
+        clinicId: clinicId // Add clinicId as query param
+      }
+    });
 
       if (response.data.success) {
         const item = response.data.data;
@@ -928,7 +941,11 @@ export default function SettingsGrid() {
   const handleEditItem = async (item: ProcedureItem) => {
     try {
       const activeTab = getActiveTabConfig();
-      const response = await api.get(`${activeTab.apiEndpoint}/${item.id}`);
+    const response = await api.get(`${activeTab.apiEndpoint}/${item.id}`, {
+      params: {
+        clinicId: clinicId // Add clinicId as query param
+      }
+    });
 
       if (response.data.success) {
         const itemData = response.data.data;
