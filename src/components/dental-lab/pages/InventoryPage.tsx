@@ -55,7 +55,7 @@ interface Vendor {
 }
 
 export function InventoryPage() {
-  const labId = useAppSelector((state) => state.auth.user.id);  
+  const labId = useAppSelector((state) => state.auth.user.labVendorId);  
   console.log("Lab ID from Redux:", labId);
   const token = useAppSelector((state) => state.auth.token);
   const [inventoryItems, setInventoryItems] = useState<LabInventoryItem[]>([]);
@@ -96,7 +96,7 @@ export function InventoryPage() {
 
       // Using the lab-specific endpoint
       const response = await axios.get(
-        `${clinicInventoryBaseUrl}/api/v1/clinicProduct/lab/products/${labId}`,
+        `${clinicInventoryBaseUrl}/api/v1/clinicInventory/labProducts/${labId}`,
       );
 
       console.log("Lab Inventory API Response:", response);

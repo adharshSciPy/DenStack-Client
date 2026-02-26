@@ -34,6 +34,7 @@ import DentalLabLayout from "./components/dental-lab/DentalLabModule";
 import LabDashboardPage from "./components/dental-lab/pages/DashboardPage";
 import LabRevenuePage from "./components/dental-lab/pages/RevenuePage";
 import SubClinic from "./components/admin/pages/SubClinic";
+import LabOrders from "./components/dental-lab/pages/OrdersPage";
 import { useAppSelector } from "./redux/hook";
 import { InventoryPage } from "./components/dental-lab/pages/InventoryPage";
 
@@ -52,7 +53,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ element, allowedRoles }) =>
   const role = useAppSelector((state) => state.auth.userRole);
   const isHybrid = useAppSelector((state) => state.auth.isHybrid);
 
-  console.log(useAppSelector((state) => state.auth.user.id));
+  console.log(useAppSelector((state) => state.auth));
   console.log("PrivateRoute - auth state:", { token, role, isHybrid });
 
   if (!token) return <Navigate to="/login" replace />;
@@ -157,18 +158,18 @@ export default function App() {
               path="/labadmin"
               element={
                 <PrivateRoute
-                  allowedRoles={["700", "500", "760"]}
+                  allowedRoles={["700", "500", "760","400"]}
                   element={<DentalLabLayout />}
                 />
               }
             >
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<LabDashboardPage />} />
-              <Route path="orders" element={<LabOrdersPage />} />
-              <Route path="revenue" element={<LabRevenuePage />} />
-              <Route path="vendors" element={<div>Lab Vendors Page</div>} />
-              <Route path="settings" element={<div>Lab Settings</div>} />
-              <Route path="inventory" element={<InventoryPage />} />
+              <Route index element={<Navigate to="dashboard/:labVendorId" replace />} />
+              <Route path="dashboard/:labVendorId" element={<LabDashboardPage />} />
+              <Route path="orders/:labVendorId" element={<LabOrders />} />
+              <Route path="revenue/:labVendorId" element={<LabRevenuePage />} />
+              <Route path="vendors/:labVendorId" element={<div>Lab Vendors Page</div>} />
+              <Route path="settings/:labVendorId" element={<div>Lab Settings</div>} />
+              <Route path="inventory/:labVendorId" element={<InventoryPage />} />
             </Route>
 <Route path="/patient-access/:encryptedId" element={<PatientPortalPage />} />
             {/* Fallback */}

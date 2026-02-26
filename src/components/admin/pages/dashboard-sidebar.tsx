@@ -152,8 +152,9 @@ export function DashboardSidebar() {
     { id: "doctoronboard", label: "Doctor Onboard", icon: Stethoscope, badge: null },
     { id: "subclinic", label: "Sub Clinic", icon: Home, badge: null },
     { id: "settings", label: "Settings", icon: Settings, badge: null },
+    { id: "cart", label: "Cart", icon: ShoppingCart, badge: cartItem.length },
     { id: "reviews", label: "Reviews", icon: Stars, badge: null },
-  ];
+  ];  
 
   const isSidebarVisible = isHovered || !collapsed;
   const sidebarWidth = isSidebarVisible ? "w-64" : "w-16";
