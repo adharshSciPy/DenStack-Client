@@ -1818,7 +1818,7 @@ export function FinancialDashboard() {
           Authorization: `Bearer ${clinicToken}`,
         },
       });
-
+      console.log("Dashboard API response:", response.data);
       if (response.data.success) {
         setDashboardData(response.data);
 

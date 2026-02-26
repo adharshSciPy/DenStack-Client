@@ -318,7 +318,8 @@ export default function SettingsGrid() {
         params: {
           page,
           limit: pagination.itemsPerPage,
-          search: search || undefined
+          search: search || undefined,
+          clinicId:userId
         }
       });
 

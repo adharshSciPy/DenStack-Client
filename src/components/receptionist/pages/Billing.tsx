@@ -237,47 +237,9 @@ export default function Billing() {
           <h1 style={{ fontSize: "28px", fontWeight: "600", margin: "0 0 4px 0" }}>
             💰 Billing & Payments
           </h1>
-          <p style={{ color: "#6B7280", margin: 0 }}>
-            Create invoice and collect payments
-          </p>
+        
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button
-            // onClick={handlePrint}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              background: "white",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
-            <Printer size={18} />
-            Print
-          </button>
-          <button
-            // onClick={handleSendInvoice}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              background: "#3B82F6",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
-            <Send size={18} />
-            Send Invoice
-          </button>
-        </div>
+      
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: "24px" }}>
@@ -715,14 +677,7 @@ export default function Billing() {
                 marginBottom: "20px",
               }}
             >
-              <div style={{ marginBottom: "16px", paddingBottom: "16px", borderBottom: "1px solid #E5E7EB" }}>
-                <div style={{ fontSize: "12px", color: "#6B7280", marginBottom: "4px" }}>
-                  Invoice #
-                </div>
-                <div style={{ fontSize: "18px", fontWeight: "600" }}>
-                  INV-{Date.now().toString().slice(-6)}
-                </div>
-              </div>
+             
 
               <div style={{ fontSize: "13px", lineHeight: "1.8" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
