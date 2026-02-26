@@ -92,11 +92,32 @@ interface MessageHistory {
   error?: string;
 }
 
+// ── NEW: Profile Form Interface ───────────────────────────────────────────────
+interface ProfileForm {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  description: string;
+  googlePlaceId: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    zip: string;
+  };
+}
+
 export default function SettingsGrid() {
   const userId = useSelector((state: any) => state?.auth?.user?.id) ?? null;
+  const clinicId = useSelector((state: any) => state?.auth?.clinicId) ?? 
+                 useSelector((state: any) => state?.auth?.user?.clinicId) ?? 
+                 useSelector((state: any) => state?.auth?.user?.id) ?? null;
   const token = useSelector((state: any) => state?.auth?.token) ?? null;
-  const clinicId = useSelector((state: any) => state?.auth?.user?.clinicId) ?? null;
-
+  // const clinicId = useSelector((state: any) => state?.auth?.user?.clinicId) ?? null;
+// useEffect(()=>{
+//   console.log("koothi",clinicId)
+// })
   const [activeSettingsTab, setActiveSettingsTab] = useState<'grid' | 'practice' | 'whatsapp'>('grid');
   const [activeProcedureTab, setActiveProcedureTab] = useState<string>('treatment-procedures');
   const [showColorPopup, setShowColorPopup] = useState(false);
@@ -203,6 +224,24 @@ export default function SettingsGrid() {
     }
   ]);
 
+  // ── NEW: Profile Modal State ──────────────────────────────────────────────
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileForm, setProfileForm] = useState<ProfileForm>({
+    name: '',
+    email: '',
+    phoneNumber: '',
+    description: '',
+    googlePlaceId: '',
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      country: '',
+      zip: ''
+    }
+  });
+
   // Axios configuration
   const api = axios.create({
     baseURL: clinicServiceBaseUrl,
@@ -308,6 +347,53 @@ export default function SettingsGrid() {
     return 'Item';
   };
 
+  // ── NEW: Profile Functions ────────────────────────────────────────────────
+  const fetchClinicProfile = async () => {
+    try {
+      const res = await axios.get(`${clinicServiceBaseUrl}/api/v1/auth/clinic/view-clinic/${clinicId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const clinic = res.data.data || res.data.clinic || res.data;
+      if (clinic) {
+        setProfileForm({
+          name:          clinic.name             || '',
+          email:         clinic.email            || '',
+          phoneNumber:   clinic.phoneNumber?.toString() || '',
+          description:   clinic.description      || '',
+          googlePlaceId: clinic.googlePlaceId    || '',
+          address: {
+            street:  clinic.address?.street  || '',
+            city:    clinic.address?.city    || '',
+            state:   clinic.address?.state   || '',
+            country: clinic.address?.country || '',
+            zip:     clinic.address?.zip     || '',
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching clinic profile:', err);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setProfileLoading(true);
+      const res = await axios.put(
+        `${baseUrl}api/v1/auth/clinic/editClinic/${clinicId}`,
+        profileForm,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.message || res.data.success) {
+        alert('✅ Profile updated successfully!');
+        setShowProfileModal(false);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   // Fetch items based on active tab
   const fetchItems = async (page = 1, search = '') => {
     try {
@@ -316,6 +402,7 @@ export default function SettingsGrid() {
 
       const response = await api.get(activeTab.apiEndpoint, {
         params: {
+          clinicId:clinicId,
           page,
           limit: pagination.itemsPerPage,
           search: search || undefined,
@@ -726,6 +813,7 @@ export default function SettingsGrid() {
     try {
       const activeTab = getActiveTabConfig();
       const requestData: any = {
+         clinicId: clinicId,
         name: procedureForm.name.trim(),
         description: procedureForm.description.trim()
       };
@@ -762,6 +850,7 @@ export default function SettingsGrid() {
     try {
       const activeTab = getActiveTabConfig();
       const requestData: any = {
+        clinicId: clinicId,
         name: procedureForm.name.trim(),
         description: procedureForm.description.trim()
       };
@@ -801,7 +890,11 @@ export default function SettingsGrid() {
 
     if (window.confirm(`Are you sure you want to delete this ${itemTypeName}?`)) {
       try {
-        const response = await api.delete(`${activeTab.apiEndpoint}/${id}`);
+        const response = await api.delete(`${activeTab.apiEndpoint}/${id}`, {
+        params: {
+          clinicId: clinicId // Add clinicId as query param
+        }
+      });
 
         if (response.data.success) {
           await fetchItems(pagination.currentPage, searchQuery);
@@ -820,7 +913,11 @@ export default function SettingsGrid() {
   const handleViewItem = async (id: string) => {
     try {
       const activeTab = getActiveTabConfig();
-      const response = await api.get(`${activeTab.apiEndpoint}/${id}`);
+     const response = await api.get(`${activeTab.apiEndpoint}/${id}`, {
+      params: {
+        clinicId: clinicId // Add clinicId as query param
+      }
+    });
 
       if (response.data.success) {
         const item = response.data.data;
@@ -845,7 +942,11 @@ export default function SettingsGrid() {
   const handleEditItem = async (item: ProcedureItem) => {
     try {
       const activeTab = getActiveTabConfig();
-      const response = await api.get(`${activeTab.apiEndpoint}/${item.id}`);
+    const response = await api.get(`${activeTab.apiEndpoint}/${item.id}`, {
+      params: {
+        clinicId: clinicId // Add clinicId as query param
+      }
+    });
 
       if (response.data.success) {
         const itemData = response.data.data;
@@ -881,7 +982,7 @@ export default function SettingsGrid() {
 
   const handleSaveColors = async () => {
     try {
-      const res = await axios.patch(`${baseUrl}api/v1/auth/clinic/updateTheme/${userId}`, colorSettings);
+      const res = await axios.patch(`${baseUrl}api/v1/auth/clinic/updateTheme/${clinicId}`, colorSettings);
       if (res.data.success) {
         setShowColorPopup(false);
         alert('Color settings saved successfully!');
@@ -972,8 +1073,12 @@ export default function SettingsGrid() {
       id: 'profile',
       icon: User,
       title: 'Profile Settings',
-      description: 'Update your profile information',
-      onClick: () => alert('Profile settings clicked')
+      description: 'Update clinic info & Google Place ID',
+      // ── ONLY CHANGE to settingsCards: replaced alert() with modal open ──
+      onClick: () => {
+        fetchClinicProfile();
+        setShowProfileModal(true);
+      }
     },
     {
       id: 'notifications',
@@ -2871,6 +2976,253 @@ export default function SettingsGrid() {
           </div>
         </div>
       )}
+
+      {/* ── NEW: Profile Modal ─────────────────────────────────────────────── */}
+      {showProfileModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 60,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            maxWidth: '36rem',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              position: 'sticky',
+              top: 0,
+              backgroundColor: 'white',
+              zIndex: 10
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  padding: '0.5rem',
+                  background: 'linear-gradient(to bottom right, #3b82f6, #8b5cf6)',
+                  borderRadius: '0.5rem'
+                }}>
+                  <User style={{ width: '1.25rem', height: '1.25rem', color: 'white' }} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', margin: 0 }}>
+                    Profile Settings
+                  </h2>
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.125rem 0 0 0' }}>
+                    Update your clinic information
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#9ca3af', padding: '0.25rem', borderRadius: '0.375rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.color = '#6b7280'}
+                onMouseOut={(e) => e.currentTarget.style.color = '#9ca3af'}
+              >
+                <X style={{ width: '1.5rem', height: '1.5rem' }} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+              {/* Clinic Name */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                  Clinic Name
+                </label>
+                <input
+                  type="text"
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  placeholder="Enter clinic name"
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                  placeholder="clinic@example.com"
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={profileForm.phoneNumber}
+                  onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
+                  placeholder="10-digit number"
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                  Description
+                </label>
+                <textarea
+                  value={profileForm.description}
+                  rows={2}
+                  onChange={(e) => setProfileForm({ ...profileForm, description: e.target.value })}
+                  placeholder="Brief description of your clinic"
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              {/* Address */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+                  Address
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Street"
+                    value={profileForm.address.street}
+                    onChange={(e) => setProfileForm({ ...profileForm, address: { ...profileForm.address, street: e.target.value } })}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none'; }}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    {(['city', 'state', 'country', 'zip'] as const).map((field) => (
+                      <input
+                        key={field}
+                        type="text"
+                        placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                        value={profileForm.address[field]}
+                        onChange={(e) => setProfileForm({ ...profileForm, address: { ...profileForm.address, [field]: e.target.value } })}
+                        style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                        onBlur={(e) => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none'; }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ⭐ Google Place ID */}
+              <div style={{
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '0.625rem',
+                padding: '1rem'
+              }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#166534', marginBottom: '0.375rem' }}>
+                  ⭐ Google Place ID
+                </label>
+                <input
+                  type="text"
+                  value={profileForm.googlePlaceId}
+                  onChange={(e) => setProfileForm({ ...profileForm, googlePlaceId: e.target.value })}
+                  placeholder="e.g. ChIJP8XgbTbBBTsRnN1KvjOTviY"
+                  style={{
+                    width: '100%', padding: '0.5rem 0.75rem',
+                    border: '1px solid #86efac', borderRadius: '0.375rem',
+                    fontSize: '0.875rem', outline: 'none',
+                    backgroundColor: 'white', boxSizing: 'border-box'
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = '#22c55e'; e.target.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#86efac'; e.target.style.boxShadow = 'none'; }}
+                />
+                <p style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.375rem', lineHeight: 1.5 }}>
+                  Patients who rate 4–5 ⭐ will be redirected to your Google review page.{' '}
+                  <a
+                    href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ textDecoration: 'underline', fontWeight: 500 }}
+                  >
+                    Find your Place ID →
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              gap: '0.75rem',
+              position: 'sticky',
+              bottom: 0,
+              backgroundColor: '#f9fafb'
+            }}>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                style={{
+                  flex: 1, padding: '0.625rem 1rem',
+                  border: '1px solid #d1d5db', borderRadius: '0.375rem',
+                  backgroundColor: 'white', color: '#374151',
+                  fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer',
+                  transition: 'background-color 0.15s ease-in-out'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveProfile}
+                disabled={profileLoading}
+                style={{
+                  flex: 1, padding: '0.625rem 1rem',
+                  border: 'none', borderRadius: '0.375rem',
+                  background: profileLoading ? '#9ca3af' : 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+                  color: 'white', fontSize: '0.875rem', fontWeight: 500,
+                  cursor: profileLoading ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.15s ease-in-out'
+                }}
+                onMouseOver={(e) => { if (!profileLoading) e.currentTarget.style.background = 'linear-gradient(to right, #2563eb, #7c3aed)'; }}
+                onMouseOut={(e) => { if (!profileLoading) e.currentTarget.style.background = 'linear-gradient(to right, #3b82f6, #8b5cf6)'; }}
+              >
+                {profileLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
