@@ -1,3 +1,3 @@
-const patientServiceBaseUrl = "http://localhost:8001";
+const patientServiceBaseUrl = "http://localhost:8002";
 
 export default patientServiceBaseUrl;

@@ -402,11 +402,10 @@ export default function SettingsGrid() {
 
       const response = await api.get(activeTab.apiEndpoint, {
         params: {
-          clinicId:clinicId,
+          clinicId: clinicId,
           page,
           limit: pagination.itemsPerPage,
-          search: search || undefined,
-          clinicId:userId
+          search: search || undefined
         }
       });
 
