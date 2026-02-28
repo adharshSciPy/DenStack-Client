@@ -2,14 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import baseUrl from "../../../baseUrl";
-import { useAppSelector, useAppDispatch } from "../../../redux/hook";
-import { switchToSubclinic } from "../../../redux/slice/authSlice";
-import { setClinic } from "../../../redux/slice/clinicSlice";
+import { useAppDispatch } from "../../../redux/hook";
 import { clearCart } from "../../../redux/slice/cartSlice";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../redux/useAuth";
-
 // Type Definitions
 interface Subscription {
   package: string;
@@ -65,17 +62,19 @@ interface Subclinic extends Omit<Clinic, "subClinics" | "isMultipleClinic"> {
   parentClinicId: string;
   isSubClinic: boolean;
   isOwnLab: boolean;
-  address?: string | {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    zipCode?: string;
-    location?: {
-      type?: string;
-      coordinates?: number[];
-    };
-  };
+  address?:
+    | string
+    | {
+        street?: string;
+        city?: string;
+        state?: string;
+        country?: string;
+        zipCode?: string;
+        location?: {
+          type?: string;
+          coordinates?: number[];
+        };
+      };
   description?: string;
   theme?: string;
 }
@@ -113,8 +112,8 @@ const Info: React.FC<{ label: string; value: any }> = ({ label, value }) => {
     if (value === null || value === undefined) {
       return "-";
     }
-    
-    if (typeof value === 'object') {
+
+    if (typeof value === "object") {
       // If it's an object, try to extract a readable string or return placeholder
       try {
         // Check if it's an address object with specific fields
@@ -125,7 +124,7 @@ const Info: React.FC<{ label: string; value: any }> = ({ label, value }) => {
           if (value.state) parts.push(value.state);
           if (value.country) parts.push(value.country);
           if (value.zipCode) parts.push(value.zipCode);
-          return parts.join(', ') || "Address provided";
+          return parts.join(", ") || "Address provided";
         }
         // For other objects, return a simple indicator
         return "[Address Details]";
@@ -133,7 +132,7 @@ const Info: React.FC<{ label: string; value: any }> = ({ label, value }) => {
         return "[Complex Object]";
       }
     }
-    
+
     return String(value);
   };
 
@@ -147,7 +146,13 @@ const Info: React.FC<{ label: string; value: any }> = ({ label, value }) => {
 
 const SubclinicManagement: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { handleSwitchToSubclinic, clinicId: id, token } = useAuth();
+  const {
+    handleSwitchToSubclinic,
+    clinicId,
+    parentClinicId,
+    isSubclinic,
+    token,
+  } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<"subclinics" | "register">(
@@ -174,51 +179,42 @@ const SubclinicManagement: React.FC = () => {
   const [subclinics, setSubclinics] = useState<Subclinic[]>([]);
 
   useEffect(() => {
-    if (id && token) {
+    if (parentClinicId && token) {
       fetchParentClinic();
       fetchSubclinics();
     }
-  }, [id, token]);
+  }, [parentClinicId, token]);
 
   const showMessage = (type: "success" | "error", text: string): void => {
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: "", text: "" }), 5000);
   };
 
-  const fetchParentClinic = async (): Promise<void> => {
-    if (!id || !token) return;
-    
+  const fetchParentClinic = async () => {
+    if (!parentClinicId || !token) return;
+
     try {
-      setFetchError(null);
       const response = await axios.get(
-        `${baseUrl}api/v1/auth/clinic/view-clinic/${id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        `${baseUrl}api/v1/auth/clinic/view-clinic/${parentClinicId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-      if (response.data.data) {
-        setParentClinic(response.data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching clinic:", error);
-      setFetchError("Failed to load clinic data. Please refresh.");
+      setParentClinic(response.data.data);
+    } catch {
+      setFetchError("Failed to load clinic data.");
     }
   };
 
-  const fetchSubclinics = async (): Promise<void> => {
-    if (!id || !token) return;
-    
+  const fetchSubclinics = async () => {
+    if (!parentClinicId || !token) return;
+
     try {
       const response = await axios.get(
-        `${baseUrl}api/v1/auth/clinic/${id}/sub-clinic`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        `${baseUrl}api/v1/auth/clinic/${parentClinicId}/sub-clinic`,
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       setSubclinics(response.data.data || []);
-    } catch (error) {
-      console.error("Error fetching subclinics:", error);
-      setFetchError("Failed to load subclinics. Please refresh.");
+    } catch {
+      setFetchError("Failed to load subclinics.");
     }
   };
 
@@ -251,7 +247,7 @@ const SubclinicManagement: React.FC = () => {
     setLoading(true);
     try {
       const response = await axios.post(
-        `${baseUrl}api/v1/auth/clinic/register-subclinic/${id}`,
+        `${baseUrl}api/v1/auth/clinic/register-subclinic/${parentClinicId}`,
         formData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -278,7 +274,10 @@ const SubclinicManagement: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      showMessage("error", error.response?.data?.message || "Network error. Please try again.");
+      showMessage(
+        "error",
+        error.response?.data?.message || "Network error. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -301,14 +300,14 @@ const SubclinicManagement: React.FC = () => {
 
   const handleNavigateToSubclinic = useCallback(
     (subclinic: Subclinic) => {
-      if (!id) {
+      if (!parentClinicId) {
         console.error("handleNavigateToSubclinic: clinicId is null");
         return;
       }
 
       handleSwitchToSubclinic(
         subclinic._id,
-        id,
+        parentClinicId,
         subclinic.name,
         subclinic.theme || "green",
       );
@@ -317,25 +316,31 @@ const SubclinicManagement: React.FC = () => {
       setSelectedSubclinic(null);
       navigate(`/dashboard/${subclinic._id}`);
     },
-    [handleSwitchToSubclinic, dispatch, id, navigate],
+    [handleSwitchToSubclinic, dispatch, parentClinicId, navigate],
   );
 
   // Helper function to format address safely
   const formatAddress = (address: any): string => {
     if (!address) return "-";
-    if (typeof address === 'string') return address;
-    if (typeof address === 'object') {
+    if (typeof address === "string") return address;
+    if (typeof address === "object") {
       const parts = [];
       if (address.street) parts.push(address.street);
       if (address.city) parts.push(address.city);
       if (address.state) parts.push(address.state);
       if (address.country) parts.push(address.country);
       if (address.zipCode) parts.push(address.zipCode);
-      return parts.length > 0 ? parts.join(', ') : "Address details available";
+      return parts.length > 0 ? parts.join(", ") : "Address details available";
     }
     return "-";
   };
-
+  if (isSubclinic) {
+    return (
+      <div className="p-6 text-center text-gray-600">
+        Subclinic management is available only for the parent clinic.
+      </div>
+    );
+  }
   if (fetchError) {
     return (
       <div className="p-6 text-center">
@@ -354,7 +359,7 @@ const SubclinicManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 bg-gray-50">
+    <div className="min-h-screen p-4 md:p-6">
       {/* Toast Message */}
       {message.text && (
         <div
@@ -380,7 +385,7 @@ const SubclinicManagement: React.FC = () => {
 
       {/* Parent Clinic Info */}
       {parentClinic && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-card rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
@@ -409,7 +414,7 @@ const SubclinicManagement: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+      <div className="bg-card rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
         <div className="border-b border-gray-200">
           <nav className="flex">
             <button
@@ -460,7 +465,7 @@ const SubclinicManagement: React.FC = () => {
                   {subclinics.map((subclinic: Subclinic) => (
                     <div
                       key={subclinic._id}
-                      className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300"
+                      className="bg-card border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300"
                     >
                       <div className="p-6 border-b border-gray-100">
                         <div className="flex items-center justify-between mb-4">
@@ -472,11 +477,13 @@ const SubclinicManagement: React.FC = () => {
                               {subclinic.type}
                             </p>
                           </div>
-                          <span className={`h-3 w-3 rounded-full ${
-                            subclinic.subscription?.isActive 
-                              ? "bg-green-500 animate-pulse" 
-                              : "bg-red-500"
-                          }`}></span>
+                          <span
+                            className={`h-3 w-3 rounded-full ${
+                              subclinic.subscription?.isActive
+                                ? "bg-green-500 animate-pulse"
+                                : "bg-red-500"
+                            }`}
+                          ></span>
                         </div>
 
                         <div className="space-y-3">
@@ -533,8 +540,10 @@ const SubclinicManagement: React.FC = () => {
                           </span>
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {subclinic.subscription?.package || "No Package"} • 
-                          Expires: {subclinic.subscription?.endDate?.split("T")[0] || "N/A"}
+                          {subclinic.subscription?.package || "No Package"} •
+                          Expires:{" "}
+                          {subclinic.subscription?.endDate?.split("T")[0] ||
+                            "N/A"}
                         </div>
                       </div>
 
@@ -567,7 +576,7 @@ const SubclinicManagement: React.FC = () => {
 
               <div className="space-y-6">
                 {/* Basic Information */}
-                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <div className="bg-card border border-gray-200 rounded-xl p-6 shadow-sm">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     Basic Information
                   </h3>
@@ -788,13 +797,31 @@ const SubclinicManagement: React.FC = () => {
                   >
                     {loading ? (
                       <>
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         Registering...
                       </>
-                    ) : "Register Subclinic"}
+                    ) : (
+                      "Register Subclinic"
+                    )}
                   </button>
                 </div>
               </div>
@@ -806,7 +833,7 @@ const SubclinicManagement: React.FC = () => {
       {/* Subclinic Details Modal */}
       {selectedSubclinic && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl relative animate-fadeIn">
+          <div className="bg-card w-full max-w-2xl rounded-2xl shadow-2xl relative animate-fadeIn">
             {/* Header */}
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -817,12 +844,24 @@ const SubclinicManagement: React.FC = () => {
                   onClick={() => setSelectedSubclinic(null)}
                   className="text-gray-500 hover:text-gray-700 transition-colors"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
-              <p className="text-gray-600 mt-1">{selectedSubclinic.type} • {selectedSubclinic.email}</p>
+              <p className="text-gray-600 mt-1">
+                {selectedSubclinic.type} • {selectedSubclinic.email}
+              </p>
             </div>
 
             {/* Content */}
@@ -835,8 +874,8 @@ const SubclinicManagement: React.FC = () => {
                   label="Own Lab"
                   value={selectedSubclinic.isOwnLab ? "Yes" : "No"}
                 />
-                <Info 
-                  label="Address" 
+                <Info
+                  label="Address"
                   value={formatAddress(selectedSubclinic.address)}
                 />
                 <Info
@@ -854,7 +893,8 @@ const SubclinicManagement: React.FC = () => {
                 <Info
                   label="Expires"
                   value={
-                    selectedSubclinic.subscription?.endDate?.split("T")[0] || "-"
+                    selectedSubclinic.subscription?.endDate?.split("T")[0] ||
+                    "-"
                   }
                 />
               </div>
@@ -862,7 +902,9 @@ const SubclinicManagement: React.FC = () => {
               {selectedSubclinic.description && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                   <div className="text-xs text-gray-500">Description</div>
-                  <div className="font-medium text-gray-900">{selectedSubclinic.description}</div>
+                  <div className="font-medium text-gray-900">
+                    {selectedSubclinic.description}
+                  </div>
                 </div>
               )}
             </div>
@@ -879,9 +921,24 @@ const SubclinicManagement: React.FC = () => {
                 onClick={() => handleNavigateToSubclinic(selectedSubclinic)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
+                  />
                 </svg>
                 Open Dashboard
               </button>

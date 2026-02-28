@@ -246,7 +246,7 @@ function ProductDetailModal({
       onClick={onClose}
     >
       <div
-        className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] shadow-2xl relative overflow-auto"
+        className="rounded-lg w-full max-w-4xl max-h-[90vh] shadow-2xl relative overflow-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* CLOSE BUTTON */}

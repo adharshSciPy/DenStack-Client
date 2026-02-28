@@ -1,36 +1,41 @@
-// hooks/useClinicTheme.ts
+// src/hooks/useClinicTheme.ts
 import { useEffect } from "react";
 import axios from "axios";
-import { setClinicThemeGradient } from "../styles/theme";
 import baseUrl from "../baseUrl";
+import { clinicBackgrounds, ThemeKey } from "../styles/clinicBackgrounds";
+import { setClinicThemeGradient } from "../styles/theme";
 
-export function useClinicTheme( clinicId?: string) {
-  // clinicId
-
+export function useClinicTheme(clinicId?: string) {
   useEffect(() => {
     if (!clinicId) return;
 
-    async function fetchTheme() {
+    const fetchTheme = async () => {
       try {
         const res = await axios.get(
-          `${baseUrl}api/v1/auth/clinic/gettheme/${clinicId}`
+          `${baseUrl}api/v1/auth/clinic/gettheme/${clinicId}`,
         );
-        const { startColor, endColor, primaryForeground, sidebarForeground,secondary} =
-          res.data;
+        console.log("assaAS", res);
+
+        // 👇 backend value (unknown type)
+        const rawKey = res.data.key;
+
+        // ✅ convert to ThemeKey safely
+        const themeKey: ThemeKey =
+          rawKey && rawKey in clinicBackgrounds ? rawKey : "light3";
+
+        const background = clinicBackgrounds[themeKey];
 
         setClinicThemeGradient({
-          start: startColor,
-          end: endColor,
-          primaryForeground,
-          sidebarForeground,
-          secondary
+          background,
+          isDark: themeKey.startsWith("dark"),
         });
-        console.log("Clinic theme applied:", res.data);
-        
+        console.log("Applying clinic theme", {
+          background: clinicBackgrounds[themeKey]
+        });
       } catch (err) {
-        console.error("Failed to fetch clinic theme", err);
+        console.error("Theme fetch failed", err);
       }
-    }
+    };
 
     fetchTheme();
   }, [clinicId]);

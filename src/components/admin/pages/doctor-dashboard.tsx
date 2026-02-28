@@ -1252,9 +1252,9 @@ const DoctorRegistrationForm: React.FC = () => {
   return (
     <div
       slot="card"
-      className="min-h-screen bg-muted/60 rounded-xl from-green-50 to-blue-50 py-12 px-4"
+      className="min-h-screen rounded-xl from-green-50 to-blue-50 py-12 px-4"
     >
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto bg-card">
         {currentView === "registration" && (
           <div className="max-w-2xl mx-auto">
             <div className="rounded-2xl shadow-xl overflow-hidden">
@@ -1308,7 +1308,7 @@ const DoctorRegistrationForm: React.FC = () => {
                     value={formData.doctorUniqueId}
                     onChange={handleChange}
                     placeholder="e.g., DCS-DR-870723"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className="w-full px-4 text-black py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                   />
                   {errors.doctorUniqueId && (
                     <p className="text-sm text-red-600">
@@ -1329,7 +1329,7 @@ const DoctorRegistrationForm: React.FC = () => {
                     name="roleInClinic"
                     value={formData.roleInClinic}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full px-4 text-black py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Select a role</option>
                     {roleOptions.map((option: RoleOption) => (
@@ -1359,7 +1359,7 @@ const DoctorRegistrationForm: React.FC = () => {
                     value={formData.clinicEmail}
                     onChange={handleChange}
                     placeholder="clinic@example.com"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className="w-full px-4 text-black py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                   />
                   {errors.clinicEmail && (
                     <p className="text-sm text-red-600">{errors.clinicEmail}</p>
@@ -1381,7 +1381,7 @@ const DoctorRegistrationForm: React.FC = () => {
                       value={formData.clinicPassword}
                       onChange={handleChange}
                       placeholder="Enter password"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all pr-12"
+                      className="w-full px-4 py-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all pr-12"
                     />
                     <button
                       type="button"
@@ -1448,7 +1448,7 @@ const DoctorRegistrationForm: React.FC = () => {
                     onChange={handleChange}
                     placeholder="300"
                     min="0"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className="w-full px-4 py-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                   />
                   {errors.standardConsultationFee && (
                     <p className="text-sm text-red-600">
@@ -1474,7 +1474,7 @@ const DoctorRegistrationForm: React.FC = () => {
                       }
                       onKeyDown={handleAddSpecialization}
                       placeholder="Type specialization (e.g., Dental)"
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      className="flex-1 px-4 py-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                     />
                     <button
                       type="button"
