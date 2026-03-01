@@ -1,5 +1,4 @@
-// redux/slice/authSlice.js - UPDATE THIS
-
+// redux/slice/authSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
@@ -7,10 +6,14 @@ const initialState = {
   token: null,
   isAuthenticated: false,
   clinicId: null,
-  doctorId: null,           // 👈 NEW
-  userRole: null,           // 👈 NEW
-  isHybrid: false,          // 👈 NEW
-  activeMode: 'clinic',      // 👈 NEW: 'clinic' or 'doctor'
+  doctorId: null,
+  userRole: null,
+  isHybrid: false,
+  activeMode: "clinic",
+  isSubclinic: false,
+  parentClinicId: null,
+  subclinicHierarchy: [], // Now stores { clinicId, parentClinicId } objects
+  lastAccessedAt: null,
 };
 
 const authSlice = createSlice({
@@ -18,52 +21,124 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     loginSuccess: (state, action) => {
-      const { user, token, role, clinicId, doctorId, isHybrid } = action.payload;
-      
+      const { user, token, role, clinicId, doctorId, isHybrid } =
+        action.payload;
+
       state.user = user;
       state.token = token;
       state.isAuthenticated = true;
       state.userRole = role;
-      state.clinicId = clinicId || user?.id || null;
+
+      // 🔥 ROOT CLINIC (never changes)
+      state.parentClinicId = clinicId || user?.id || null;
+
+      // 🔥 ACTIVE CONTEXT (can change)
+      state.clinicId = state.parentClinicId;
+
       state.doctorId = doctorId || user?.doctorId || null;
       state.isHybrid = isHybrid || false;
-      
-      // Set initial mode based on user type
+      state.isSubclinic = false;
+      state.subclinicHierarchy = [];
+      state.lastAccessedAt = new Date().toISOString();
+
       if (isHybrid) {
-        state.activeMode = 'clinic'; // Default to clinic mode for hybrid users
-      } else if (role === '600' || role === '456') {
-        state.activeMode = 'doctor';
+        state.activeMode = "clinic";
+      } else if (role === "600" || role === "456") {
+        state.activeMode = "doctor";
       } else {
-        state.activeMode = 'clinic';
+        state.activeMode = "clinic";
       }
     },
-    
-    // 👈 NEW: Toggle between clinic and doctor mode
+    switchToSubclinic: (state, action) => {
+      const { subclinicId } = action.payload;
+
+      // 🛑 Lock root clinic forever
+      if (!state.parentClinicId) {
+        state.parentClinicId = state.clinicId;
+      }
+
+      if (!Array.isArray(state.subclinicHierarchy)) {
+        state.subclinicHierarchy = [];
+      }
+
+      const last =
+        state.subclinicHierarchy[state.subclinicHierarchy.length - 1];
+      if (!last || last.clinicId !== state.clinicId) {
+        state.subclinicHierarchy.push({
+          clinicId: state.clinicId,
+          parentClinicId: state.parentClinicId,
+        });
+      }
+
+      // ✅ switch context
+      state.clinicId = subclinicId;
+      state.isSubclinic = true;
+      state.activeMode = "clinic";
+      state.lastAccessedAt = new Date().toISOString();
+    },
+    switchToParentClinic: (state) => {
+      if (state.isSubclinic && state.parentClinicId) {
+        state.clinicId = state.parentClinicId;
+        state.isSubclinic = false;
+        state.parentClinicId = null;
+        state.subclinicHierarchy = [];
+        state.lastAccessedAt = new Date().toISOString();
+      }
+    },
+
+    // Fixed: properly restores parentClinicId at each level
+    navigateBackInHierarchy: (state) => {
+      if (state.subclinicHierarchy.length > 0) {
+        const previous = state.subclinicHierarchy.pop();
+        state.clinicId = previous.clinicId;
+        state.parentClinicId = previous.parentClinicId;
+
+        if (state.subclinicHierarchy.length === 0) {
+          state.isSubclinic = false;
+          state.parentClinicId = null;
+        } else {
+          state.isSubclinic = true;
+        }
+
+        state.lastAccessedAt = new Date().toISOString();
+      }
+    },
+
     toggleUserMode: (state) => {
       if (state.isHybrid) {
-        state.activeMode = state.activeMode === 'clinic' ? 'doctor' : 'clinic';
+        state.activeMode = state.activeMode === "clinic" ? "doctor" : "clinic";
       }
     },
-    
-    // 👈 NEW: Set mode explicitly
+
     setUserMode: (state, action) => {
-      if (state.isHybrid && (action.payload === 'clinic' || action.payload === 'doctor')) {
+      if (
+        state.isHybrid &&
+        (action.payload === "clinic" || action.payload === "doctor")
+      ) {
         state.activeMode = action.payload;
       }
     },
-    
+
+    refreshToken: (state, action) => {
+      state.token = action.payload.token;
+      state.lastAccessedAt = new Date().toISOString();
+    },
+
     logout: (state) => {
-      state.user = null;
-      state.token = null;
-      state.isAuthenticated = false;
-      state.clinicId = null;
-      state.doctorId = null;
-      state.userRole = null;
-      state.isHybrid = false;
-      state.activeMode = 'clinic';
+      Object.assign(state, initialState);
     },
   },
 });
 
-export const { loginSuccess, logout, toggleUserMode, setUserMode } = authSlice.actions;
+export const {
+  loginSuccess,
+  logout,
+  toggleUserMode,
+  setUserMode,
+  switchToSubclinic,
+  switchToParentClinic,
+  navigateBackInHierarchy,
+  refreshToken,
+} = authSlice.actions;
+
 export default authSlice.reducer;

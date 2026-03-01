@@ -13,7 +13,6 @@ import {
   UserCheck,
   UserPlus,
   Loader2,
-  Search,
   MapPin,
   ChevronLeft,
   ChevronRight,
@@ -145,6 +144,33 @@ interface MonthlyAppointmentResponse {
   }[];
 }
 
+interface PendingBooking {
+  _id: string;
+  patientDetails: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    age: number;
+    gender: string;
+    message?: string;
+  };
+  requestedAppointment: {
+    department: string;
+    doctorId?: string;
+    doctorName?: string;
+    preferredDate: string;
+    preferredTime: string;
+    reason?: string;
+  };
+  status: string;
+  createdAt: string;
+  patientExists?: boolean;
+  existingPatientData?: any;
+  timeSlotAvailable?: boolean;
+  timeSlotConflict?: boolean;
+}
+
 export default function AppointmentScheduler() {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [isNewPatient, setIsNewPatient] = useState(false);
@@ -191,7 +217,18 @@ export default function AppointmentScheduler() {
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
-  const token=useAppSelector((state)=>state.auth.token)
+  
+  // Pending bookings states
+  const [showPendingBookings, setShowPendingBookings] = useState(false);
+  const [pendingBookings, setPendingBookings] = useState<PendingBooking[]>([]);
+  const [pendingBookingsLoading, setPendingBookingsLoading] = useState(false);
+  const [processingBookingId, setProcessingBookingId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<PendingBooking | null>(null);
+  
+  const token = useAppSelector((state) => state.auth.token);
+  
   // State for current month/year
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState<number>(
@@ -261,7 +298,6 @@ export default function AppointmentScheduler() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  console.log(token);
   
   // Fetch appointments using the new API
   const fetchAppointments = async (month?: number, year?: number) => {
@@ -280,9 +316,9 @@ export default function AppointmentScheduler() {
             month: targetMonth,
             year: targetYear,
           },
-          headers:{
-            Authorization:`Bearer ${token}`
-          }
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -318,21 +354,103 @@ export default function AppointmentScheduler() {
           pendingAppointments: data.count,
           cancelledAppointments: 0,
         });
-
-        console.log(
-          `Fetched ${mappedAppointments.length} appointments for ${
-            monthNames[targetMonth - 1]
-          } ${targetYear}`
-        );
       } else {
         alert("Failed to fetch appointments");
       }
     } catch (error: any) {
       console.error("Error fetching appointments:", error);
       alert("Failed to fetch appointments. Please try again.");
-      
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch pending bookings
+  const fetchPendingBookings = async () => {
+    if (!clinicId) return;
+
+    try {
+      setPendingBookingsLoading(true);
+      const response = await axios.get(
+        `${patientServiceBaseUrl}/api/v1/patient-service/pending-booking/pending-bookings/${clinicId}`,
+        {
+          params: { status: "pending" },
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.data.success) {
+        setPendingBookings(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching pending bookings:", error);
+    } finally {
+      setPendingBookingsLoading(false);
+    }
+  };
+
+  // Auto-process (approve) a pending booking
+  const handleApproveBooking = async (booking: PendingBooking) => {
+    try {
+      setProcessingBookingId(booking._id);
+
+      const response = await axios.post(
+        `${patientServiceBaseUrl}/api/v1/patient-service/pending-booking/pending-bookings/process/${booking._id}`,
+        {
+          clinicId,
+          userId: reception?.id || "",
+          userRole: "receptionist",
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        alert(response.data.message);
+        // Refresh pending bookings and appointments
+        await fetchPendingBookings();
+        await fetchAppointments(currentMonth, currentYear);
+      }
+    } catch (error: any) {
+      console.error("Error approving booking:", error);
+      alert(error.response?.data?.message || "Failed to approve booking");
+    } finally {
+      setProcessingBookingId(null);
+    }
+  };
+
+  // Reject a pending booking
+  const handleRejectBooking = async () => {
+    if (!selectedBooking || !rejectionReason.trim()) {
+      alert("Please provide a rejection reason");
+      return;
+    }
+
+    try {
+      setProcessingBookingId(selectedBooking._id);
+
+      const response = await axios.post(
+        `${patientServiceBaseUrl}/api/v1/patient-service/pending-booking/pending-bookings/reject/${selectedBooking._id}`,
+        {
+          clinicId,
+          userId: reception?.id || "",
+          userRole: "receptionist",
+          rejectionReason,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        alert("Booking request rejected");
+        setShowRejectModal(false);
+        setRejectionReason("");
+        setSelectedBooking(null);
+        await fetchPendingBookings();
+      }
+    } catch (error) {
+      console.error("Error rejecting booking:", error);
+      alert("Failed to reject booking");
+    } finally {
+      setProcessingBookingId(null);
     }
   };
 
@@ -502,7 +620,8 @@ export default function AppointmentScheduler() {
       if (editingAppointment._id) {
         await axios.put(
           `${patientServiceBaseUrl}/api/v1/patient-service/appointment/update/${editingAppointment._id}`,
-          payload
+          payload,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         alert("Appointment updated successfully");
       }
@@ -511,9 +630,11 @@ export default function AppointmentScheduler() {
         await axios.post(
           `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
           payload,
-          {headers:{
-            Authorization:`Bearer ${token}`
-          }}
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
         alert("Appointment booked successfully");
       }
@@ -540,7 +661,7 @@ export default function AppointmentScheduler() {
       setPatientSearchQuery("");
     } catch (error: any) {
       console.log(error);
-      
+
       // Conflict handling
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         const confirmForce = window.confirm(
@@ -578,9 +699,10 @@ export default function AppointmentScheduler() {
         forceBooking: true,
       };
 
-      const res = await axios.post(
+      await axios.post(
         `${patientServiceBaseUrl}/api/v1/patient-service/appointment/book/${clinicId}`,
-        payload
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       alert("Forced Appointment Booked Successfully");
@@ -609,6 +731,7 @@ export default function AppointmentScheduler() {
             id: patientSearchQuery,
             clinicId: clinicId,
           },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
@@ -714,14 +837,11 @@ export default function AppointmentScheduler() {
         medicalHistory,
       };
 
-      console.log("Registration payload:", registrationPayload);
-
       const response = await axios.post(
         `${patientServiceBaseUrl}/api/v1/patient-service/patient/register/${clinicId}`,
-        registrationPayload
+        registrationPayload,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      console.log("Registration response:", response);
 
       const data = response.data;
 
@@ -753,8 +873,6 @@ export default function AppointmentScheduler() {
           allergies: "",
           familyHistory: "",
         });
-
-        console.log("Registered patient:", patient);
       } else {
         alert(data.message || "Failed to register patient");
       }
@@ -791,10 +909,11 @@ export default function AppointmentScheduler() {
     }
   };
 
-  // Fetch appointments on component mount and when month/year changes
+  // Fetch appointments and pending bookings on component mount
   useEffect(() => {
     if (clinicId) {
       fetchAppointments();
+      fetchPendingBookings();
     }
   }, [clinicId]);
 
@@ -805,7 +924,8 @@ export default function AppointmentScheduler() {
 
       try {
         const response = await axios.get(
-          `${clinicServiceBaseUrl}/api/v1/clinic-service/department/details/${clinicId}`
+          `${clinicServiceBaseUrl}/api/v1/clinic-service/department/details/${clinicId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         const departments = response.data?.departments || [];
@@ -816,7 +936,7 @@ export default function AppointmentScheduler() {
     };
 
     fetchDepartments();
-  }, [clinicId]);
+  }, [clinicId, token]);
 
   // Handle department selection
   const handleDepartmentSelect = async (department: string) => {
@@ -829,6 +949,7 @@ export default function AppointmentScheduler() {
         `${clinicServiceBaseUrl}/api/v1/clinic-service/department-based/availability`,
         {
           params: { clinicId, department },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
@@ -867,8 +988,7 @@ export default function AppointmentScheduler() {
       setAvailabilityLoading(false);
     }
   };
-  console.log("apoo",appointments);
-  
+
   // Custom sidebar card renderer
   const renderSidebarCard = (apt: CalendarAppointment) => {
     const fullAppointment = appointments.find((a) => a.id === apt.id);
@@ -944,6 +1064,59 @@ export default function AppointmentScheduler() {
   return (
     <>
       <div className={styles.appointmentSchedulerContainer}>
+        {/* Header with Pending Bookings Button */}
+        <div className={styles.calendarHeader}>
+          <div className={styles.calendarNavigation}>
+            <button onClick={handlePrevMonth} className={styles.navButton}>
+              <ChevronLeft size={20} />
+            </button>
+            <div className={styles.monthYearDisplay}>
+              <span className={styles.monthName}>
+                {monthNames[currentMonth - 1]}
+              </span>
+              <div className={styles.yearSelector} ref={yearDropdownRef}>
+                <button
+                  className={styles.yearButton}
+                  onClick={() => setShowYearDropdown(!showYearDropdown)}
+                >
+                  {currentYear}
+                  <ChevronDown size={16} />
+                </button>
+                {showYearDropdown && (
+                  <div className={styles.yearDropdown}>
+                    {generateYearOptions().map((year) => (
+                      <button
+                        key={year}
+                        className={`${styles.yearOption} ${
+                          year === currentYear ? styles.selectedYear : ""
+                        }`}
+                        onClick={() => handleYearSelect(year)}
+                      >
+                        {year}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button onClick={handleNextMonth} className={styles.navButton}>
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          <div className={styles.headerActions}>
+            <button
+              className={styles.pendingBookingsButton}
+              onClick={() => setShowPendingBookings(!showPendingBookings)}
+            >
+              <span>Pending Bookings</span>
+              {pendingBookings.length > 0 && (
+                <span className={styles.badge}>{pendingBookings.length}</span>
+              )}
+            </button>
+          </div>
+        </div>
+
         <CalendarView
           appointments={appointments.map((apt) => ({
             id: apt.id,
@@ -962,7 +1135,6 @@ export default function AppointmentScheduler() {
             monthNames[currentMonth - 1]
           } ${currentYear} Appointments`}
           headerSubtitle="Click any future date to schedule a new appointment"
-          // Add these new props to sync month/year
           currentMonth={currentMonth}
           currentYear={currentYear}
           onMonthChange={handleMonthChange}
@@ -975,6 +1147,170 @@ export default function AppointmentScheduler() {
           </div>
         )}
       </div>
+
+      {/* Pending Bookings Panel */}
+      {showPendingBookings && (
+        <div className={styles.pendingBookingsPanel}>
+          <div className={styles.pendingBookingsHeader}>
+            <h3>Pending Booking Requests</h3>
+            <button onClick={() => setShowPendingBookings(false)}>
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className={styles.pendingBookingsList}>
+            {pendingBookingsLoading ? (
+              <div className={styles.loadingContainer}>
+                <Loader2 className={styles.spinner} size={24} />
+                <span>Loading pending bookings...</span>
+              </div>
+            ) : pendingBookings.length === 0 ? (
+              <div className={styles.emptyState}>
+                <p>No pending booking requests</p>
+              </div>
+            ) : (
+              pendingBookings.map((booking) => (
+                <div key={booking._id} className={styles.pendingBookingCard}>
+                  <div className={styles.pendingBookingHeader}>
+                    <h4>
+                      {booking.patientDetails.firstName}{" "}
+                      {booking.patientDetails.lastName}
+                    </h4>
+                    <span className={styles.pendingBadge}>Pending</span>
+                  </div>
+
+                  <div className={styles.pendingBookingDetails}>
+                    <div className={styles.detailRow}>
+                      <Phone size={14} />
+                      <span>{booking.patientDetails.phone}</span>
+                    </div>
+                    <div className={styles.detailRow}>
+                      <Mail size={14} />
+                      <span>{booking.patientDetails.email}</span>
+                    </div>
+                    <div className={styles.detailRow}>
+                      <Calendar size={14} />
+                      <span>
+                        {new Date(
+                          booking.requestedAppointment.preferredDate
+                        ).toLocaleDateString()}{" "}
+                        at {booking.requestedAppointment.preferredTime}
+                      </span>
+                    </div>
+                    <div className={styles.detailRow}>
+                      <User size={14} />
+                      <span>
+                        {booking.requestedAppointment.department} -{" "}
+                        {booking.requestedAppointment.doctorName ||
+                          "No doctor specified"}
+                      </span>
+                    </div>
+                    {booking.requestedAppointment.reason && (
+                      <div className={styles.detailRow}>
+                        <FileText size={14} />
+                        <span>{booking.requestedAppointment.reason}</span>
+                      </div>
+                    )}
+
+                    {/* Status indicators */}
+                    <div className={styles.statusIndicators}>
+                      {booking.patientExists ? (
+                        <span className={styles.existsBadge}>
+                          ✓ Existing Patient
+                        </span>
+                      ) : (
+                        <span className={styles.newBadge}>New Patient</span>
+                      )}
+
+                      {!booking.timeSlotAvailable && (
+                        <span className={styles.conflictBadge}>
+                          ⚠ Time Slot Taken
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.pendingBookingActions}>
+                    <button
+                      className={styles.approveButton}
+                      onClick={() => handleApproveBooking(booking)}
+                      disabled={processingBookingId === booking._id}
+                    >
+                      {processingBookingId === booking._id ? (
+                        <Loader2 size={16} className={styles.spinner} />
+                      ) : (
+                        <Check size={16} />
+                      )}
+                      <span>Approve</span>
+                    </button>
+
+                    <button
+                      className={styles.rejectButton}
+                      onClick={() => {
+                        setSelectedBooking(booking);
+                        setShowRejectModal(true);
+                      }}
+                      disabled={processingBookingId === booking._id}
+                    >
+                      <X size={16} />
+                      <span>Reject</span>
+                    </button>
+                  </div>
+
+                  <div className={styles.submittedInfo}>
+                    Submitted: {new Date(booking.createdAt).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.rejectModal}>
+            <h3>Reject Booking Request</h3>
+            <p>Please provide a reason for rejection:</p>
+
+            <textarea
+              className={styles.rejectTextarea}
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              rows={4}
+            />
+
+            <div className={styles.modalActions}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason("");
+                  setSelectedBooking(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.rejectConfirmButton}
+                onClick={handleRejectBooking}
+                disabled={
+                  !rejectionReason.trim() ||
+                  processingBookingId === selectedBooking?._id
+                }
+              >
+                {processingBookingId === selectedBooking?._id ? (
+                  <Loader2 size={16} className={styles.spinner} />
+                ) : (
+                  "Confirm Rejection"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Booking Form Modal */}
       {showBookingForm && (
@@ -1065,7 +1401,9 @@ export default function AppointmentScheduler() {
                   >
                     <UserPlus size={16} />
                     <span>New Patient</span>
-                    {isNewPatient && <div className={styles.activeIndicator} />}
+                    {isNewPatient && (
+                      <div className={styles.activeIndicator} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -1123,7 +1461,9 @@ export default function AppointmentScheduler() {
               {/* ================= EXISTING PATIENT ================= */}
               {!isNewPatient && (
                 <div className={styles.section}>
-                  <label className={styles.sectionLabel}>Patient Details</label>
+                  <label className={styles.sectionLabel}>
+                    Patient Details
+                  </label>
 
                   {/* Patient Search */}
                   <div className={styles.formGroup}>
@@ -1174,7 +1514,9 @@ export default function AppointmentScheduler() {
                       </div>
                       <div className={styles.patientInfoGrid}>
                         <div className={styles.patientInfoItem}>
-                          <span className={styles.patientInfoLabel}>Name:</span>
+                          <span className={styles.patientInfoLabel}>
+                            Name:
+                          </span>
                           <span className={styles.patientInfoValue}>
                             {foundPatient.name}
                           </span>
@@ -1188,7 +1530,9 @@ export default function AppointmentScheduler() {
                           </span>
                         </div>
                         <div className={styles.patientInfoItem}>
-                          <span className={styles.patientInfoLabel}>Age:</span>
+                          <span className={styles.patientInfoLabel}>
+                            Age:
+                          </span>
                           <span className={styles.patientInfoValue}>
                             {foundPatient.age}
                           </span>
@@ -1408,7 +1752,9 @@ export default function AppointmentScheduler() {
 
                     <div className={styles.formGrid}>
                       <div className={styles.formGroup}>
-                        <label className={styles.inputLabel}>Conditions</label>
+                        <label className={styles.inputLabel}>
+                          Conditions
+                        </label>
                         <input
                           placeholder="Diabetes, Hypertension"
                           value={newPatientForm.conditions}
@@ -1477,7 +1823,9 @@ export default function AppointmentScheduler() {
 
               {/* Department Selection - For both new and existing patients */}
               <div className={styles.section}>
-                <label className={styles.sectionLabel}>Select Department</label>
+                <label className={styles.sectionLabel}>
+                  Select Department
+                </label>
                 <div className={styles.departmentsGrid}>
                   {departments.map((dept) => (
                     <button
@@ -1625,7 +1973,9 @@ export default function AppointmentScheduler() {
 
               {/* Appointment Type - For both */}
               <div className={styles.section}>
-                <label className={styles.sectionLabel}>Appointment Type</label>
+                <label className={styles.sectionLabel}>
+                  Appointment Type
+                </label>
                 <div className={styles.formGroup}>
                   <div className={styles.selectWrapper}>
                     <select
