@@ -138,6 +138,8 @@ export default function SettingsGrid() {
     hasPreviousPage: false
   });
 
+  const [documentTemplateName, setDocumentTemplateName] = useState('your_approved_template_name');
+
   const [colorSettings, setColorSettings] = useState({
     startColor: '#3b82f6',
     endColor: '#8b5cf6',
@@ -407,13 +409,13 @@ export default function SettingsGrid() {
     try {
       setIsVerifying(true);
       setVerificationMessage('Verifying connection...');
-      
+
       const response = await whatsappApi.post(`api/v1/whatsapp/verify`, {
         clinicId: userId,
         phoneNumberId: whatsappSettings.phoneNumberId
         // No need to send apiKey as it's using env var on backend
       });
-      
+
       if (response.data.success) {
         setWalocalStatus(response.data.data);
         setVerificationMessage('✅ Connection verified successfully!');
@@ -477,7 +479,7 @@ export default function SettingsGrid() {
 
       if (response.data.success) {
         alert('✅ WALOCAL connected successfully! Your WhatsApp is now active.');
-        
+
         setWhatsappSettings(prev => ({
           ...prev,
           isEnabled: true
@@ -485,7 +487,7 @@ export default function SettingsGrid() {
 
         await fetchWhatsAppSettings();
         setShowWhatsAppSetup(false);
-        
+
         // Verify connection after saving
         await verifyWalocalConnection();
 
@@ -618,6 +620,11 @@ export default function SettingsGrid() {
       return;
     }
 
+    if (!documentTemplateName) {
+      alert('Please enter template name');
+      return;
+    }
+
     if (whatsappSettings.messagesRemaining <= 0) {
       alert('No messages remaining. Please recharge to continue.');
       setShowRechargeModal(true);
@@ -630,6 +637,7 @@ export default function SettingsGrid() {
     formData.append('recipient', recipientNumber);
     formData.append('caption', documentCaption);
     formData.append('filename', selectedFile.name);
+    formData.append('templateName', documentTemplateName);
     // No need to append phoneNumberId as backend gets it from settings
 
     try {
@@ -1171,6 +1179,21 @@ export default function SettingsGrid() {
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Send Document via WALOCAL</h3>
 
               <div className="space-y-4">
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Template Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={documentTemplateName}
+                    onChange={(e) => setDocumentTemplateName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="your_approved_template_name"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Your approved WhatsApp template name</p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Recipient Phone Number *
@@ -2873,3 +2896,5 @@ export default function SettingsGrid() {
     </div>
   );
 }
+
+
