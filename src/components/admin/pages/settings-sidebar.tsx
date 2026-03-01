@@ -1473,13 +1473,13 @@ const handleSaveColors = async () => {
                     <Clock className="w-4 h-4" />
                     {showMessageHistory ? "Hide History" : "View History"}
                   </button>
-                  <button
+                  {/* <button
                     onClick={() => setShowRechargeModal(true)}
                     className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition-colors text-sm font-medium flex items-center gap-2"
                   >
                     <Zap className="w-4 h-4" />
                     Recharge Messages
-                  </button>
+                  </button> */}
                 </div>
               )}
             </div>
