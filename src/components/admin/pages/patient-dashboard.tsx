@@ -58,6 +58,11 @@ interface Procedure {
   completed?: boolean;
 }
 
+interface ComplaintItem {
+  value: string;
+  isCustom: boolean;
+}
+
 interface Stage {
   _id: string;
   stageName: string;
@@ -85,20 +90,38 @@ interface Doctor {
 
 interface PatientHistory {
   _id: string;
+  patientId: string;
+  clinicId: string;
   doctorId: string;
   appointmentId: string;
-  symptoms: string[];
+  chiefComplaints: ComplaintItem[];
+  examinationFindings: ComplaintItem[];
+  dentalHistory: ComplaintItem[];
   diagnosis: string[];
   prescriptions: Prescription[];
   notes: string;
   files: any[];
+  labHistory: any[];
   consultationFee: number;
-  procedures: Procedure[];
   totalAmount: number;
   isPaid: boolean;
   status: string;
+  createdBy: string;
+  referral: {
+    status: string;
+  };
+  dentalWork: any[];
+  softTissueExamination: any[];
+  tmjExamination: any[];
+  plannedProcedures: any[];
+  receptionBilling: {
+    procedureCharges: any[];
+    consumableCharges: any[];
+  };
   visitDate: string;
+  procedures: any[];
   createdAt: string;
+  updatedAt: string;
   treatmentPlanId?: string;
   doctor: Doctor | null;
   treatmentPlan: TreatmentPlan | null;
@@ -242,7 +265,7 @@ class ErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
-// Add this function inside ReportsContent component, before the return statement
+
 const generateWhatsAppLink = async (patient: Patient) => {
   try {
     const response = await axios.get(
@@ -252,7 +275,6 @@ const generateWhatsAppLink = async (patient: Patient) => {
     const { secureLink } = response.data.data;
     const lastFourDigits = patient.patientUniqueId.slice(-4);
     
-    // The secureLink now has NO special characters
     const portalUrl = `${window.location.origin}/patient-access/${secureLink}`;
     
     const message = encodeURIComponent(
@@ -369,111 +391,485 @@ function ReportsContent() {
     setHandleResult(false);
     setViewDentalHistory(false);
   };
+// ─────────────────────────────────────────────────────────────────────────────
+//  HOW TO USE CUSTOM ASSETS
+//
+//  1. Caduceus logo PNG (top-right & watermark):
+//     https://www.flaticon.com/free-icon/caduceus_2382461
+//     (free with attribution) — or any transparent-bg caduceus PNG you prefer.
+//     Pass the base64 data-URL string as:  clinicDetails.caduceusLogoBase64
+//
+//  2. Clinic logo (top-left, replaces the doctor-symbol placeholder):
+//     Pass the base64 data-URL string as:  clinicDetails.logoBase64
+//
+//  If neither is supplied the function falls back to drawn vector shapes.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const downloadReport = (
-    patient: Patient,
-    visit: PatientHistory,
-    clinicDetails: ClinicDetails,
-  ) => {
-    try {
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
+const downloadReport = (
+  patient: Patient,
+  visit: PatientHistory,
+  clinicDetails: ClinicDetails,
+) => {
+  try {
+    const pdf = new jsPDF("p", "mm", "a4");
+    const PW = pdf.internal.pageSize.getWidth();    // 210
+    const PH = pdf.internal.pageSize.getHeight();   // 297
 
-      // Header
-      pdf.setFontSize(18);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(clinicDetails.name || "Clinic Name", pageWidth / 2, 20, {
-        align: "center",
-      });
+    // ── Palette ───────────────────────────────────────────────────────────────
+    const BLUE      : [number,number,number] = [41,  128, 185];
+    const BLUE_DARK : [number,number,number] = [21,  96,  150];
+    const BLUE_BG   : [number,number,number] = [232, 244, 253];   // very light blue page tint
+    const BLUE_WM   : [number,number,number] = [210, 230, 248];   // watermark colour
+    const WHITE     : [number,number,number] = [255, 255, 255];
+    const DARK      : [number,number,number] = [25,  25,  25];
+    const GREY      : [number,number,number] = [110, 110, 110];
+    const LINE      : [number,number,number] = [180, 200, 220];
+    const GREEN     : [number,number,number] = [39,  174, 96];
+    const RED       : [number,number,number] = [192, 57,  43];
 
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
+    // ── Shortcuts ─────────────────────────────────────────────────────────────
+    const fc = (...c: [number,number,number]) => pdf.setFillColor(...c);
+    const dc = (...c: [number,number,number]) => pdf.setDrawColor(...c);
+    const tc = (...c: [number,number,number]) => pdf.setTextColor(...c);
+    const lw = (n: number)                    => pdf.setLineWidth(n);
+    const B  = (sz: number) => { pdf.setFont("helvetica", "bold");   pdf.setFontSize(sz); };
+    const N  = (sz: number) => { pdf.setFont("helvetica", "normal"); pdf.setFontSize(sz); };
+    const I  = (sz: number) => { pdf.setFont("helvetica", "italic"); pdf.setFontSize(sz); };
+    const T  = (s: string, x: number, y: number, o?: any) => pdf.text(String(s ?? ""), x, y, o);
 
-      if (clinicDetails.address) {
-        pdf.text(clinicDetails.address, pageWidth / 2, 28, { align: "center" });
-      }
-      if (clinicDetails.phone) {
-        pdf.text(`Phone: ${clinicDetails.phone}`, pageWidth / 2, 34, {
-          align: "center",
-        });
-      }
+    const safe = (v: any, fb = ""): string => {
+      if (v === null || v === undefined) return fb;
+      if (typeof v === "object") return fb;
+      return String(v).trim() || fb;
+    };
+    const noDr = (n: string) => n.replace(/^\s*dr\.?\s*/i, "").trim();
+    const Rs   = (n: number) => `Rs. ${n}`;
 
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "italic");
-      pdf.text("Official Prescription / Visit Summary", pageWidth / 2, 42, {
-        align: "center",
-      });
-      pdf.line(20, 44, pageWidth - 20, 44);
+    const M  = 16;   // page margin
+    const CW = PW - M * 2;
 
-      // Patient Info
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Patient Information", 20, 54);
+    // ── Asset references ──────────────────────────────────────────────────────
+    const clinicAny      = clinicDetails as any;
+    const logoB64        = clinicAny?.logoBase64        as string | undefined;
+    const caduceusB64    = clinicAny?.caduceusLogoBase64 as string | undefined;
 
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Name: ${patient.name || "N/A"}`, 20, 62);
-      pdf.text(`Patient ID: ${patient.patientUniqueId || "N/A"}`, 20, 70);
-      pdf.text(`Age: ${patient.age || "N/A"} years`, 20, 78);
-      pdf.text(`Phone: ${patient.phone || "N/A"}`, 20, 86);
-      pdf.text(`Email: ${patient.email || "N/A"}`, 20, 94);
+    // =========================================================================
+    // 0.  PAGE BACKGROUND  (very light blue tint — matches reference)
+    // =========================================================================
+    fc(...BLUE_BG);
+    pdf.rect(0, 0, PW, PH, "F");
 
-      // Visit Info
-      pdf.setFont("helvetica", "bold");
-      pdf.text(
-        `Visit Date: ${visit.visitDate ? new Date(visit.visitDate).toLocaleDateString() : "N/A"}`,
-        20,
-        110,
-      );
-      pdf.text(
-        `Doctor: ${visit.doctor?.name || "N/A"} (${
-          visit.doctor?.specialization || "N/A"
-        })`,
-        20,
-        118,
-      );
+    // White content card (inset slightly)
+    fc(...WHITE);
+    pdf.rect(6, 6, PW - 12, PH - 12, "F");
 
-      // Symptoms
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Symptoms:", 20, 134);
+    // =========================================================================
+    // 1.  HEADER  — Doctor name top-left, Caduceus top-right
+    // =========================================================================
+    const HDR_TOP  = 14;
 
-      pdf.setFont("helvetica", "normal");
-      if (Array.isArray(visit.symptoms)) {
-        visit.symptoms.forEach((symptom: string, idx: number) => {
-          pdf.text(`- ${symptom}`, 25, 142 + idx * 8);
-        });
-      }
+    // Top accent bar (thin blue strip at very top like reference)
+    fc(...BLUE_DARK);
+    pdf.rect(6, 6, PW - 12, 3, "F");
 
-      // Prescriptions
-      if (
-        Array.isArray(visit.prescriptions) &&
-        visit.prescriptions.length > 0
-      ) {
-        let presStart = 142 + (visit.symptoms?.length || 0) * 8 + 8;
+    // ── Caduceus / clinic logo  top-right ────────────────────────────────────
+    const LOGO_SIZE = 26;
+    const LOGO_X    = PW - M - LOGO_SIZE;
+    const LOGO_Y    = HDR_TOP - 2;
 
-        pdf.setFont("helvetica", "bold");
-        pdf.text("Prescriptions:", 20, presStart);
-
-        pdf.setFont("helvetica", "normal");
-        visit.prescriptions.forEach((pres: Prescription, idx: number) => {
-          const yPos = presStart + 8 + idx * 8;
-          pdf.text(
-            `- ${pres.medicineName || "N/A"} (${pres.dosage || "N/A"}, ${pres.frequency || "N/A"}/day, ${pres.duration || "N/A"} days)`,
-            25,
-            yPos,
-          );
-        });
-      }
-
-      const fileName = `${patient.name?.replace(/\s+/g, "_") || "patient"}_${
-        patient.patientUniqueId || "unknown"
-      }.pdf`;
-      pdf.save(fileName);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
+    if (logoB64) {
+      try   { pdf.addImage(logoB64, "PNG", LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE); }
+      catch (_) { drawCaduceus(LOGO_X, LOGO_Y, LOGO_SIZE, BLUE_DARK); }
+    } else if (caduceusB64) {
+      try   { pdf.addImage(caduceusB64, "PNG", LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE); }
+      catch (_) { drawCaduceus(LOGO_X, LOGO_Y, LOGO_SIZE, BLUE_DARK); }
+    } else {
+      drawCaduceus(LOGO_X, LOGO_Y, LOGO_SIZE, BLUE_DARK);
     }
-  };
 
+    // ── Doctor name + qualification  top-left ────────────────────────────────
+    const dRaw   = visit?.doctor as any;
+    const dName  = noDr(safe(dRaw?.name));
+    const dSpec  = safe(dRaw?.specialization || dRaw?.qualification);
+    const dReg   = safe(dRaw?.registrationNo || dRaw?.regNo);
+    const dPhone = safe(dRaw?.phone || dRaw?.contact);
+
+    B(20); tc(...BLUE_DARK);
+    T(dName ? `Dr. ${dName}` : "Doctor Name", M, HDR_TOP + 8);
+
+    B(9); tc(...GREY);
+    if (dSpec) T(dSpec.toUpperCase(), M, HDR_TOP + 15);
+
+    N(8); tc(...GREY);
+    let certY = HDR_TOP + 23;
+    if (dReg)   { T(`Reg. No: ${dReg}`,   M, certY); certY += 5.5; }
+    if (dPhone) { T(`Ph: ${dPhone}`,       M, certY); }
+
+    // Horizontal rule under header
+    lw(0.4); dc(...LINE);
+    pdf.line(M, HDR_TOP + 30, PW - M, HDR_TOP + 30);
+
+    // =========================================================================
+    // 2.  PATIENT INFO  (label + underline fields like the reference)
+    // =========================================================================
+    const PI_Y = HDR_TOP + 38;
+
+    const drawField = (label: string, value: string, x: number, y: number, w: number) => {
+      N(8); tc(...GREY);
+      T(`${label}:`, x, y);
+      const lw2 = pdf.getTextWidth(`${label}:`);
+      N(9); tc(...DARK);
+      T(value, x + lw2 + 2, y);
+      lw(0.3); dc(...LINE);
+      pdf.line(x, y + 1.5, x + w, y + 1.5);
+    };
+
+    const pName  = safe(patient?.name,              "________________");
+    const pAge   = patient?.age ? safe(patient.age) + " yrs" : "______";
+    const pPhone = safe(patient?.phone,             "_______________");
+    const pId    = safe(patient?.patientUniqueId,   "______");
+    const pEmail = safe((patient as any)?.email,    "");
+    const visitDate = visit?.visitDate
+      ? new Date(visit.visitDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+      : "____________";
+
+    // Row 1: Patient Name (full width)
+    drawField("Patient Name", pName,    M,           PI_Y,      CW);
+    // Row 2: Address (if available, else phone)
+    drawField("Ph / ID",      `${pPhone}  |  ID: ${pId}`,  M, PI_Y + 9,  CW);
+    // Row 3: Age | Date
+    drawField("Age",          pAge,     M,           PI_Y + 18, CW * 0.35);
+    drawField("Date",         visitDate,M + CW * 0.42, PI_Y + 18, CW * 0.55);
+    // Row 4: Diagnosis (first diagnosis as summary line)
+   const firstDiag = visit?.diagnosis?.length
+  ? safe(visit.diagnosis[0], "________________")
+  : "________________";
+    drawField("Diagnosis", firstDiag,   M,           PI_Y + 27, CW);
+
+    // =========================================================================
+    // 3.  WATERMARK CADUCEUS  (centre of page, large, light blue)
+    // =========================================================================
+    const WM_SIZE = 90;
+    const WM_X    = (PW - WM_SIZE) / 2;
+    const WM_Y    = PI_Y + 42;
+
+    if (caduceusB64) {
+      try {
+        // Draw as very transparent — jsPDF can't set opacity natively,
+        // so we just draw it at low-contrast colour by using GState hack:
+        // Instead, draw the image and overlay a near-white rect on top
+        pdf.addImage(caduceusB64, "PNG", WM_X, WM_Y, WM_SIZE, WM_SIZE);
+        fc(255, 255, 255);
+        (pdf as any).setGState && (pdf as any).setGState(new (pdf as any).GState({ opacity: 0.82 }));
+        pdf.rect(WM_X, WM_Y, WM_SIZE, WM_SIZE, "F");
+        (pdf as any).setGState && (pdf as any).setGState(new (pdf as any).GState({ opacity: 1 }));
+      } catch (_) {
+        drawCaduceus(WM_X + WM_SIZE * 0.25, WM_Y, WM_SIZE * 0.5, BLUE_WM);
+      }
+    } else {
+      drawCaduceus(WM_X + WM_SIZE * 0.2, WM_Y + 4, WM_SIZE * 0.6, BLUE_WM);
+    }
+
+    // =========================================================================
+    // 4.  Rx  SYMBOL  +  CONTENT  (on top of watermark)
+    // =========================================================================
+    let y = PI_Y + 46;
+
+    B(32); tc(...BLUE_DARK);
+    // T("Rx", M, y + 8);
+    lw(0.5); dc(...BLUE_DARK);
+    pdf.line(M, y + 10, M + 14, y + 10);
+    y += 18;
+
+    // ── Section heading ───────────────────────────────────────────────────────
+    const sec = (label: string) => {
+      if (y > 220) { pdf.addPage(); resetPage(); }
+      B(8.5); tc(...BLUE_DARK);
+      T(label.toUpperCase(), M, y);
+      lw(0.25); dc(...BLUE);
+      pdf.line(M, y + 1.5, PW - M, y + 1.5);
+      y += 7;
+    };
+
+    const bullet = (text: string) => {
+      if (y > 238) { pdf.addPage(); resetPage(); }
+      const lines = pdf.splitTextToSize(text, CW - 8);
+      N(9.5); tc(...DARK);
+      fc(...BLUE_DARK);
+      pdf.circle(M + 2, y - 1.3, 0.8, "F");
+      lines.forEach((ln: string, i: number) => T(ln, M + 6, y + i * 5.5));
+      y += lines.length * 5.5 + 2;
+    };
+
+    const renderList = (heading: string, items: any[]) => {
+      if (!Array.isArray(items) || !items.length) return;
+      sec(heading);
+      items.forEach((item: any) => {
+        const v = typeof item === "object"
+          ? safe(item.value || item.name || item.label, "Unknown")
+          : safe(item, "Unknown");
+        bullet(v);
+      });
+      y += 3;
+    };
+
+    renderList("Chief Complaints",     visit?.chiefComplaints     ?? []);
+    renderList("Examination Findings", visit?.examinationFindings ?? []);
+    renderList("Dental History",       visit?.dentalHistory       ?? []);
+
+    // Full diagnosis list (beyond the single header line above)
+    if (Array.isArray(visit?.diagnosis) && visit.diagnosis.length > 1) {
+      sec("All Diagnoses");
+      visit.diagnosis.forEach((d: any) => {
+        bullet(typeof d === "object"
+          ? safe(d.value || d.name || d.label, "Unknown")
+          : safe(d, "Unknown"));
+      });
+      y += 3;
+    }
+
+    // ── Prescriptions table ───────────────────────────────────────────────────
+    if (Array.isArray(visit?.prescriptions) && visit.prescriptions.length) {
+      if (y > 180) { pdf.addPage(); resetPage(); }
+
+      sec("Prescriptions");
+
+      const col = { med: M, dos: M+62, frq: M+92, dur: M+132, qty: M+157 };
+      const RH  = 8.5;
+
+      fc(...BLUE_DARK); dc(...BLUE_DARK); lw(0);
+      pdf.rect(M, y, CW, RH, "F");
+      B(8); tc(...WHITE);
+      T("MEDICINE",  col.med+2, y+5.8);
+      T("DOSAGE",    col.dos+2, y+5.8);
+      T("FREQUENCY", col.frq+2, y+5.8);
+      T("DURATION",  col.dur+2, y+5.8);
+      T("QTY",       col.qty+2, y+5.8);
+      y += RH;
+
+      visit.prescriptions.forEach((p: any, i: number) => {
+        if (y > 240) { pdf.addPage(); resetPage(); }
+        fc(i%2===0?255:244, i%2===0?255:249, i%2===0?255:255);
+        dc(...LINE); lw(0.2);
+        pdf.rect(M, y, CW, RH, "FD");
+        N(9); tc(...DARK);
+        if (p && typeof p === "object") {
+          T(safe(p.medicineName,"—"),                          col.med+2, y+5.8);
+          T(safe(p.dosage,"—"),                               col.dos+2, y+5.8);
+          T(safe(p.frequency,"—"),                            col.frq+2, y+5.8);
+          T(p.duration?`${safe(p.duration)} days`:"—",        col.dur+2, y+5.8);
+          T(safe(p.quantity||p.qty,"—"),                      col.qty+2, y+5.8);
+        } else { T(safe(p,"—"), col.med+2, y+5.8); }
+        y += RH;
+      });
+      y += 6;
+    }
+
+    // ── Notes ─────────────────────────────────────────────────────────────────
+    if (visit?.notes && typeof visit.notes === "string" && visit.notes.trim()) {
+      if (y > 215) { pdf.addPage(); resetPage(); }
+      sec("Doctor's Notes & Instructions");
+      N(9.5); tc(...DARK);
+      pdf.splitTextToSize(visit.notes.trim(), CW - 4).forEach((ln: string) => {
+        if (y > 240) { pdf.addPage(); resetPage(); }
+        T(ln, M+2, y); y += 5.5;
+      });
+      y += 5;
+    }
+
+    // =========================================================================
+    // 5.  SIGNATURE  (bottom-right, above footer — like reference)
+    // =========================================================================
+    const SIG_Y = Math.max(y + 10, PH - 60);
+    lw(0.5); dc(...GREY);
+    pdf.line(PW - M - 55, SIG_Y, PW - M, SIG_Y);
+    N(8); tc(...GREY);
+    T("SIGNATURE", PW - M - 28, SIG_Y + 5, { align: "center" });
+
+    // Billing (left of signature)
+    const BILL_W = CW * 0.52;
+    const BILL_Y = SIG_Y - 18;
+    fc(232, 244, 253); dc(...LINE); lw(0.4);
+    pdf.roundedRect(M, BILL_Y, BILL_W, 32, 2, 2, "FD");
+
+    B(9); tc(...BLUE_DARK);
+    T("BILLING SUMMARY", M+5, BILL_Y+8);
+    lw(0.2); dc(...LINE);
+    pdf.line(M+5, BILL_Y+10, M+BILL_W-5, BILL_Y+10);
+
+    const cFee  = typeof visit?.consultationFee === "number" ? visit.consultationFee : 0;
+    const total = typeof visit?.totalAmount === "number" ? visit.totalAmount : 0;
+    N(9); tc(...DARK);
+    T("Consultation Fee :", M+5, BILL_Y+18); B(9); T(Rs(cFee), M+55, BILL_Y+18);
+    N(9); tc(...DARK);
+    T("Total Amount :",     M+5, BILL_Y+26); B(11); tc(...BLUE_DARK); T(Rs(total), M+55, BILL_Y+26);
+
+    // const paid = !!visit?.isPaid;
+    // fc(...(paid ? GREEN : RED)); dc(...(paid ? GREEN : RED)); lw(0);
+    // pdf.roundedRect(M+5, BILL_Y+28, 26, 7, 1.5, 1.5, "F");
+    // B(8); tc(...WHITE);
+    // T(paid?"PAID":"UNPAID", M+18, BILL_Y+33, { align:"center" });
+
+    // =========================================================================
+    // 6.  FOOTER BAR  — matches reference exactly
+    //     | HOSPITAL + slogan | phone lines | email | address | website |
+    // =========================================================================
+    const FH   = 22;
+    const FY   = PH - FH - 6;
+
+    fc(...BLUE_DARK);
+    pdf.rect(6, FY, PW-12, FH, "F");
+
+    // Clinic name + slogan
+    B(11); tc(...WHITE);
+    T(safe(clinicDetails?.name, "CLINIC"), M+2, FY+8);
+    N(7);  tc(180, 215, 240);
+    T(safe(clinicAny?.slogan, "Healthcare with Care"), M+2, FY+14);
+
+    // Divider
+    lw(0.3); dc(100, 150, 200);
+    pdf.line(M + 44, FY+3, M+44, FY+FH-3);
+
+    // Phone block
+    const ph1 = safe(clinicDetails?.phone);
+    const ph2 = safe(clinicAny?.phone2);
+    N(7.5); tc(...WHITE);
+    if (ph1) T(ph1, M+49, FY+8);
+    if (ph2) T(ph2, M+49, FY+14);
+
+    lw(0.3); dc(100, 150, 200);
+    pdf.line(M+82, FY+3, M+82, FY+FH-3);
+
+    // Email
+    const email = safe(clinicAny?.email);
+    N(7.5); tc(...WHITE);
+    if (email) T(email, M+86, FY+8);
+
+    lw(0.3); dc(100, 150, 200);
+    pdf.line(M+120, FY+3, M+120, FY+FH-3);
+
+    // Address
+    const addr = typeof clinicDetails?.address === "string" ? clinicDetails.address : "";
+    if (addr) { N(7); tc(...WHITE); T(addr, M+124, FY+8, { maxWidth: 46 }); }
+
+    lw(0.3); dc(100, 150, 200);
+    pdf.line(M+158, FY+3, M+158, FY+FH-3);
+
+    // Website
+    const web = safe(clinicAny?.website);
+    if (web) { N(7.5); tc(...WHITE); T(web, M+162, FY+8); }
+
+    // ── Save ──────────────────────────────────────────────────────────────────
+    const fname = safe(patient?.name, "patient").replace(/\s+/g, "_");
+    const fid   = safe(patient?.patientUniqueId, "unknown");
+    pdf.save(`Rx_${fname}_${fid}.pdf`);
+
+    // =========================================================================
+    //  HELPERS
+    // =========================================================================
+    function resetPage() {
+      // Repaint background on new page
+      y = 18;
+      fc(...BLUE_BG); pdf.rect(0,0,PW,PH,"F");
+      fc(...WHITE);   pdf.rect(6,6,PW-12,PH-12,"F");
+      fc(...BLUE_DARK); pdf.rect(6,6,PW-12,3,"F");
+      drawCaduceus(WM_X + WM_SIZE*0.2, WM_Y*0.3, WM_SIZE*0.6, BLUE_WM);
+    }
+
+    /**
+     * drawCaduceus — draws a simplified caduceus symbol (staff + wings + snakes)
+     * using only jsPDF primitives. All sizes relative to the bounding box.
+     * @param x    top-left x
+     * @param y    top-left y
+     * @param size bounding box size (square)
+     * @param color fill/stroke colour
+     */
+    function drawCaduceus(
+      x: number, y: number, size: number,
+      color: [number,number,number]
+    ) {
+      fc(...color); dc(...color);
+      const s  = size / 28;  // scale factor
+      const cx = x + size / 2;
+
+      // ── Staff (vertical rod) ────────────────────────────────────────────────
+      lw(s * 1.6);
+      pdf.line(cx, y + s*2, cx, y + size - s*2);
+
+      // ── Top sphere ──────────────────────────────────────────────────────────
+      lw(0);
+      pdf.circle(cx, y + s*2, s*2, "F");
+
+      // ── Wings (left + right arcs approximated as bezier-like polylines) ─────
+      const wingY   = y + s * 7;
+      const wingW   = s * 11;
+      const wingH   = s * 5;
+      const steps   = 12;
+
+      // Left wing
+      lw(s * 0.8);
+      for (let i = 0; i < steps; i++) {
+        const t1 = i / steps;
+        const t2 = (i + 1) / steps;
+        const wx1 = cx - t1 * wingW;
+        const wy1 = wingY - Math.sin(t1 * Math.PI) * wingH;
+        const wx2 = cx - t2 * wingW;
+        const wy2 = wingY - Math.sin(t2 * Math.PI) * wingH;
+        pdf.line(wx1, wy1, wx2, wy2);
+      }
+      // Right wing
+      for (let i = 0; i < steps; i++) {
+        const t1 = i / steps;
+        const t2 = (i + 1) / steps;
+        const wx1 = cx + t1 * wingW;
+        const wy1 = wingY - Math.sin(t1 * Math.PI) * wingH;
+        const wx2 = cx + t2 * wingW;
+        const wy2 = wingY - Math.sin(t2 * Math.PI) * wingH;
+        pdf.line(wx1, wy1, wx2, wy2);
+      }
+
+      // ── Two snakes (sinusoidal curves along the staff) ────────────────────
+      const snakeTop    = y + s * 5;
+      const snakeBottom = y + size - s * 5;
+      const snakeH      = snakeBottom - snakeTop;
+      const snakeSteps  = 30;
+      const snakeAmp    = s * 3.5;
+
+      lw(s * 1.1);
+
+      // Snake 1 (starts left, wraps right)
+      for (let i = 0; i < snakeSteps; i++) {
+        const t1 = i / snakeSteps;
+        const t2 = (i + 1) / snakeSteps;
+        const sy1 = snakeTop  + t1 * snakeH;
+        const sy2 = snakeTop  + t2 * snakeH;
+        const sx1 = cx + Math.sin(t1 * Math.PI * 3.5) * snakeAmp;
+        const sx2 = cx + Math.sin(t2 * Math.PI * 3.5) * snakeAmp;
+        pdf.line(sx1, sy1, sx2, sy2);
+      }
+
+      // Snake 2 (offset by π — starts right, wraps left)
+      for (let i = 0; i < snakeSteps; i++) {
+        const t1 = i / snakeSteps;
+        const t2 = (i + 1) / snakeSteps;
+        const sy1 = snakeTop + t1 * snakeH;
+        const sy2 = snakeTop + t2 * snakeH;
+        const sx1 = cx + Math.sin(t1 * Math.PI * 3.5 + Math.PI) * snakeAmp;
+        const sx2 = cx + Math.sin(t2 * Math.PI * 3.5 + Math.PI) * snakeAmp;
+        pdf.line(sx1, sy1, sx2, sy2);
+      }
+
+      // Snake heads at bottom
+      lw(0);
+      pdf.circle(cx - snakeAmp * 0.3, snakeBottom, s * 1.4, "F");
+      pdf.circle(cx + snakeAmp * 0.3, snakeBottom, s * 1.4, "F");
+    }
+
+  } catch (err) {
+    console.error("Prescription PDF error:", err);
+    alert("Failed to generate PDF. Check console for details.");
+  }
+};
   // Search for patient
   const handlePatientSearch = async (searchId?: string) => {
     const query = searchId || patientSearchQuery;
@@ -525,7 +921,7 @@ function ReportsContent() {
           params: { clinicId },
         },
       );
-      console.log("pa",res);
+      console.log("Patient History Response:", res.data);
 
       if (res.data?.success) {
         setHistory(Array.isArray(res.data.data) ? res.data.data : []);
@@ -620,6 +1016,12 @@ function ReportsContent() {
       return value.length > 0 ? value.join(", ") : "None";
     }
     return value || "None";
+  };
+
+  // Helper function to get complaint values as strings
+  const getComplaintValues = (complaints: ComplaintItem[] | undefined): string[] => {
+    if (!complaints || !Array.isArray(complaints)) return [];
+    return complaints.map(c => c.value);
   };
 
   // Info Item Component
@@ -1466,7 +1868,6 @@ function ReportsContent() {
                   }}
                 >
                   {labOrders.map((item, idx) => {
-                    // Safely access nested properties
                     const order = item?.order || {};
                     const note = order?.note || "No note";
                     const price = order?.price;
@@ -1674,7 +2075,13 @@ function ReportsContent() {
                     {history.map((visit, index) => (
                       <div
                         key={visit?._id || index}
-                        onClick={() => setSelectedVisit(visit)}
+                        onClick={() => {
+                          console.log("🖱️ CLICKED VISIT:", visit);
+                          console.log("🖱️ VISIT ID:", visit?._id);
+                          console.log("🖱️ PRESCRIPTIONS:", visit?.prescriptions);
+                          console.log("🖱️ DOCTOR:", visit?.doctor);
+                          setSelectedVisit(visit);
+                        }}
                         style={{
                           padding: 22,
                           borderRadius: 16,
@@ -1754,9 +2161,9 @@ function ReportsContent() {
                           <div className="flex items-center gap-2 text-sm">
                             <FileText className="w-4 h-4 text-gray-500" />
                             <span>
-                              <strong>Symptoms:</strong>{" "}
-                              {Array.isArray(visit?.symptoms)
-                                ? visit.symptoms.length
+                              <strong>Chief Complaints:</strong>{" "}
+                              {Array.isArray(visit?.chiefComplaints)
+                                ? visit.chiefComplaints.length
                                 : 0}
                             </span>
                           </div>
@@ -2288,7 +2695,7 @@ function ReportsContent() {
                   </div>
                 </div>
 
-                {/* Symptoms & Diagnosis */}
+                {/* Chief Complaints & Diagnosis */}
                 <div
                   style={{
                     display: "grid",
@@ -2340,11 +2747,11 @@ function ReportsContent() {
                           color: "#0F172A",
                         }}
                       >
-                        Symptoms
+                        Chief Complaints
                       </h3>
                     </div>
                     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                      {selectedVisit?.symptoms?.map((symptom, idx) => (
+                      {selectedVisit?.chiefComplaints?.map((complaint, idx) => (
                         <li
                           key={idx}
                           style={{
@@ -2352,12 +2759,17 @@ function ReportsContent() {
                             color: "#475569",
                             padding: "8px 0",
                             borderBottom:
-                              idx < selectedVisit.symptoms.length - 1
+                              idx < selectedVisit.chiefComplaints.length - 1
                                 ? "1px solid rgba(0,0,0,0.05)"
                                 : "none",
                           }}
                         >
-                          • {symptom}
+                          • {complaint.value}
+                          {complaint.isCustom && (
+                            <span style={{ color: "#F59E0B", marginLeft: 4 }}>
+                              (Custom)
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -2429,6 +2841,164 @@ function ReportsContent() {
                     </ul>
                   </div>
                 </div>
+
+                {/* Examination Findings & Dental History */}
+                {selectedVisit.examinationFindings?.length > 0 && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                      gap: 28,
+                      marginBottom: 28,
+                    }}
+                  >
+                    {selectedVisit.examinationFindings?.length > 0 && (
+                      <div
+                        style={{
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                          backdropFilter: "blur(18px)",
+                          WebkitBackdropFilter: "blur(18px)",
+                          borderRadius: 16,
+                          padding: 28,
+                          boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                          border: "1px solid rgba(255,255,255,0.4)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 14,
+                            marginBottom: 16,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 12,
+                              background:
+                                "linear-gradient(135deg, #06B6D4, #22D3EE)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              boxShadow: "0 8px 20px rgba(6,182,212,0.35)",
+                            }}
+                          >
+                            <Stethoscope size={22} color="#fff" />
+                          </div>
+                          <h3
+                            style={{
+                              fontSize: 17,
+                              fontWeight: 700,
+                              margin: 0,
+                              color: "#0F172A",
+                            }}
+                          >
+                            Examination Findings
+                          </h3>
+                        </div>
+                        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                          {selectedVisit.examinationFindings.map((finding, idx) => (
+                            <li
+                              key={idx}
+                              style={{
+                                fontSize: 14,
+                                color: "#475569",
+                                padding: "8px 0",
+                                borderBottom:
+                                  idx < selectedVisit.examinationFindings.length - 1
+                                    ? "1px solid rgba(0,0,0,0.05)"
+                                    : "none",
+                              }}
+                            >
+                              • {finding.value}
+                              {finding.isCustom && (
+                                <span style={{ color: "#06B6D4", marginLeft: 4 }}>
+                                  (Custom)
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {selectedVisit.dentalHistory?.length > 0 && (
+                      <div
+                        style={{
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
+                          backdropFilter: "blur(18px)",
+                          WebkitBackdropFilter: "blur(18px)",
+                          borderRadius: 16,
+                          padding: 28,
+                          boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+                          border: "1px solid rgba(255,255,255,0.4)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 14,
+                            marginBottom: 16,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 12,
+                              background:
+                                "linear-gradient(135deg, #8B5CF6, #A78BFA)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              boxShadow: "0 8px 20px rgba(139,92,246,0.35)",
+                            }}
+                          >
+                            <Activity size={22} color="#fff" />
+                          </div>
+                          <h3
+                            style={{
+                              fontSize: 17,
+                              fontWeight: 700,
+                              margin: 0,
+                              color: "#0F172A",
+                            }}
+                          >
+                            Dental History
+                          </h3>
+                        </div>
+                        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                          {selectedVisit.dentalHistory.map((history, idx) => (
+                            <li
+                              key={idx}
+                              style={{
+                                fontSize: 14,
+                                color: "#475569",
+                                padding: "8px 0",
+                                borderBottom:
+                                  idx < selectedVisit.dentalHistory.length - 1
+                                    ? "1px solid rgba(0,0,0,0.05)"
+                                    : "none",
+                              }}
+                            >
+                              • {history.value}
+                              {history.isCustom && (
+                                <span style={{ color: "#8B5CF6", marginLeft: 4 }}>
+                                  (Custom)
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Prescriptions */}
                 {selectedVisit.prescriptions.length > 0 && (
@@ -3778,4 +4348,4 @@ export default function Reports() {
       <ReportsContent />
     </ErrorBoundary>
   );
-}
+} 
