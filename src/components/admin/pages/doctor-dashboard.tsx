@@ -7,8 +7,8 @@ import { useAppSelector } from "../../../redux/hook";
 interface FormData {
   doctorUniqueId: string;
   roleInClinic: string;
-  clinicEmail: string;
-  clinicPassword: string;
+  clinicEmail?: string;
+  clinicPassword?: string;
   standardConsultationFee: string;
   specialization: string[];
   clinicId?: string;
@@ -938,17 +938,17 @@ const DoctorRegistrationForm: React.FC = () => {
       newErrors.roleInClinic = "Role in clinic is required";
     }
 
-    if (!formData.clinicEmail.trim()) {
-      newErrors.clinicEmail = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clinicEmail)) {
-      newErrors.clinicEmail = "Invalid email format";
-    }
+    // if (!formData.clinicEmail.trim()) {
+    //   newErrors.clinicEmail = "Email is required";
+    // } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clinicEmail)) {
+    //   newErrors.clinicEmail = "Invalid email format";
+    // }
 
-    if (!formData.clinicPassword) {
-      newErrors.clinicPassword = "Password is required";
-    } else if (formData.clinicPassword.length < 8) {
-      newErrors.clinicPassword = "Password must be at least 8 characters";
-    }
+    // if (!formData.clinicPassword) {
+    //   newErrors.clinicPassword = "Password is required";
+    // } else if (formData.clinicPassword.length < 8) {
+    //   newErrors.clinicPassword = "Password must be at least 8 characters";
+    // }
 
     if (!formData.standardConsultationFee) {
       newErrors.standardConsultationFee = "Consultation fee is required";
@@ -967,57 +967,72 @@ const DoctorRegistrationForm: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (
-    e: React.MouseEvent<HTMLButtonElement>
-  ): Promise<void> => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
+const handleSubmit = async (
+  e: React.MouseEvent<HTMLButtonElement>
+): Promise<void> => {
+  e.preventDefault();
+  
+  if (!validateForm()) return;
 
-    try {
-      // First, register the doctor
-      const response = await axios.post(
-        `${clinicServiceBaseUrl}/api/v1/clinic-service/onboard-doctor`,{ ...formData,
-    standardConsultationFee: Number(formData.standardConsultationFee)}
-        // formData
-      );
+  try {
+    // Prepare the payload according to backend expectations
+    const payload = {
+      clinicId: clinicId,
+      doctorUniqueId: formData.doctorUniqueId, // This is the human-readable ID (e.g., "IMA-KL-2815")
+      roleInClinic: formData.roleInClinic || "consultant",
+      standardConsultationFee: Number(formData.standardConsultationFee),
+      specialization: formData.specialization,
+      createdBy: user?._id || clinicId,
+      isHybridOnboarding: false
+    };
 
-      if (response.status === 201) {
-        const doctorData = response.data.data || response.data;
-        const doctorUniqueId = doctorData.doctorUniqueId || formData.doctorUniqueId;
-        const doctorName = doctorData.doctorName || "Doctor";
+    console.log("Sending payload to backend:", payload);
 
-        alert("Doctor registered successfully!");
-        
-        // Clear form
-        setFormData({
-          doctorUniqueId: "",
-          roleInClinic: "",
-          clinicEmail: "",
-          clinicPassword: "",
-          standardConsultationFee: "",
-          specialization: [],
-          clinicId: clinicId || "",
-        });
+    const response = await axios.post(
+      `${clinicServiceBaseUrl}/api/v1/clinic-service/onboard-doctor`,
+      payload
+    );
 
-        // Open availability modal
-        setAvailabilityModal({
-          isOpen: true,
-          doctorUniqueId,
-          doctorName,
-        });
-      } else {
-        alert("Registration failed. Please try again.");
-      }
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      alert(
-        error.response?.data?.message || 
-        "An error occurred during registration. Please try again."
-      );
+    if (response.status === 201 || response.status === 200) {
+      const doctorData = response.data.data || response.data;
+      
+      // IMPORTANT: Use the original formData.doctorUniqueId (human-readable ID)
+      // NOT the MongoDB ObjectId from the response
+      const doctorUniqueId = formData.doctorUniqueId; // This is the key change!
+      const doctorName = doctorData.doctorName || "Doctor";
+
+      alert("Doctor registered successfully!");
+      
+      // Clear form
+      setFormData({
+        doctorUniqueId: "",
+        roleInClinic: "",
+        clinicEmail: "",
+        clinicPassword: "",
+        standardConsultationFee: "",
+        specialization: [],
+        clinicId: clinicId || "",
+      });
+
+      // Open availability modal with the human-readable ID
+      setAvailabilityModal({
+        isOpen: true,
+        doctorUniqueId: doctorUniqueId, // Using the original human-readable ID
+        doctorName,
+      });
+    } else {
+      alert("Registration failed. Please try again.");
     }
-  };
-
+  } catch (error: any) {
+    console.error("Registration error:", error);
+    console.error("Error response:", error.response?.data);
+    
+    const errorMessage = error.response?.data?.message || 
+                        error.response?.data?.error ||
+                        "An error occurred during registration. Please try again.";
+    alert(errorMessage);
+  }
+};
   const handleAvailabilitySuccess = () => {
     // Refresh doctors list if on doctors view
     if (currentView === "doctors") {
@@ -1345,7 +1360,7 @@ const DoctorRegistrationForm: React.FC = () => {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <label
                     htmlFor="clinicEmail"
                     className="block text-sm font-medium text-gray-700"
@@ -1431,7 +1446,7 @@ const DoctorRegistrationForm: React.FC = () => {
                       {errors.clinicPassword}
                     </p>
                   )}
-                </div>
+                </div> */}
 
                 <div className="space-y-2">
                   <label
