@@ -112,12 +112,12 @@ interface MessageHistory {
   status: "sent" | "delivered" | "read" | "failed";
   timestamp: string;
   type:
-    | "appointment"
-    | "reminder"
-    | "promotional"
-    | "test"
-    | "document"
-    | "other";
+  | "appointment"
+  | "reminder"
+  | "promotional"
+  | "test"
+  | "document"
+  | "other";
   messageId?: string;
   metadata?: {
     fileType?: string;
@@ -225,9 +225,14 @@ export default function SettingsGrid() {
   });
 
   const [documentTemplateName, setDocumentTemplateName] = useState('denstack_invoice');
+  const [patientName, setPatientName] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [amount, setAmount] = useState("");
+  const [clinicName, setClinicName] = useState("");
 
   const [colorSettings, setColorSettings] = useState({
-     key: 'light1', // default theme
+    key: 'light1', // default theme
     startColor: "#3b82f6",
     endColor: "#8b5cf6",
     primaryForeground: "#ffffff",
@@ -607,7 +612,7 @@ export default function SettingsGrid() {
       console.error("Verification failed:", error);
       setVerificationMessage(
         error.response?.data?.message ||
-          "❌ Verification failed. Please try again.",
+        "❌ Verification failed. Please try again.",
       );
     } finally {
       setIsVerifying(false);
@@ -756,7 +761,7 @@ export default function SettingsGrid() {
         if (
           whatsappSettings.autoRecharge &&
           whatsappSettings.messagesRemaining <=
-            whatsappSettings.rechargeThreshold
+          whatsappSettings.rechargeThreshold
         ) {
           setShowRechargeModal(true);
         }
@@ -820,8 +825,8 @@ export default function SettingsGrid() {
       return;
     }
 
-    if (!documentTemplateName) {
-      alert('Please enter template name');
+    if (!patientName || !invoiceNumber) {
+      alert('Please enter patient name and invoice number');
       return;
     }
 
@@ -838,7 +843,12 @@ export default function SettingsGrid() {
     formData.append("caption", documentCaption);
     formData.append("filename", selectedFile.name);
     formData.append('templateName', documentTemplateName);
-    // No need to append phoneNumberId as backend gets it from settings
+    formData.append('patientName', patientName);
+    formData.append('invoiceNumber', invoiceNumber);
+    formData.append('dueDate', dueDate);
+    formData.append('amount', amount);
+    formData.append('clinicName', clinicName);
+
 
     try {
       setIsLoading(true);
@@ -862,6 +872,8 @@ export default function SettingsGrid() {
         alert("✅ Document sent successfully!");
         setSelectedFile(null);
         setRecipientNumber("");
+        setPatientName("");
+        setInvoiceNumber("");
         setDocumentCaption("");
         setUploadProgress(0);
         setShowDocumentSender(false);
@@ -971,7 +983,7 @@ export default function SettingsGrid() {
       console.error("Error adding item:", error);
       alert(
         error.response?.data?.message ||
-          "Failed to add item. Please try again.",
+        "Failed to add item. Please try again.",
       );
     }
   };
@@ -1016,7 +1028,7 @@ export default function SettingsGrid() {
       console.error("Error updating item:", error);
       alert(
         error.response?.data?.message ||
-          "Failed to update item. Please try again.",
+        "Failed to update item. Please try again.",
       );
     }
   };
@@ -1047,7 +1059,7 @@ export default function SettingsGrid() {
         console.error("Error deleting item:", error);
         alert(
           error.response?.data?.message ||
-            "Failed to delete item. Please try again.",
+          "Failed to delete item. Please try again.",
         );
       }
     }
@@ -1131,27 +1143,27 @@ export default function SettingsGrid() {
     setColorSettings((prev) => ({ ...prev, [field]: value }));
   };
 
-const handleSaveColors = async () => {
-  try {
-    const res = await axios.patch(
-      `${baseUrl}api/v1/auth/clinic/updateTheme/${clinicId}`,
-      {
-        key: colorSettings.key, // light1 | light2 | dark1 etc
-        primaryForeground: colorSettings.primaryForeground,
-        sidebarForeground: colorSettings.sidebarForeground,
-        secondary: colorSettings.secondary,
-      }
-    );
+  const handleSaveColors = async () => {
+    try {
+      const res = await axios.patch(
+        `${baseUrl}api/v1/auth/clinic/updateTheme/${clinicId}`,
+        {
+          key: colorSettings.key, // light1 | light2 | dark1 etc
+          primaryForeground: colorSettings.primaryForeground,
+          sidebarForeground: colorSettings.sidebarForeground,
+          secondary: colorSettings.secondary,
+        }
+      );
 
-    console.log("Theme updated:", res.data);
+      console.log("Theme updated:", res.data);
 
-    setShowColorPopup(false);
-    // toast.success("Theme updated successfully");
-  } catch (error) {
-    console.error("Error updating theme:", error);
-    // toast.error("Failed to update theme");
-  }
-};
+      setShowColorPopup(false);
+      // toast.success("Theme updated successfully");
+    } catch (error) {
+      console.error("Error updating theme:", error);
+      // toast.error("Failed to update theme");
+    }
+  };
 
   const handleAddService = () => {
     if (
@@ -1270,7 +1282,7 @@ const handleSaveColors = async () => {
     if (
       whatsappSettings.autoRecharge &&
       whatsappSettings.messagesRemaining <=
-        whatsappSettings.rechargeThreshold &&
+      whatsappSettings.rechargeThreshold &&
       whatsappSettings.messagesRemaining > 0
     ) {
       console.log("Low message count:", whatsappSettings.messagesRemaining);
@@ -1579,6 +1591,7 @@ const handleSaveColors = async () => {
 
               <div className="space-y-4">
 
+                {/* Template Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Template Name *
@@ -1588,9 +1601,82 @@ const handleSaveColors = async () => {
                     value={documentTemplateName}
                     onChange={(e) => setDocumentTemplateName(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="your_approved_template_name"
+                    placeholder="denstack_invoice"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Your approved WhatsApp template name</p>
+                </div>
+
+                {/* Patient Name - {{1}} */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Patient Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="John Doe"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Will appear as: "Hello John Doe"</p>
+                </div>
+
+                {/* Invoice Number - {{2}} */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Invoice Number *
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="INV-2026-001"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Will appear as: "Invoice No: INV-2026-001"</p>
+                </div>
+
+                {/* Amount - {{3}} */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Amount (in ₹) *
+                  </label>
+                  <input
+                    type="text"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="1500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Will appear as: "Amount: ₹1500" (just enter the number)</p>
+                </div>
+
+                {/* Due Date - {{4}} */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Due Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Will appear as: "Due Date: 2026-03-15"</p>
+                </div>
+
+                {/* Clinic Name - {{5}} */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Clinic Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={clinicName}
+                    onChange={(e) => setClinicName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Denstack"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Will appear as: "Thank you, Denstack -DS"</p>
                 </div>
 
                 <div>
@@ -1611,7 +1697,7 @@ const handleSaveColors = async () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Document *
+                    Document (PDF Invoice) *
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <input
@@ -1682,12 +1768,40 @@ const handleSaveColors = async () => {
                   />
                 </div>
 
+                {/* Preview Section - NEW */}
+                {(patientName || invoiceNumber || amount || dueDate || clinicName) && (
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 mb-2">Message Preview:</p>
+                    <div className="text-sm text-blue-700 space-y-1">
+                      <p>Hello {patientName || 'John Doe'},</p>
+                      <p>&nbsp;</p>
+                      <p>Please find attached your invoice.</p>
+                      <p>&nbsp;</p>
+                      <p>Invoice No: {invoiceNumber || 'INV-2026-001'}</p>
+                      <p>Amount: ₹{amount || '1500'}</p>
+                      <p>Due Date: {dueDate || '2026-03-15'}</p>
+                      <p>&nbsp;</p>
+                      <p>Kindly complete the payment before the due date.</p>
+                      <p>&nbsp;</p>
+                      <p>If you have any queries, feel free to contact us.</p>
+                      <p>&nbsp;</p>
+                      <p>Thank you,</p>
+                      <p>{clinicName || 'Denstack'} -DS</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
                       setShowDocumentSender(false);
                       setSelectedFile(null);
                       setRecipientNumber("");
+                      setPatientName("");
+                      setInvoiceNumber("");
+                      setDueDate("");
+                      setAmount("");
+                      setClinicName("");
                       setDocumentCaption("");
                       setUploadProgress(0);
                     }}
@@ -2180,11 +2294,10 @@ const handleSaveColors = async () => {
                       setActiveProcedureTab(tab.key);
                       setSearchQuery("");
                     }}
-                    className={`flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
-                      activeProcedureTab === tab.key
-                        ? "border-blue-500 text-blue-600 bg-blue-50"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
+                    className={`flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${activeProcedureTab === tab.key
+                      ? "border-blue-500 text-blue-600 bg-blue-50"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      }`}
                   >
                     <span className="flex-shrink-0">{tab.icon}</span>
                     <span className="truncate max-w-[100px] md:max-w-none">
@@ -2369,8 +2482,8 @@ const handleSaveColors = async () => {
                           <span className="font-semibold">
                             {Math.min(
                               (pagination.currentPage - 1) *
-                                pagination.itemsPerPage +
-                                1,
+                              pagination.itemsPerPage +
+                              1,
                               pagination.totalItems,
                             )}{" "}
                             -{" "}
@@ -2391,11 +2504,10 @@ const handleSaveColors = async () => {
                               handlePageChange(pagination.currentPage - 1)
                             }
                             disabled={!pagination.hasPreviousPage}
-                            className={`px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md transition-colors ${
-                              pagination.hasPreviousPage
-                                ? "text-gray-700 bg-white hover:bg-gray-50"
-                                : "text-gray-400 bg-gray-100 cursor-not-allowed"
-                            }`}
+                            className={`px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md transition-colors ${pagination.hasPreviousPage
+                              ? "text-gray-700 bg-white hover:bg-gray-50"
+                              : "text-gray-400 bg-gray-100 cursor-not-allowed"
+                              }`}
                           >
                             Previous
                           </button>
@@ -2419,11 +2531,10 @@ const handleSaveColors = async () => {
                                 <button
                                   key={pageNum}
                                   onClick={() => handlePageChange(pageNum)}
-                                  className={`px-3 py-1.5 text-sm font-medium border rounded-md transition-colors ${
-                                    pagination.currentPage === pageNum
-                                      ? "text-white bg-blue-600 border-blue-600 hover:bg-blue-700"
-                                      : "text-gray-700 bg-white border-gray-300 hover:bg-gray-50"
-                                  }`}
+                                  className={`px-3 py-1.5 text-sm font-medium border rounded-md transition-colors ${pagination.currentPage === pageNum
+                                    ? "text-white bg-blue-600 border-blue-600 hover:bg-blue-700"
+                                    : "text-gray-700 bg-white border-gray-300 hover:bg-gray-50"
+                                    }`}
                                 >
                                   {pageNum}
                                 </button>
@@ -2435,11 +2546,10 @@ const handleSaveColors = async () => {
                               handlePageChange(pagination.currentPage + 1)
                             }
                             disabled={!pagination.hasNextPage}
-                            className={`px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md transition-colors ${
-                              pagination.hasNextPage
-                                ? "text-gray-700 bg-white hover:bg-gray-50"
-                                : "text-gray-400 bg-gray-100 cursor-not-allowed"
-                            }`}
+                            className={`px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md transition-colors ${pagination.hasNextPage
+                              ? "text-gray-700 bg-white hover:bg-gray-50"
+                              : "text-gray-400 bg-gray-100 cursor-not-allowed"
+                              }`}
                           >
                             Next
                           </button>
@@ -2832,14 +2942,14 @@ const handleSaveColors = async () => {
                     fontWeight: 500,
                     cursor:
                       !procedureForm.name.trim() ||
-                      !procedureForm.description.trim() ||
-                      (activeTab.hasPrice && !procedureForm.price)
+                        !procedureForm.description.trim() ||
+                        (activeTab.hasPrice && !procedureForm.price)
                         ? "not-allowed"
                         : "pointer",
                     opacity:
                       !procedureForm.name.trim() ||
-                      !procedureForm.description.trim() ||
-                      (activeTab.hasPrice && !procedureForm.price)
+                        !procedureForm.description.trim() ||
+                        (activeTab.hasPrice && !procedureForm.price)
                         ? 0.5
                         : 1,
                     transition:
@@ -3704,12 +3814,12 @@ const handleSaveColors = async () => {
                     transition: "background 0.15s ease-in-out",
                   }}
                   onMouseOver={(e) =>
-                    (e.currentTarget.style.background =
-                      "linear-gradient(to right, #2563eb, #7c3aed)")
+                  (e.currentTarget.style.background =
+                    "linear-gradient(to right, #2563eb, #7c3aed)")
                   }
                   onMouseOut={(e) =>
-                    (e.currentTarget.style.background =
-                      "linear-gradient(to right, #3b82f6, #8b5cf6)")
+                  (e.currentTarget.style.background =
+                    "linear-gradient(to right, #3b82f6, #8b5cf6)")
                   }
                 >
                   Save Changes
