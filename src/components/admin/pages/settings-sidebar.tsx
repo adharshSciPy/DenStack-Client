@@ -224,7 +224,7 @@ export default function SettingsGrid() {
     hasPreviousPage: false,
   });
 
-  const [documentTemplateName, setDocumentTemplateName] = useState('your_approved_template_name');
+  const [documentTemplateName, setDocumentTemplateName] = useState('denstack_invoice');
 
   const [colorSettings, setColorSettings] = useState({
      key: 'light1', // default theme
@@ -4970,6 +4970,8 @@ const handleSaveColors = async () => {
     </div>
   );
 }
+
+
 
 
 
