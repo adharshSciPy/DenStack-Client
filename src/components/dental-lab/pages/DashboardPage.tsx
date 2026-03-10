@@ -23,7 +23,8 @@ import { useAppSelector } from "../../../redux/hook";
 import labBaseUrl from "../../../labBaseUrl";
 import axios from "axios";
 import { useSearchParams } from "react-router-dom";
-
+import patientServiceBaseUrl from "../../../patientServiceBaseUrl";
+import clinicServiceBaseUrl from "../../../clinicServiceBaseUrl";
 // ---------- TYPES ----------
 interface LabStatus {
   completedOrders: number;
@@ -97,6 +98,15 @@ interface LabOrderResponse {
   nextCursor?: string;
 }
 
+// Patient type
+interface Patient {
+  _id: string;
+  name: string;
+  patientRandomId?: string;
+  phone?: number;
+  email?: string;
+}
+
 // Modal form data types
 interface FormData {
   vendor: string;
@@ -161,7 +171,9 @@ const statusConfig: Record<
 // ---------- PAGE ----------
 const DashboardPage = () => {
   const [labOrders, setLabOrders] = useState<LabStatus | null>(null);
-  const clinicId = useAppSelector((state: any) => state.auth.user.id);
+  // const clinicId = useAppSelector((state: any) => state.auth.user.id);
+  const clinicId = useAppSelector((state: any) => state.auth.user.clinicId);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
@@ -182,7 +194,7 @@ const DashboardPage = () => {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [patientSearch, setPatientSearch] = useState("");
-  const [patientResults, setPatientResults] = useState<any[]>([]);
+  const [patientResults, setPatientResults] = useState<Patient[]>([]);
   const [patientLoading, setPatientLoading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
 
@@ -218,7 +230,7 @@ const DashboardPage = () => {
       } else {
         endpoint = `${labBaseUrl}api/v1/lab/external`;
       }
-      
+
       const response = await axios.get(endpoint);
       setLabs(response.data.labs || response.data);
     } catch (err) {
@@ -231,7 +243,11 @@ const DashboardPage = () => {
   // Fetch Doctors
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get(`${labBaseUrl}api/v1/doctors/clinic/${clinicId}`);
+      const response = await axios.get(
+        `${clinicServiceBaseUrl}/api/v1/clinic-service/active-doctors?clinicId=${clinicId}`,
+      );
+      console.log('ds',response);
+      
       setDoctors(response.data.doctors || []);
     } catch (err) {
       console.error("Error fetching doctors:", err);
@@ -239,6 +255,7 @@ const DashboardPage = () => {
   };
 
   // Search Patients
+
   const searchPatients = async (search: string) => {
     if (search.length < 3) {
       setPatientResults([]);
@@ -247,17 +264,27 @@ const DashboardPage = () => {
 
     setPatientLoading(true);
     try {
+      // This assumes you're searching by patientRandomId
+      // You might need to make multiple calls or have a different endpoint
       const response = await axios.get(
-        `${labBaseUrl}api/v1/patients/search?clinicId=${clinicId}&search=${search}`
+        `${patientServiceBaseUrl}/api/v1/patient-service/patient/patient-by-randomId-single?randomId=${search}`,
       );
-      setPatientResults(response.data.patients || []);
+
+      console.log("Patient search response:", response.data);
+
+      // Check if we got a valid patient
+      if (response.data && response.data.data && response.data.data._id) {
+        setPatientResults([response.data.data]);
+      } else {
+        setPatientResults([]);
+      }
     } catch (err) {
       console.error("Error searching patients:", err);
+      setPatientResults([]);
     } finally {
       setPatientLoading(false);
     }
   };
-
   // Debounced patient search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -302,7 +329,9 @@ const DashboardPage = () => {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -317,68 +346,99 @@ const DashboardPage = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    setModalLoading(true);
-    try {
-      const formDataToSend = new FormData();
-      
-      // Common fields
-      formDataToSend.append("vendor", formData.vendor);
-      formDataToSend.append("dentist", formData.dentist);
-      formDataToSend.append("patientId", formData.patientId || formData.patientName);
-      formDataToSend.append("deliveryDate", formData.deliveryDate);
-      formDataToSend.append("price", formData.price);
-      formDataToSend.append("note", formData.note);
-      
-      if (labType === "aligner") {
-        // Aligner specific fields
-        formDataToSend.append("upperArchTrays", formData.trays.upperArch.toString());
-        formDataToSend.append("lowerArchTrays", formData.trays.lowerArch.toString());
-        
-        if (formData.stlFiles.upper) {
-          formDataToSend.append("upperStl", formData.stlFiles.upper);
-        }
-        if (formData.stlFiles.lower) {
-          formDataToSend.append("lowerStl", formData.stlFiles.lower);
-        }
-        if (formData.stlFiles.total) {
-          formDataToSend.append("totalStl", formData.stlFiles.total);
-        }
-        
-        await axios.post(`${labBaseUrl}api/v1/aligners/orders`, formDataToSend, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      } else {
-        // In-house or external lab
-        files.forEach((file) => {
-          formDataToSend.append("attachments", file);
-        });
-        
-        const endpoint = labType === "inHouse" 
-          ? `${labBaseUrl}api/v1/lab-orders`
-          : `${labBaseUrl}api/v1/lab-orders/external`;
-        
-        await axios.post(endpoint, formDataToSend, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+const handleSubmit = async () => {
+  setModalLoading(true);
+
+  try {
+    if (labType === "aligner") {
+      const alignerFormData = new FormData();
+
+      alignerFormData.append("vendorId", labOrderId);
+      alignerFormData.append(
+        "patientId",
+        formData.patientId || formData.patientName
+      );
+      alignerFormData.append("deliveryDate", formData.deliveryDate);
+      alignerFormData.append("totalAmount", formData.price);
+      alignerFormData.append("notes", formData.note);
+
+      alignerFormData.append(
+        "upperArchTrays",
+        formData.trays.upperArch.toString()
+      );
+      alignerFormData.append(
+        "lowerArchTrays",
+        formData.trays.lowerArch.toString()
+      );
+
+      if (formData.stlFiles.upper) {
+        alignerFormData.append("upperFile", formData.stlFiles.upper);
       }
 
-      setIsModalOpen(false);
-      // Refresh data after successful order creation
-      if (labType === "inHouse") {
-        fetchInHouseOrders();
-      } else if (labType === "aligner") {
-        fetchAlignerOrders();
+      if (formData.stlFiles.lower) {
+        alignerFormData.append("lowerFile", formData.stlFiles.lower);
       }
-      fetchStats();
-    } catch (err) {
-      console.error("Error creating order:", err);
-      setError("Failed to create order. Please try again.");
-    } finally {
-      setModalLoading(false);
+
+      if (formData.stlFiles.total) {
+        alignerFormData.append("totalJaw", formData.stlFiles.total);
+      }
+
+      // Debug FormData
+      alignerFormData.forEach((value, key) => {
+        console.log(key, value);
+      });
+
+      const response = await axios.post(
+        `${labBaseUrl}api/v1/aligners/create-order`,
+        alignerFormData
+      );
+
+      console.log(response);
+      fetchAlignerOrders();
     }
-  };
 
+    else {
+      const labFormData = new FormData();
+
+      labFormData.append("vendor", labOrderId);
+      labFormData.append(
+        "patientName",
+        formData.patientId || formData.patientName
+      );
+      labFormData.append("deliveryDate", formData.deliveryDate);
+      labFormData.append("price", formData.price);
+      labFormData.append("note", formData.note);
+      labFormData.append("dentist", formData.dentist);
+
+
+      files.forEach((file) => {
+        labFormData.append("files", file);
+      });
+
+      // Debug
+      labFormData.forEach((value, key) => {
+        console.log(key, value);
+      });
+
+      const endpoint =
+        labType === "inHouse"
+          ? `${labBaseUrl}api/v1/lab-orders/dental-orders`
+          : `${labBaseUrl}api/v1/lab-orders/external`;
+
+      await axios.post(endpoint, labFormData);
+
+      fetchInHouseOrders();
+    }
+
+    setIsModalOpen(false);
+    fetchStats();
+  } catch (err) {
+    console.error("Error creating order:", err);
+    setError("Failed to create order. Please try again.");
+  } finally {
+    setModalLoading(false);
+  }
+};
   // Fetch Stats
   const fetchStats = async () => {
     let endpoint = "";
@@ -765,94 +825,10 @@ const DashboardPage = () => {
             <div style={{ padding: "24px" }}>
               <div style={{ display: "grid", gap: "20px" }}>
                 {/* Lab Selection */}
-                <div>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      color: "#374151",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <Building2 size={18} color="#6b7280" />
-                    {labType === "inHouse"
-                      ? "In-House Lab *"
-                      : labType === "aligner"
-                        ? "Aligner Lab *"
-                        : "External Lab *"}
-                  </label>
-                  {labsLoading ? (
-                    <div
-                      style={{
-                        width: "100%",
-                        padding: "10px 12px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "8px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      <Loader2 size={16} className="animate-spin" />
-                      Loading labs...
-                    </div>
-                  ) : (
-                    <select
-                      name="vendor"
-                      value={formData.vendor}
-                      onChange={handleInputChange}
-                      required
-                      style={{
-                        width: "100%",
-                        padding: "10px 12px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "8px",
-                        fontSize: "14px",
-                        outline: "none",
-                        transition: "border-color 0.2s",
-                        boxSizing: "border-box",
-                      }}
-                      onFocus={(e) =>
-                        (e.currentTarget.style.borderColor = "#3b82f6")
-                      }
-                      onBlur={(e) =>
-                        (e.currentTarget.style.borderColor = "#d1d5db")
-                      }
-                    >
-                      <option value="">
-                        Select{" "}
-                        {labType === "inHouse"
-                          ? "In-House Lab"
-                          : labType === "aligner"
-                            ? "Aligner Lab"
-                            : "External Lab"}
-                      </option>
-                      {labs.map((lab: any) => (
-                        <option key={lab._id} value={lab._id}>
-                          {lab.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  {!labsLoading && labs.length === 0 && (
-                    <div
-                      style={{
-                        marginTop: "8px",
-                        fontSize: "12px",
-                        color: "#ef4444",
-                      }}
-                    >
-                      No labs found for this category
-                    </div>
-                  )}
-                </div>
 
                 {/* Dentist */}
+                {
+                  labType === "inHouse" && (
                 <div>
                   <label
                     style={{
@@ -893,7 +869,10 @@ const DashboardPage = () => {
                   </select>
                 </div>
 
-                {/* Patient Name */}
+                  )
+                }
+
+                {/* Patient Name with Dropdown */}
                 <div style={{ position: "relative" }}>
                   <label
                     style={{
@@ -917,6 +896,7 @@ const DashboardPage = () => {
                       setFormData((prev) => ({
                         ...prev,
                         patientName: e.target.value,
+                        patientId: "", // Clear patient ID when typing new name
                       }));
                     }}
                     required
@@ -936,57 +916,100 @@ const DashboardPage = () => {
                     onBlur={(e) =>
                       (e.currentTarget.style.borderColor = "#d1d5db")
                     }
-                    placeholder="Enter patient name"
+                    placeholder="Enter patient name (min 3 characters)"
                   />
 
+                  {/* Dropdown for patient results */}
                   {patientResults.length > 0 && (
                     <ul
                       style={{
                         position: "absolute",
-                        top: "85px",
+                        top: "100%",
                         left: 0,
-                        width: "100%",
+                        right: 0,
                         background: "#fff",
-                        border: "1px solid #ddd",
-                        borderRadius: "6px",
-                        padding: 0,
-                        margin: 0,
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "8px",
+                        padding: "8px 0",
+                        margin: "4px 0 0 0",
                         listStyle: "none",
-                        maxHeight: "200px",
+                        maxHeight: "250px",
                         overflowY: "auto",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                        zIndex: 2000,
+                        boxShadow:
+                          "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                        zIndex: 1000,
                       }}
                     >
-                      {patientResults.map((p: any) => (
+                      {patientResults.map((patient: Patient) => (
                         <li
-                          key={p._id}
+                          key={patient._id}
                           style={{
-                            padding: "10px",
-                            borderBottom: "1px solid #eee",
+                            padding: "10px 16px",
                             cursor: "pointer",
+                            fontSize: "14px",
+                            transition: "background-color 0.2s",
                           }}
                           onClick={() => {
-                            setPatientSearch(p.name);
+                            setPatientSearch(patient.name);
                             setFormData((prev) => ({
                               ...prev,
-                              patientName: p.name,
-                              patientId: p._id,
+                              patientName: patient.name,
+                              patientId: patient._id,
                             }));
-                            setPatientResults([]);
+                            setPatientResults([]); // Clear results after selection
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#f3f4f6";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              "transparent";
                           }}
                         >
-                          {p.name}
+                          <div style={{ fontWeight: "500" }}>
+                            {patient.name}
+                          </div>
+                          {patient.patientRandomId && (
+                            <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                              ID: {patient.patientRandomId}
+                            </div>
+                          )}
                         </li>
                       ))}
                     </ul>
                   )}
 
+                  {/* Loading indicator */}
                   {patientLoading && patientSearch.length >= 3 && (
-                    <div style={{ marginTop: "5px", fontSize: "12px" }}>
-                      Loading...
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Loader2 size={12} className="animate-spin" />
+                      Searching patients...
                     </div>
                   )}
+
+                  {/* No results message */}
+                  {!patientLoading &&
+                    patientSearch.length >= 3 &&
+                    patientResults.length === 0 && (
+                      <div
+                        style={{
+                          marginTop: "8px",
+                          fontSize: "12px",
+                          color: "#6b7280",
+                        }}
+                      >
+                        No patients found
+                      </div>
+                    )}
                 </div>
 
                 {/* Delivery Date */}
