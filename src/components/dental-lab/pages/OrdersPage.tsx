@@ -23,6 +23,9 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
+  Receipt,
+  Banknote,
 } from "lucide-react";
 import labBaseUrl from "../../../labBaseUrl";
 import { useAppSelector } from "../../../redux/hook";
@@ -55,6 +58,7 @@ interface LabOrder {
   patientName: string;
   doctorName: string;
   price: number;
+  totalAmount?: number;
   deliveryDate: string;
   appointmentId: string;
   note: string;
@@ -66,6 +70,9 @@ interface LabOrder {
   createdAt: string;
   updatedAt: string;
   __v: number;
+  paymentStatus?: "pending" | "partial" | "paid" | "refunded";
+  paidAmount?: number;
+  dueDate?: string;
 }
 
 interface LabDataResponse {
@@ -87,11 +94,31 @@ interface StatusConfig {
   label: string;
 }
 
+interface PaymentStatusConfig {
+  bg: string;
+  text: string;
+  border: string;
+  icon: any;
+  label: string;
+}
+
 interface UploadModalProps {
   order: LabOrder;
   onClose: () => void;
   onUpload: (files: File[], notes: string, patientId: string) => Promise<void>;
   uploading: boolean;
+}
+
+// New Payment Update Modal Props
+interface PaymentUpdateModalProps {
+  order: LabOrder;
+  onClose: () => void;
+  onUpdate: (paymentData: PaymentUpdateData) => Promise<void>;
+  updating: boolean;
+}
+
+interface PaymentUpdateData {
+  paymentStatus: "pending" | "partial" | "paid" | "refunded";
 }
 
 const PAGE_SIZE = 10;
@@ -102,10 +129,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState<LabOrder | null>(null);
+  const [paymentUpdateModalOpen, setPaymentUpdateModalOpen] = useState<LabOrder | null>(null);
   const [labData, setLabData] = useState<LabDataResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaginationLoading, setIsPaginationLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Cursor-based pagination state
@@ -113,6 +142,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const labOrderId = useAppSelector((state) => state.auth.user?.labVendorId);
   const labType = useAppSelector((state) => state.auth.user?.labType);
+
   const getStatusConfig = (status: LabOrder["status"]): StatusConfig => {
     const configs = {
       pending: {
@@ -159,6 +189,40 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
     return configs[status] || configs.pending;
   };
 
+  const getPaymentStatusConfig = (status?: string): PaymentStatusConfig => {
+    const configs = {
+      pending: {
+        bg: "bg-yellow-500/10",
+        text: "text-yellow-700",
+        border: "border-yellow-200",
+        icon: Clock,
+        label: "Payment Pending",
+      },
+      partial: {
+        bg: "bg-blue-500/10",
+        text: "text-blue-700",
+        border: "border-blue-200",
+        icon: AlertCircle,
+        label: "Partial Payment",
+      },
+      paid: {
+        bg: "bg-green-500/10",
+        text: "text-green-700",
+        border: "border-green-200",
+        icon: CheckCircle,
+        label: "Paid",
+      },
+      refunded: {
+        bg: "bg-purple-500/10",
+        text: "text-purple-700",
+        border: "border-purple-200",
+        icon: Receipt,
+        label: "Refunded",
+      },
+    };
+    return configs[status as keyof typeof configs] || configs.pending;
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -166,6 +230,14 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
   };
 
   // Fetch orders with cursor
@@ -280,6 +352,39 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
       setError("Failed to upload files. Please try again.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handlePaymentUpdate = async (paymentData: PaymentUpdateData) => {
+    setUpdatingPayment(true);
+
+    try {
+      // API endpoint for updating payment - adjust this endpoint as per your backend
+      console.log("Payment update response:", paymentData);
+      const response = await axios.patch(
+        `${labBaseUrl}api/v1/aligners/order/update-payment-status/${paymentUpdateModalOpen!._id}`,
+        paymentData
+      );
+      
+      setPaymentUpdateModalOpen(null);
+
+      // Refresh current page
+      const params: any = { limit: PAGE_SIZE };
+      const currentCursor = cursorHistory[currentPageIndex];
+      if (currentCursor) params.cursor = currentCursor;
+      if (selectedStatus !== "all") params.status = selectedStatus;
+      if (searchQuery.trim()) params.search = searchQuery.trim();
+
+      const refresh = await axios.get(
+        `${labBaseUrl}api/v1/lab-orders/aligner-orders/${labOrderId}`,
+        { params },
+      );
+      setLabData(refresh);
+    } catch (error) {
+      console.log("Error updating payment:", error);
+      setError("Failed to update payment. Please try again.");
+    } finally {
+      setUpdatingPayment(false);
     }
   };
 
@@ -478,6 +583,22 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
       cursor: "pointer",
       transition: "all 0.2s",
     },
+    paymentButton: {
+      flex: 1,
+      padding: "12px 16px",
+      background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+      border: "none",
+      borderRadius: "12px",
+      color: "white",
+      fontSize: "14px",
+      fontWeight: 600,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "8px",
+      cursor: "pointer",
+      transition: "all 0.2s",
+    },
     emptyState: {
       backgroundColor: "white",
       borderRadius: "24px",
@@ -522,9 +643,334 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
       fontSize: "14px",
       fontWeight: 600,
     },
+    paymentBadge: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "4px",
+      padding: "4px 8px",
+      borderRadius: "9999px",
+      fontSize: "12px",
+      fontWeight: 500,
+      marginLeft: "8px",
+    },
   };
 
-  // Upload Modal with Inline Styles
+  // Payment Update Modal Component
+  const PaymentUpdateModal: React.FC<PaymentUpdateModalProps> = ({
+    order,
+    onClose,
+    onUpdate,
+    updating,
+  }) => {
+    const [paymentData, setPaymentData] = useState<PaymentUpdateData>({
+      paymentStatus: order.paymentStatus || "pending",
+    });
+
+    const modalStyles = {
+      overlay: {
+        position: "fixed" as const,
+        inset: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        padding: "16px",
+      },
+      modal: {
+        backgroundColor: "white",
+        borderRadius: "24px",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        maxWidth: "500px",
+        width: "100%",
+        animation: "slideIn 0.3s ease-out",
+      },
+      header: {
+        padding: "24px",
+        borderBottom: "1px solid #e2e8f0",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      },
+      headerLeft: {
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+      },
+      iconContainer: {
+        width: "48px",
+        height: "48px",
+        background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+        borderRadius: "16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      title: {
+        fontSize: "20px",
+        fontWeight: 700,
+        color: "#0f172a",
+        margin: 0,
+      },
+      subtitle: {
+        fontSize: "14px",
+        color: "#64748b",
+        margin: "4px 0 0 0",
+      },
+      closeButton: {
+        padding: "8px",
+        backgroundColor: "transparent",
+        border: "none",
+        borderRadius: "12px",
+        cursor: "pointer",
+        transition: "background-color 0.2s",
+      },
+      content: {
+        padding: "24px",
+        display: "flex",
+        flexDirection: "column" as const,
+        gap: "20px",
+      },
+      formGroup: {
+        display: "flex",
+        flexDirection: "column" as const,
+        gap: "6px",
+      },
+      label: {
+        fontSize: "14px",
+        fontWeight: 600,
+        color: "#334155",
+      },
+      input: {
+        padding: "12px 16px",
+        border: "2px solid #e2e8f0",
+        borderRadius: "12px",
+        fontSize: "14px",
+        outline: "none",
+        transition: "all 0.2s",
+        width: "100%",
+      },
+      select: {
+        padding: "12px 16px",
+        border: "2px solid #e2e8f0",
+        borderRadius: "12px",
+        fontSize: "14px",
+        outline: "none",
+        transition: "all 0.2s",
+        width: "100%",
+        backgroundColor: "white",
+      },
+      textarea: {
+        padding: "12px 16px",
+        border: "2px solid #e2e8f0",
+        borderRadius: "12px",
+        fontSize: "14px",
+        outline: "none",
+        transition: "all 0.2s",
+        width: "100%",
+        minHeight: "80px",
+        resize: "vertical" as const,
+      },
+      infoBox: {
+        backgroundColor: "#f0fdf4",
+        padding: "16px",
+        borderRadius: "12px",
+        border: "1px solid #86efac",
+      },
+      infoRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "8px",
+      },
+      infoLabel: {
+        fontSize: "14px",
+        color: "#166534",
+      },
+      infoValue: {
+        fontSize: "16px",
+        fontWeight: 600,
+        color: "#14532d",
+      },
+      buttonGroup: {
+        display: "flex",
+        gap: "12px",
+        paddingTop: "16px",
+        marginTop: "8px",
+        borderTop: "1px solid #e2e8f0",
+      },
+      cancelButton: {
+        flex: 1,
+        padding: "12px 24px",
+        border: "2px solid #cbd5e1",
+        borderRadius: "12px",
+        backgroundColor: "white",
+        fontSize: "16px",
+        fontWeight: 600,
+        color: "#475569",
+        cursor: "pointer",
+        transition: "all 0.2s",
+      },
+      updateButton: {
+        flex: 1,
+        padding: "12px 24px",
+        background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+        border: "none",
+        borderRadius: "12px",
+        color: "white",
+        fontSize: "16px",
+        fontWeight: 600,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8px",
+        cursor: "pointer",
+        transition: "all 0.2s",
+        opacity: updating ? 0.7 : 1,
+      },
+    };
+
+    const handleInputChange = (
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
+      const { name, value } = e.target;
+      setPaymentData((prev) => ({
+        ...prev,
+        [name]: name === "paidAmount" ? parseFloat(value) || 0 : value,
+      }));
+    };
+
+    const handleSubmit = async () => {
+      await onUpdate(paymentData);
+    };
+
+    const totalAmount = order.totalAmount || order.price || 0;
+    const remainingAmount = totalAmount - paymentData.paidAmount;
+
+    return (
+      <div style={modalStyles.overlay}>
+        <div style={modalStyles.modal}>
+          <div style={modalStyles.header}>
+            <div style={modalStyles.headerLeft}>
+              <div style={modalStyles.iconContainer}>
+                <CreditCard
+                  style={{ width: "24px", height: "24px", color: "white" }}
+                />
+              </div>
+              <div>
+                <h2 style={modalStyles.title}>Update Payment</h2>
+                <p style={modalStyles.subtitle}>
+                  Order: {order._id.slice(-8)} • {order.patientName || order.patientname}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              style={modalStyles.closeButton}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = "#f1f5f9")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "transparent")
+              }
+            >
+              <X style={{ width: "24px", height: "24px", color: "#64748b" }} />
+            </button>
+          </div>
+
+          <div style={modalStyles.content}>
+            {/* Order Amount Info */}
+            <div style={modalStyles.infoBox}>
+              <div style={modalStyles.infoRow}>
+                <span style={modalStyles.infoLabel}>Total Amount</span>
+                <span style={modalStyles.infoValue}>
+                  {formatCurrency(totalAmount)}
+                </span>
+              </div>
+            </div>
+
+            {/* Payment Status */}
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>Payment Status</label>
+              <select
+                name="paymentStatus"
+                value={paymentData.paymentStatus}
+                onChange={handleInputChange}
+                style={modalStyles.select}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#059669";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(5, 150, 105, 0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e2e8f0";
+                  e.target.style.boxShadow = "none";
+                }}
+              >
+                <option value="pending">Pending</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+
+            <div style={modalStyles.buttonGroup}>
+              <button
+                disabled={updating}
+                onClick={onClose}
+                style={modalStyles.cancelButton}
+                onMouseEnter={(e) => {
+                  if (!updating)
+                    e.currentTarget.style.backgroundColor = "#f8fafc";
+                }}
+                onMouseLeave={(e) => {
+                  if (!updating)
+                    e.currentTarget.style.backgroundColor = "white";
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={updating}
+                onClick={handleSubmit}
+                style={modalStyles.updateButton}
+                onMouseEnter={(e) => {
+                  if (!updating) {
+                    e.currentTarget.style.background =
+                      "linear-gradient(135deg, #047857 0%, #065f46 100%)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!updating) {
+                    e.currentTarget.style.background =
+                      "linear-gradient(135deg, #059669 0%, #047857 100%)";
+                  }
+                }}
+              >
+                {updating ? (
+                  <>
+                    <Loader2
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        animation: "spin 1s linear infinite",
+                      }}
+                    />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Banknote style={{ width: "16px", height: "16px" }} />
+                    Update Payment
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Upload Modal Component
   const UploadModal: React.FC<UploadModalProps> = ({
     order,
     onClose,
@@ -783,7 +1229,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                 >
                   Selected Files ({files.length})
                 </h3>
-                <div style={{ maxHeight: "60px", overflowY: "auto" }}>
+                <div style={{ maxHeight: "200px", overflowY: "auto" }}>
                   {files.map((file, idx) => (
                     <div key={idx} style={modalStyles.fileItem}>
                       <div style={modalStyles.fileInfo}>
@@ -845,26 +1291,6 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                 </div>
               </div>
             )}
-
-            {/* <div>
-                <label style={{ fontSize: "16px", fontWeight: 600, color: "#0f172a", display: "block", marginBottom: "8px" }}>
-                  Notes
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add notes..."
-                  style={modalStyles.textarea}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "#3b82f6";
-                    e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#e2e8f0";
-                    e.target.style.boxShadow = "none";
-                  }}
-                />
-              </div> */}
 
             <div style={modalStyles.buttonGroup}>
               <button
@@ -960,6 +1386,31 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
         >
           {cfg.label}
         </span>
+      </div>
+    );
+  };
+
+  const PaymentStatusBadge: React.FC<{ status?: string }> = ({ status }) => {
+    const cfg = getPaymentStatusConfig(status);
+    const Icon = cfg.icon;
+
+    return (
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "4px",
+          padding: "4px 8px",
+          borderRadius: "9999px",
+          border: `1px solid ${cfg.border}`,
+          backgroundColor: cfg.bg,
+          color: cfg.text,
+          fontSize: "12px",
+          fontWeight: 500,
+        }}
+      >
+        <Icon style={{ width: "12px", height: "12px" }} />
+        <span>{cfg.label}</span>
       </div>
     );
   };
@@ -1188,6 +1639,9 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                       >
                         {order._id.slice(-8)}
                       </h3>
+                      {labType === "aligner" && order.paymentStatus && (
+                        <PaymentStatusBadge status={order.paymentStatus} />
+                      )}
                     </div>
                     <p
                       style={{ fontSize: "14px", color: "#64748b", margin: 0 }}
@@ -1243,43 +1697,46 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                     </div>
                   </div>
 
-                  {/* <div style={styles.deliveryDate}>
-                    <Calendar
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                        color: "#ea580c",
-                      }}
-                    />
-                    <span style={{ fontWeight: 500, color: "#9a3412" }}>
-                      {formatDate(order.deliveryDate)}
-                    </span>
-                  </div> */}
-
                   <div
                     style={{
                       ...styles.amount,
                       backgroundColor:
-                        order.totalLabAmount > 2000
+                        (order.totalLabAmount || order.totalAmount || 0) > 2000
                           ? "#fee2e2"
-                          : order.totalLabAmount > 1000
+                          : (order.totalLabAmount || order.totalAmount || 0) > 1000
                             ? "#fef3c7"
                             : "#dcfce7",
                       color:
-                        order.totalLabAmount > 2000
+                        (order.totalLabAmount || order.totalAmount || 0) > 2000
                           ? "#991b1b"
-                          : order.price > 1000
+                          : (order.totalLabAmount || order.totalAmount || 0) > 1000
                             ? "#92400e"
                             : "#166534",
                     }}
                   >
                     <DollarSign style={{ width: "16px", height: "16px" }} />
                     <span style={{ fontWeight: "bold", fontSize: "18px" }}>
-                     {labType === "inHouse"
-                          ? order.price
-                          : order.totalAmount || "N/A"}
+                      {labType === "inHouse"
+                        ? formatCurrency(order.price)
+                        : formatCurrency(order.totalAmount || order.price || 0)}
                     </span>
                   </div>
+
+                  {labType === "aligner" && order.paidAmount !== undefined && (
+                    <div
+                      style={{
+                        ...styles.amount,
+                        backgroundColor: "#f0f9ff",
+                        color: "#0369a1",
+                        marginTop: "-8px",
+                      }}
+                    >
+                      <Receipt style={{ width: "16px", height: "16px" }} />
+                      <span style={{ fontWeight: 500, fontSize: "14px" }}>
+                        Paid: {formatCurrency(order.paidAmount)}
+                      </span>
+                    </div>
+                  )}
 
                   {order.note && (
                     <div style={styles.noteContainer}>
@@ -1343,6 +1800,27 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
                       >
                         <Upload style={{ width: "16px", height: "16px" }} />
                         Upload
+                      </button>
+                    )}
+
+                    {labType === "aligner" && order.paymentStatus === "pending" && (
+                      <button
+                        onClick={() => setPaymentUpdateModalOpen(order)}
+                        style={styles.paymentButton}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background =
+                            "linear-gradient(135deg, #047857 0%, #065f46 100%)";
+                          e.currentTarget.style.boxShadow =
+                            "0 10px 15px -3px rgba(5, 150, 105, 0.2)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background =
+                            "linear-gradient(135deg, #059669 0%, #047857 100%)";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      >
+                        <CreditCard style={{ width: "16px", height: "16px" }} />
+                        Payment
                       </button>
                     )}
                   </div>
@@ -1467,6 +1945,15 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ onUploadResults }) => {
           onClose={() => setUploadModalOpen(null)}
           onUpload={handleUpload}
           uploading={uploading}
+        />
+      )}
+
+      {paymentUpdateModalOpen && (
+        <PaymentUpdateModal
+          order={paymentUpdateModalOpen}
+          onClose={() => setPaymentUpdateModalOpen(null)}
+          onUpdate={handlePaymentUpdate}
+          updating={updatingPayment}
         />
       )}
 

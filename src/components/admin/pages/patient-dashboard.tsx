@@ -798,12 +798,11 @@ function ReportsContent() {
   };
 
   return (
-    <div style={{ backgroundColor: "#F9FAF9", minHeight: "100vh" }}>
+    <div >
       {/* Header */}
       <div
         style={{
           padding: "24px 32px",
-          borderBottom: "2px solid rgba(107, 114, 128, 0.2)",
           backgroundColor: "#ffffff",
           background:
             "linear-gradient(to left, var(--primary), var(--primary-end))",
@@ -814,7 +813,7 @@ function ReportsContent() {
             fontSize: "24px",
             fontWeight: "700",
             margin: 0,
-            color: "#ffffff",
+            color: "black",
             letterSpacing: "0.5px",
           }}
         >
@@ -823,7 +822,7 @@ function ReportsContent() {
         <p
           style={{
             fontSize: "14px",
-            color: "rgba(255, 255, 255, 0.9)",
+            color: "black",
             margin: "4px 0 0 0",
             fontWeight: "500",
           }}
@@ -836,10 +835,7 @@ function ReportsContent() {
         {/* Search Section */}
         <div
           style={{
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-            backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
+           
             borderRadius: 16,
             padding: 28,
             marginBottom: 28,
@@ -899,10 +895,7 @@ function ReportsContent() {
             {!loading && (
               <div
                 style={{
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-                  backdropFilter: "blur(18px)",
-                  WebkitBackdropFilter: "blur(18px)",
+                  
                   borderRadius: 16,
                   padding: 28,
                   marginBottom: 28,
@@ -1852,10 +1845,7 @@ function ReportsContent() {
             ) : (
               <div
                 style={{
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9))",
-                  backdropFilter: "blur(18px)",
-                  WebkitBackdropFilter: "blur(18px)",
+                  
                   borderRadius: 16,
                   padding: 28,
                   boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
@@ -1906,6 +1896,7 @@ function ReportsContent() {
                     maxHeight: 600,
                     overflowY: "auto",
                     paddingRight: 4,
+                    
                   }}
                 >
                   {Array.isArray(allPatients) &&

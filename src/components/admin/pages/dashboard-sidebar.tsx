@@ -228,13 +228,7 @@ export function DashboardSidebar() {
             style={({ isActive }) =>
               isActive
                 ? {
-                    background: `
-                      radial-gradient(at 0% 0%, rgba(174, 229, 238, 0.4) 0px, transparent 50%),
-                      radial-gradient(at 100% 0%, rgba(6, 110, 229, 0.4) 0px, transparent 50%),
-                      radial-gradient(at 100% 100%, rgba(253, 186, 116, 0.2) 0px, transparent 50%),
-                      radial-gradient(at 0% 50%, rgba(233, 213, 255, 0.5) 0px, transparent 50%),
-                      linear-gradient(to bottom right, #f8fafc, #f1f5f9)
-                    `,
+                   background: "var(--clinic-bg)"
                   }
                 : {}
             }

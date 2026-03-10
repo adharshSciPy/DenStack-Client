@@ -1389,7 +1389,7 @@ const handleSaveColors = async () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-card p-4 md:p-6 rounded-xl">
       {activeSettingsTab === "grid" ? (
         <div className="max-w-6xl mx-auto">
           <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
@@ -1408,11 +1408,11 @@ const handleSaveColors = async () => {
                   onClick={card.onClick}
                   className="bg-white rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 text-left group w-full"
                 >
-                  <div className="flex items-start space-x-3 md:space-x-4">
-                    <div className="p-2 md:p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                  <div className="flex items-start space-x-3 md:space-x-4 ">
+                    <div className="p-2 md:p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0" >
                       <Icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0" style={{marginLeft:"10px"}}>
                       <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-1 truncate">
                         {card.title}
                       </h3>

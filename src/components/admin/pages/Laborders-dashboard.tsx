@@ -209,7 +209,7 @@ type OrderStatus = "pending" | "completed" | "in-progress" | "cancelled";
     }
   };
 
-  useEffect(() => {
+  useEffect(() => { 
     const fetchPatients = async () => {
       if (search.length < 3) {
         setResults([]);
