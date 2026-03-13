@@ -69,7 +69,7 @@ export default function Billing() {
   const [items, setItems] = useState<BillingItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-
+  const token=useAppSelector((state) => state.auth.token);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   /* ------------------ FETCH DOCTORS ------------------ */
@@ -208,6 +208,9 @@ export default function Billing() {
             clinicId,
             patientUniqueId: selectedPatient.patientUniqueId,
           },
+          headers:{
+           Authorization: `Bearer ${token}`,
+          }
         }
       );
 

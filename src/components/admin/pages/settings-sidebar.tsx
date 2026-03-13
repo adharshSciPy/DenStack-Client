@@ -1412,7 +1412,7 @@ export default function SettingsGrid() {
   };
 
   return (
-    <div className="min-h-screen bg-card p-4 md:p-6 rounded-xl">
+    <div className="min-h-screen bg-card p-4 md:p-6 rounded-xl" style={{height:"100vh"}}>
       {activeSettingsTab === "grid" ? (
         <div className="max-w-6xl mx-auto">
           <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
@@ -4352,12 +4352,13 @@ export default function SettingsGrid() {
             </div>
           </div>
         </div>
+
       )}
 
       {showLabModal && (
         <div
           style={{
-            position: "fixed",
+            position: "absolute",
             top: 0,
             left: 0,
             right: 0,

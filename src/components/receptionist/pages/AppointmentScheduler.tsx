@@ -310,7 +310,7 @@ export default function AppointmentScheduler() {
       const targetYear = year || currentYear;
 
       const response = await axios.get<MonthlyAppointmentResponse>(
-        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/monthly_appointmnets/${clinicId}`,
+        `${patientServiceBaseUrl}/api/v1/patient-service/appointment/monthly_appointmnets/receptionist/${clinicId}`,
         {
           params: {
             month: targetMonth,
